@@ -1,8 +1,8 @@
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Sidebar } from "@/app/sidebar";
-import { useMesStore } from "@/app/mes-store";
 import { useHeaderActionsStore } from "@/app/header-actions-store";
+import { useMesStore } from "@/app/mes-store";
+import { Sidebar } from "@/app/sidebar";
 import { formatarMesAno } from "@/utils/dates";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 const MONTH_ROUTES = new Set(["/mes", "/lancamentos"]);
 
@@ -46,7 +46,16 @@ export function AppShell() {
                   aria-label="Mês anterior"
                   className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-ink-secondary hover:text-ink transition-colors"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <path d="m15 18-6-6 6-6" />
                   </svg>
                 </button>
@@ -58,7 +67,16 @@ export function AppShell() {
                   aria-label="Próximo mês"
                   className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-ink-secondary hover:text-ink transition-colors"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <path d="m9 18 6-6-6-6" />
                   </svg>
                 </button>
@@ -73,18 +91,21 @@ export function AppShell() {
           {/* Direita: avatar MR + Adicionar */}
           <div className="no-drag flex items-center gap-4">
             <button
-              onClick={() => navigate("/perfil")}
-              aria-label="Perfil"
-              className="w-10 h-10 rounded-full border border-border bg-surface text-ink-secondary font-bold text-sm flex items-center justify-center hover:bg-surface-subtle transition-colors"
-            >
-              MR
-            </button>
-            <button
               onClick={() => onAdicionar?.()}
               className="inline-flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-brand text-white font-semibold text-[15px] shadow-[0_6px_16px_-4px_rgba(64,120,230,.45)] hover:bg-brand-600 transition-colors"
             >
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14" /><path d="M12 5v14" />
+              <svg
+                width="19"
+                height="19"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M5 12h14" />
+                <path d="M12 5v14" />
               </svg>
               Adicionar
             </button>
