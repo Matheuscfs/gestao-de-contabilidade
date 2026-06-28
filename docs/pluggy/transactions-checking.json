@@ -1,0 +1,957 @@
+{
+  "total": 1597,
+  "totalPages": 80,
+  "page": 1,
+  "results": [
+    {
+      "id": "f7a326a9-6b79-44c1-939d-8f6fe2a6ab01",
+      "description": "Compra débito EPAR ESTACIONAMENTOS",
+      "descriptionRaw": "Compra débito EPAR ESTACIONAMENTOS",
+      "currencyCode": "BRL",
+      "amount": -12,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-26T23:41:53.001Z",
+      "category": "Parking",
+      "categoryId": "19050002",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": null,
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "CARTAO",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-27T16:36:30.362Z",
+      "updatedAt": "2026-06-27T16:36:30.362Z"
+    },
+    {
+      "id": "ba3b00d0-4387-45e1-8ec9-ccada1553c50",
+      "description": "Pagamento de Pix QR Code PIPOCCA ARAPIRACA",
+      "descriptionRaw": "Pagamento de Pix QR Code PIPOCCA ARAPIRACA",
+      "currencyCode": "BRL",
+      "amount": -18,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-26T23:31:11.087Z",
+      "category": "Food and drinks",
+      "categoryId": "11000000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "PIX",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CNPJ",
+            "value": "45.942.074/0001-85"
+          },
+          "name": "LINS DE MORAES COMERCIO DE ALIMENTOS LTDA",
+          "routingNumber": "197",
+          "routingNumberISPB": "16501555"
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "PIX",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 1,
+      "createdAt": "2026-06-27T16:36:30.362Z",
+      "updatedAt": "2026-06-27T16:36:30.362Z"
+    },
+    {
+      "id": "7d1de6cf-f45b-4114-84cb-a7477c857306",
+      "description": "Compra débito SANDIEGO DIVERSOES",
+      "descriptionRaw": "Compra débito SANDIEGO DIVERSOES",
+      "currencyCode": "BRL",
+      "amount": -20,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-26T23:20:42.070Z",
+      "category": "Shopping",
+      "categoryId": "08000000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": null,
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "CARTAO",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 2,
+      "createdAt": "2026-06-27T16:36:30.362Z",
+      "updatedAt": "2026-06-27T16:36:30.362Z"
+    },
+    {
+      "id": "9f4ac63f-73e5-4b79-83dc-e07afe77c8c4",
+      "description": "Pagamento de capitalização CAP PIC 03/60",
+      "descriptionRaw": "Pagamento de capitalização CAP PIC 03/60",
+      "currencyCode": "BRL",
+      "amount": -190,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-26T02:59:00.000Z",
+      "category": "Automatic investment",
+      "categoryId": "03010000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": null,
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": "Pagamento de capitalização",
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 3,
+      "createdAt": "2026-06-25T16:34:35.154Z",
+      "updatedAt": "2026-06-26T16:35:35.503Z"
+    },
+    {
+      "id": "e55695d5-ab04-4d5f-854b-b3cf9414dc6a",
+      "description": "Pagamento de capitalização CAP PIC 03/60",
+      "descriptionRaw": "Pagamento de capitalização CAP PIC 03/60",
+      "currencyCode": "BRL",
+      "amount": -190,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-26T02:59:00.000Z",
+      "category": "Automatic investment",
+      "categoryId": "03010000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": null,
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": "Pagamento de capitalização",
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 4,
+      "createdAt": "2026-06-25T16:34:35.154Z",
+      "updatedAt": "2026-06-26T16:35:35.506Z"
+    },
+    {
+      "id": "9edf9a04-f213-4f0f-a12f-2256b364b68e",
+      "description": "Pix enviado JOSE CORDEIRO DA SILVA JUNIOR",
+      "descriptionRaw": "Pix enviado JOSE CORDEIRO DA SILVA JUNIOR",
+      "currencyCode": "BRL",
+      "amount": -150,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-25T22:04:13.059Z",
+      "category": "Transfer - PIX",
+      "categoryId": "05070000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "PIX",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "043.974.784-81"
+          },
+          "name": null,
+          "routingNumber": "260",
+          "routingNumberISPB": "18236120"
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "PIX",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-26T16:35:35.509Z",
+      "updatedAt": "2026-06-26T16:35:35.509Z"
+    },
+    {
+      "id": "8f8eb321-8a1d-42bd-8084-1e3413ab3718",
+      "description": "Pix enviado Jhenyfe Karolaine Cordeiro da Silva",
+      "descriptionRaw": "Pix enviado Jhenyfe Karolaine Cordeiro da Silva",
+      "currencyCode": "BRL",
+      "amount": -144.95,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-25T16:23:17.071Z",
+      "category": "Transfer - PIX",
+      "categoryId": "05070000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "PIX",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "123.468.674-03"
+          },
+          "name": null,
+          "routingNumber": "260",
+          "routingNumberISPB": "18236120"
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "PIX",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 1,
+      "createdAt": "2026-06-25T16:34:35.154Z",
+      "updatedAt": "2026-06-25T16:34:35.154Z"
+    },
+    {
+      "id": "0d14cadf-e025-46c5-898a-d328740a703e",
+      "description": "Pix enviado Daniel Berg Soares da Silva",
+      "descriptionRaw": "Pix enviado Daniel Berg Soares da Silva",
+      "currencyCode": "BRL",
+      "amount": -18,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-25T16:10:42.047Z",
+      "category": "Transfer - PIX",
+      "categoryId": "05070000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "PIX",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "110.817.384-56"
+          },
+          "name": null,
+          "routingNumber": "260",
+          "routingNumberISPB": "18236120"
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "PIX",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 2,
+      "createdAt": "2026-06-25T16:34:35.154Z",
+      "updatedAt": "2026-06-25T16:34:35.154Z"
+    },
+    {
+      "id": "24dc3d08-f4a4-4ebe-8962-b7bbe4c61032",
+      "description": "Pagamento de seguro ITAU SEG VIDA PF 03/12",
+      "descriptionRaw": "Pagamento de seguro ITAU SEG VIDA PF 03/12",
+      "currencyCode": "BRL",
+      "amount": -104.06,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-25T02:59:00.000Z",
+      "category": "Insurance",
+      "categoryId": "20000000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": null,
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "OPERACAO_CREDITO",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 3,
+      "createdAt": "2026-06-24T16:33:41.047Z",
+      "updatedAt": "2026-06-25T16:34:35.150Z"
+    },
+    {
+      "id": "c831e228-03e0-4c9e-9487-bd387a080bbb",
+      "description": "Compra débito IFD*LGO EMPREENDIMENTO",
+      "descriptionRaw": "Compra débito IFD*LGO EMPREENDIMENTO",
+      "currencyCode": "BRL",
+      "amount": -95.96,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-24T22:37:40.044Z",
+      "category": "Food delivery",
+      "categoryId": "11020000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": null,
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "CARTAO",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-25T16:34:35.154Z",
+      "updatedAt": "2026-06-25T16:34:35.154Z"
+    },
+    {
+      "id": "2342969a-de33-4c83-b03f-f40348f4e6ac",
+      "description": "Compra débito EPAR ESTACIONAMENTOS",
+      "descriptionRaw": "Compra débito EPAR ESTACIONAMENTOS",
+      "currencyCode": "BRL",
+      "amount": -12,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-24T15:48:13.080Z",
+      "category": "Parking",
+      "categoryId": "19050002",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": null,
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "CARTAO",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 1,
+      "createdAt": "2026-06-24T16:33:41.047Z",
+      "updatedAt": "2026-06-24T16:33:41.047Z"
+    },
+    {
+      "id": "9134858d-77bc-4b51-b614-b85f1756d160",
+      "description": "Pagamento de Pix QR Code ALPHA CONECTA",
+      "descriptionRaw": "Pagamento de Pix QR Code ALPHA CONECTA",
+      "currencyCode": "BRL",
+      "amount": -159.9,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-24T00:44:01.061Z",
+      "category": "Internet",
+      "categoryId": "07010001",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "PIX",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CNPJ",
+            "value": "27.865.409/0001-27"
+          },
+          "name": "ALPHA CONECTA LTDA",
+          "routingNumber": "001",
+          "routingNumberISPB": "00000000"
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "PIX",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 2,
+      "createdAt": "2026-06-24T16:33:41.047Z",
+      "updatedAt": "2026-06-24T16:33:41.047Z"
+    },
+    {
+      "id": "1fcf3fc2-3f35-48b9-b045-6e41463311a8",
+      "description": "Pix enviado Gelton Aureliano",
+      "descriptionRaw": "Pix enviado Gelton Aureliano",
+      "currencyCode": "BRL",
+      "amount": -4350,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-23T13:20:38.028Z",
+      "category": "Same person transfer",
+      "categoryId": "04000000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "PIX",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": "323",
+          "routingNumberISPB": "10573521"
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "PIX",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-23T16:32:36.186Z",
+      "updatedAt": "2026-06-23T16:32:36.186Z"
+    },
+    {
+      "id": "39c705ad-5fdf-463f-97b8-33f719d26357",
+      "description": "Pagamento de seguro ITAU SEG AP PF 04/12",
+      "descriptionRaw": "Pagamento de seguro ITAU SEG AP PF 04/12",
+      "currencyCode": "BRL",
+      "amount": -100.88,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-23T02:59:00.000Z",
+      "category": "Insurance",
+      "categoryId": "20000000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": null,
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "OPERACAO_CREDITO",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 1,
+      "createdAt": "2026-06-22T16:31:33.194Z",
+      "updatedAt": "2026-06-23T16:32:36.179Z"
+    },
+    {
+      "id": "59d86d76-ae2d-4b45-9cbe-2a752342e951",
+      "description": "Pagamento de Pix QR Code UBER DO BRASIL TECNOLOGIA LTDA.",
+      "descriptionRaw": "Pagamento de Pix QR Code UBER DO BRASIL TECNOLOGIA LTDA.",
+      "currencyCode": "BRL",
+      "amount": -4.73,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-22T20:23:59.094Z",
+      "category": "Taxi and ride-hailing",
+      "categoryId": "19010000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "PIX",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CNPJ",
+            "value": "17.895.646/0001-87"
+          },
+          "name": "UBER DO BRASIL TECNOLOGIA LTDA.",
+          "routingNumber": null,
+          "routingNumberISPB": "14796606"
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "PIX",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-23T16:32:36.186Z",
+      "updatedAt": "2026-06-23T16:32:36.186Z"
+    },
+    {
+      "id": "583714a1-0034-47cf-b60d-a854daf76ed4",
+      "description": "Pagamento de Pix QR Code Zilda Maria dos Santos Silva",
+      "descriptionRaw": "Pagamento de Pix QR Code Zilda Maria dos Santos Silva",
+      "currencyCode": "BRL",
+      "amount": -15,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-21T20:17:14.085Z",
+      "category": "Transfer - PIX",
+      "categoryId": "05070000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "PIX",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "384.424.948-63"
+          },
+          "name": null,
+          "routingNumber": "290",
+          "routingNumberISPB": "08561701"
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "PIX",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-22T16:31:33.194Z",
+      "updatedAt": "2026-06-22T16:31:33.194Z"
+    },
+    {
+      "id": "79cd634c-ca32-44c3-8299-a386d838967b",
+      "description": "Compra débito AUTO POSTO SANTANA E",
+      "descriptionRaw": "Compra débito AUTO POSTO SANTANA E",
+      "currencyCode": "BRL",
+      "amount": -100,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-21T19:55:16.001Z",
+      "category": "Gas stations",
+      "categoryId": "19050001",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": null,
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "CARTAO",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 1,
+      "createdAt": "2026-06-22T16:31:33.194Z",
+      "updatedAt": "2026-06-22T16:31:33.194Z"
+    },
+    {
+      "id": "3e67130f-208d-4b5d-98d6-4be913d7bf7e",
+      "description": "Pagamento de Pix QR Code ELZIR FLOR DA SILVA JUNIOR",
+      "descriptionRaw": "Pagamento de Pix QR Code ELZIR FLOR DA SILVA JUNIOR",
+      "currencyCode": "BRL",
+      "amount": -48,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-21T17:41:07.083Z",
+      "category": "Transfer - PIX",
+      "categoryId": "05070000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "PIX",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "097.771.174-93"
+          },
+          "name": "ELZIR FLOR DA SILVA JUNIOR",
+          "routingNumber": "104",
+          "routingNumberISPB": "00360305"
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "PIX",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 2,
+      "createdAt": "2026-06-22T16:31:33.194Z",
+      "updatedAt": "2026-06-22T16:31:33.194Z"
+    },
+    {
+      "id": "a32c81b2-a6cb-4286-8d88-852408a9d002",
+      "description": "Compra débito A D COSTA CONVENIENCI",
+      "descriptionRaw": "Compra débito A D COSTA CONVENIENCI",
+      "currencyCode": "BRL",
+      "amount": -49.72,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-21T17:31:50.000Z",
+      "category": "Groceries",
+      "categoryId": "10000000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": null,
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "CARTAO",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 3,
+      "createdAt": "2026-06-22T16:31:33.194Z",
+      "updatedAt": "2026-06-22T16:31:33.194Z"
+    },
+    {
+      "id": "73b27622-b710-4914-b6d0-4d2072f85324",
+      "description": "Compra débito MUNDO DO REAL",
+      "descriptionRaw": "Compra débito MUNDO DO REAL",
+      "currencyCode": "BRL",
+      "amount": -57.5,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-21T13:54:38.064Z",
+      "category": "Shopping",
+      "categoryId": "08000000",
+      "balance": null,
+      "accountId": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": null,
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "CARTAO",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 4,
+      "createdAt": "2026-06-22T16:31:33.194Z",
+      "updatedAt": "2026-06-22T16:31:33.194Z"
+    }
+  ]
+}

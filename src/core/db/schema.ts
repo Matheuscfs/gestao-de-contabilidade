@@ -27,7 +27,6 @@ export const categories = sqliteTable("categories", {
   type: text("type").notNull(),
   color: text("color").notNull().default("#4078E6"),
   icon: text("icon").notNull().default("tag"),
-  /** auto-relação para categorias hierárquicas */
   parentId: text("parent_id"),
   archived: integer("archived").notNull().default(0),
   createdAt: text("created_at").notNull(),
@@ -43,13 +42,11 @@ export const accounts = sqliteTable("accounts", {
   bank: text("bank"),
   agency: text("agency"),
   accountNumber: text("account_number"),
-  /** mantido incrementalmente; recalculável do zero */
   balanceCents: integer("balance_cents").notNull().default(0),
   initialBalanceCents: integer("initial_balance_cents").notNull().default(0),
   color: text("color").notNull().default("#4078E6"),
   icon: text("icon").notNull().default("building-bank"),
   isActive: integer("is_active").notNull().default(1),
-  /** só uma conta primária por banco */
   isPrimary: integer("is_primary").notNull().default(0),
   archived: integer("archived").notNull().default(0),
   personaId: text("persona_id").references(() => personas.id, {
@@ -79,233 +76,7 @@ export const creditCards = sqliteTable("credit_cards", {
   updatedAt: text("updated_at").notNull(),
 });
 
-// ─── Faturas ──────────────────────────────────────────────────────────────────
-export const invoices = sqliteTable(
-  "invoices",
-  {
-    id: text("id").primaryKey(),
-    creditCardId: text("credit_card_id")
-      .notNull()
-      .references(() => creditCards.id, { onDelete: "cascade" }),
-    month: integer("month").notNull(),
-    year: integer("year").notNull(),
-    totalAmountCents: integer("total_amount_cents").notNull(),
-    paidAmountCents: integer("paid_amount_cents").notNull().default(0),
-    /** PENDING | PAID | OVERDUE | PARTIAL */
-    status: text("status").notNull().default("PENDING"),
-    dueDate: text("due_date").notNull(),
-    paidAt: text("paid_at"),
-    createdAt: text("created_at").notNull(),
-    updatedAt: text("updated_at").notNull(),
-  },
-  (t) => ({
-    uqInvoice: uniqueIndex("uq_invoice").on(t.creditCardId, t.month, t.year),
-  })
-);
-
-// ─── Salários / Receitas ─────────────────────────────────────────────────────
-export const salaries = sqliteTable("salaries", {
-  id: text("id").primaryKey(),
-  accountId: text("account_id")
-    .notNull()
-    .references(() => accounts.id, { onDelete: "restrict" }),
-  personaId: text("persona_id").references(() => personas.id, {
-    onDelete: "set null",
-  }),
-  name: text("name").notNull(),
-  description: text("description"),
-  /** FIXED | HOURLY */
-  calculationType: text("calculation_type").notNull(),
-  fixedAmountCents: integer("fixed_amount_cents"),
-  hourlyRateCents: integer("hourly_rate_cents"),
-  hoursPerDay: real("hours_per_day"),
-  /** ALL_DAYS | WEEKDAYS | CUSTOM */
-  workDays: text("work_days"),
-  includeHolidays: integer("include_holidays").notNull().default(0),
-  isRecurring: integer("is_recurring").notNull().default(1),
-  startDate: text("start_date").notNull(),
-  endDate: text("end_date"),
-  paymentDay: integer("payment_day"),
-  /** 0 = mesmo mês; 1 = mês seguinte (padrão CLT) */
-  paymentOffsetMonths: integer("payment_offset_months").notNull().default(1),
-  isActive: integer("is_active").notNull().default(1),
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
-});
-
-// ─── Custos de vida ───────────────────────────────────────────────────────────
-export const livingCosts = sqliteTable("living_costs", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  amountCents: integer("amount_cents").notNull(),
-  /** ACCOUNT | CREDIT_CARD */
-  sourceType: text("source_type").notNull(),
-  accountId: text("account_id").references(() => accounts.id, {
-    onDelete: "restrict",
-  }),
-  creditCardId: text("credit_card_id").references(() => creditCards.id, {
-    onDelete: "set null",
-  }),
-  categoryId: text("category_id").references(() => categories.id, {
-    onDelete: "set null",
-  }),
-  personaId: text("persona_id").references(() => personas.id, {
-    onDelete: "set null",
-  }),
-  dayOfMonth: integer("day_of_month").notNull(),
-  startDate: text("start_date"),
-  endDate: text("end_date"),
-  isActive: integer("is_active").notNull().default(1),
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
-});
-
-// ─── Dívidas ─────────────────────────────────────────────────────────────────
-export const debts = sqliteTable("debts", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  /** INSTALLMENT | LOAN | PENDING | FLEXIBLE */
-  type: text("type").notNull(),
-  totalAmountCents: integer("total_amount_cents").notNull(),
-  installmentValueCents: integer("installment_value_cents"),
-  paidAmountCents: integer("paid_amount_cents").notNull().default(0),
-  accountId: text("account_id")
-    .notNull()
-    .references(() => accounts.id, { onDelete: "restrict" }),
-  categoryId: text("category_id").references(() => categories.id, {
-    onDelete: "set null",
-  }),
-  personaId: text("persona_id").references(() => personas.id, {
-    onDelete: "set null",
-  }),
-  startDate: text("start_date").notNull(),
-  dueDate: text("due_date"),
-  totalInstallments: integer("total_installments"),
-  remainingInstallments: integer("remaining_installments"),
-  installmentDay: integer("installment_day"),
-  /** ACTIVE | PAID_OFF | OVERDUE */
-  status: text("status").notNull().default("ACTIVE"),
-  /** % ao mês para juros de atraso */
-  interestRate: real("interest_rate"),
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
-});
-
-// ─── Parcelas de dívida ───────────────────────────────────────────────────────
-export const debtInstallments = sqliteTable("debt_installments", {
-  id: text("id").primaryKey(),
-  debtId: text("debt_id")
-    .notNull()
-    .references(() => debts.id, { onDelete: "cascade" }),
-  number: integer("number").notNull(),
-  amountCents: integer("amount_cents").notNull(),
-  dueDate: text("due_date").notNull(),
-  paidDate: text("paid_date"),
-  /** PENDING | PAID | OVERDUE */
-  status: text("status").notNull().default("PENDING"),
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
-});
-
-// ─── Lançamentos (tabela central) ────────────────────────────────────────────
-export const entries = sqliteTable(
-  "entries",
-  {
-    id: text("id").primaryKey(),
-    description: text("description").notNull(),
-    amountCents: integer("amount_cents").notNull(),
-    /** INCOME | EXPENSE | TRANSFER */
-    type: text("type").notNull(),
-    /** PREVISTO | CONFIRMADO | CANCELADO */
-    status: text("status").notNull().default("PREVISTO"),
-    date: text("date").notNull(),
-    confirmedAt: text("confirmed_at"),
-    /** SET NULL — o histórico nunca se perde */
-    accountId: text("account_id").references(() => accounts.id, {
-      onDelete: "set null",
-    }),
-    creditCardId: text("credit_card_id").references(() => creditCards.id, {
-      onDelete: "set null",
-    }),
-    categoryId: text("category_id").references(() => categories.id, {
-      onDelete: "set null",
-    }),
-    personaId: text("persona_id").references(() => personas.id, {
-      onDelete: "set null",
-    }),
-    /** SALARY | LIVING_COST | DEBT | CREDIT_CARD — qual compromisso gerou */
-    commitmentKind: text("commitment_kind"),
-    /** id do compromisso que gerou este entry */
-    commitmentId: text("commitment_id"),
-    /** parcela de dívida correspondente */
-    installmentId: text("installment_id"),
-    /** id da transação Pluggy — chave anti-duplicata */
-    pluggyTransactionId: text("pluggy_transaction_id"),
-    /** mês de competência (1–12) */
-    month: integer("month").notNull(),
-    year: integer("year").notNull(),
-    isRecurring: integer("is_recurring").notNull().default(0),
-    recurrenceGroupId: text("recurrence_group_id"),
-    notes: text("notes"),
-    /** JSON array serializado: string[] */
-    tags: text("tags"),
-    createdAt: text("created_at").notNull(),
-    updatedAt: text("updated_at").notNull(),
-  },
-  (t) => ({
-    byMonth: index("ix_entries_month").on(t.year, t.month),
-    byAccount: index("ix_entries_account").on(t.accountId),
-    byCard: index("ix_entries_card").on(t.creditCardId),
-    byCategory: index("ix_entries_category").on(t.categoryId),
-    byCommitment: index("ix_entries_commitment").on(
-      t.commitmentKind,
-      t.commitmentId
-    ),
-    uqPluggy: uniqueIndex("uq_entries_pluggy").on(t.pluggyTransactionId),
-  })
-);
-
-// ─── Investimentos ────────────────────────────────────────────────────────────
-export const investments = sqliteTable("investments", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  /** STOCK | CRYPTO | FIXED_INCOME | REAL_ESTATE | ETF | PENSION | OTHER */
-  type: text("type").notNull(),
-  ticker: text("ticker"),
-  /** 8 casas decimais para cripto */
-  quantity: real("quantity").notNull(),
-  purchasePriceCents: integer("purchase_price_cents").notNull(),
-  /** atualizado por cotação — valorAtual e lucro são derivados */
-  currentPriceCents: integer("current_price_cents"),
-  purchaseDate: text("purchase_date").notNull(),
-  broker: text("broker"),
-  notes: text("notes"),
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
-});
-
-// ─── Pluggy: conexões bancárias ───────────────────────────────────────────────
-export const pluggyItems = sqliteTable(
-  "pluggy_items",
-  {
-    id: text("id").primaryKey(),
-    pluggyItemId: text("pluggy_item_id").notNull(),
-    connectorName: text("connector_name"),
-    status: text("status"),
-    lastSyncedAt: text("last_synced_at"),
-    /** mapeamento conta Pluggy → conta Quibo (JSON) */
-    accountMapJson: text("account_map_json"),
-    createdAt: text("created_at").notNull(),
-    updatedAt: text("updated_at").notNull(),
-  },
-  (t) => ({
-    uqItem: uniqueIndex("uq_pluggy_item").on(t.pluggyItemId),
-  })
-);
-
-// ─── Metas (fora do v1, schema reservado) ─────────────────────────────────────
+// ─── Metas ────────────────────────────────────────────────────────────────────
 export const goals = sqliteTable("goals", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -319,6 +90,211 @@ export const goals = sqliteTable("goals", {
   updatedAt: text("updated_at").notNull(),
 });
 
+// ─── Transações (tabela central unificada) ────────────────────────────────────
+//
+// Discriminador `type`:
+//   INCOME, EXPENSE, TRANSFER   — lançamentos manuais pontuais
+//   SALARY                      — regra salarial (isTemplate=1) ou ocorrência gerada (0)
+//   LIVING_COST                 — regra de custo fixo ou ocorrência gerada
+//   DEBT                        — configuração de dívida (isTemplate=1)
+//   DEBT_INSTALLMENT            — parcela de dívida (parentId → DEBT)
+//   INVOICE                     — fatura de cartão de crédito
+//   INVESTMENT                  — investimento em carteira
+//
+// Prefixos de colunas específicas por tipo:
+//   sal_  → SALARY
+//   lc_   → LIVING_COST
+//   dbt_  → DEBT / DEBT_INSTALLMENT
+//   inv_  → INVESTMENT
+// ─────────────────────────────────────────────────────────────────────────────
+export const transactions = sqliteTable(
+  "transactions",
+  {
+    // ── Identidade ────────────────────────────────────────────────────────
+    id: text("id").primaryKey(),
+    /** INCOME | EXPENSE | TRANSFER | SALARY | LIVING_COST | DEBT | DEBT_INSTALLMENT | INVOICE | INVESTMENT */
+    type: text("type").notNull(),
+    /** PREVISTO | CONFIRMADO | CANCELADO | ATIVO | PAGO | VENCIDO | PARCIAL | EM_PROGRESSO | CONCLUIDO */
+    status: text("status").notNull().default("PREVISTO"),
+    description: text("description").notNull(),
+
+    // ── Valor ─────────────────────────────────────────────────────────────
+    amountCents: integer("amount_cents"),
+    dueDate: text("due_date"),
+    paidAt: text("paid_at"),
+    paidCents: integer("paid_cents"),
+
+    // ── Competência ───────────────────────────────────────────────────────
+    date: text("date"),
+    month: integer("month"),
+    year: integer("year"),
+    startDate: text("start_date"),
+    endDate: text("end_date"),
+
+    // ── Vínculos de domínio ───────────────────────────────────────────────
+    accountId: text("account_id").references(() => accounts.id, {
+      onDelete: "set null",
+    }),
+    creditCardId: text("credit_card_id").references(() => creditCards.id, {
+      onDelete: "set null",
+    }),
+    categoryId: text("category_id").references(() => categories.id, {
+      onDelete: "set null",
+    }),
+    personaId: text("persona_id").references(() => personas.id, {
+      onDelete: "set null",
+    }),
+    /** DEBT_INSTALLMENT → DEBT pai; ocorrência → template */
+    parentId: text("parent_id"),
+
+    // ── Recorrência ───────────────────────────────────────────────────────
+    /** 1 = regra/compromisso  ·  0 = ocorrência gerada */
+    isTemplate: integer("is_template").notNull().default(0),
+    isRecurring: integer("is_recurring").notNull().default(0),
+    recurrenceGroupId: text("recurrence_group_id"),
+
+    // ── Anotações ─────────────────────────────────────────────────────────
+    notes: text("notes"),
+    /** JSON array serializado: string[] */
+    tags: text("tags"),
+
+    // ── Pluggy ────────────────────────────────────────────────────────────
+    pluggyTransactionId: text("pluggy_transaction_id"),
+    pluggyAccountId: text("pluggy_account_id"),
+
+    // ── SAL — SALARY ──────────────────────────────────────────────────────
+    /** FIXED | HOURLY */
+    salCalculationType: text("sal_calculation_type"),
+    salHourlyRateCents: integer("sal_hourly_rate_cents"),
+    salHoursPerDay: real("sal_hours_per_day"),
+    /** ALL_DAYS | WEEKDAYS | CUSTOM */
+    salWorkDays: text("sal_work_days"),
+    salIncludeHolidays: integer("sal_include_holidays"),
+    salPaymentDay: integer("sal_payment_day"),
+    /** 0 = mesmo mês  ·  1 = mês seguinte (padrão CLT) */
+    salPaymentOffset: integer("sal_payment_offset").default(1),
+
+    // ── LC — LIVING_COST ──────────────────────────────────────────────────
+    /** ACCOUNT | CREDIT_CARD */
+    lcSourceType: text("lc_source_type"),
+    lcDayOfMonth: integer("lc_day_of_month"),
+
+    // ── DBT — DEBT / DEBT_INSTALLMENT ─────────────────────────────────────
+    /** INSTALLMENT | LOAN | PENDING | FLEXIBLE */
+    dbtSubType: text("dbt_sub_type"),
+    dbtTotalCents: integer("dbt_total_cents"),
+    dbtTotalInstallments: integer("dbt_total_installments"),
+    dbtRemainingInstallments: integer("dbt_remaining_installments"),
+    dbtInstallmentNumber: integer("dbt_installment_number"),
+    dbtInstallmentDay: integer("dbt_installment_day"),
+    dbtInterestRate: real("dbt_interest_rate"),
+
+    // ── INV — INVESTMENT ──────────────────────────────────────────────────
+    /** STOCK | CRYPTO | FIXED_INCOME | REAL_ESTATE | ETF | PENSION | OTHER */
+    invSubType: text("inv_sub_type"),
+    invTicker: text("inv_ticker"),
+    invQuantity: real("inv_quantity"),
+    invCurrentPriceCents: integer("inv_current_price_cents"),
+    invBroker: text("inv_broker"),
+
+    // ── Auditoria ─────────────────────────────────────────────────────────
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    byType: index("ix_tx_type").on(t.type),
+    byMonth: index("ix_tx_month").on(t.year, t.month),
+    byAccount: index("ix_tx_account").on(t.accountId),
+    byCard: index("ix_tx_card").on(t.creditCardId),
+    byCategory: index("ix_tx_category").on(t.categoryId),
+    byParent: index("ix_tx_parent").on(t.parentId),
+    byTemplate: index("ix_tx_template").on(t.isTemplate, t.type),
+    uqPluggy: uniqueIndex("uq_tx_pluggy").on(t.pluggyTransactionId),
+  })
+);
+
+// ─── Pluggy: conexões (items) ─────────────────────────────────────────────────
+export const pluggyItems = sqliteTable(
+  "pluggy_items",
+  {
+    id: text("id").primaryKey(),
+    pluggyItemId: text("pluggy_item_id").notNull(),
+    connectorName: text("connector_name"),
+    connectorId: integer("connector_id"),
+    status: text("status"),
+    executionStatus: text("execution_status"),
+    lastSyncedAt: text("last_synced_at"),
+    nextAutoSyncAt: text("next_auto_sync_at"),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    uqItem: uniqueIndex("uq_pluggy_item").on(t.pluggyItemId),
+  })
+);
+
+// ─── Pluggy: contas bancárias espelhadas ──────────────────────────────────────
+export const pluggyAccounts = sqliteTable(
+  "pluggy_accounts",
+  {
+    id: text("id").primaryKey(),
+    pluggyAccountId: text("pluggy_account_id").notNull(),
+    pluggyItemId: text("pluggy_item_id")
+      .notNull()
+      .references(() => pluggyItems.id, { onDelete: "cascade" }),
+    /** BANK | CREDIT */
+    type: text("type").notNull(),
+    /** CHECKING_ACCOUNT | SAVINGS_ACCOUNT | CREDIT_CARD | INVESTMENT */
+    subtype: text("subtype").notNull(),
+    name: text("name").notNull(),
+    number: text("number"),
+    balanceCents: integer("balance_cents").notNull().default(0),
+    owner: text("owner"),
+    taxNumber: text("tax_number"),
+    // campos de cartão
+    brand: text("brand"),
+    creditLimitCents: integer("credit_limit_cents"),
+    creditAvailableCents: integer("credit_available_cents"),
+    dueDate: text("due_date"),
+    // vínculos com entidades locais
+    localAccountId: text("local_account_id").references(() => accounts.id, {
+      onDelete: "set null",
+    }),
+    localCardId: text("local_card_id").references(() => creditCards.id, {
+      onDelete: "set null",
+    }),
+    syncedAt: text("synced_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    uqAccount: uniqueIndex("uq_pluggy_account").on(t.pluggyAccountId),
+    byItem: index("ix_pluggy_acct_item").on(t.pluggyItemId),
+  })
+);
+
+// ─── Pluggy: histórico de sincronizações ──────────────────────────────────────
+export const pluggySyncLog = sqliteTable(
+  "pluggy_sync_log",
+  {
+    id: text("id").primaryKey(),
+    itemId: text("item_id")
+      .notNull()
+      .references(() => pluggyItems.id, { onDelete: "cascade" }),
+    syncedAt: text("synced_at").notNull(),
+    /** SUCCESS | PARTIAL | ERROR | SKIPPED */
+    status: text("status").notNull(),
+    entriesImported: integer("entries_imported").notNull().default(0),
+    errorMessage: text("error_message"),
+    durationMs: integer("duration_ms"),
+  },
+  (t) => ({
+    byItem: index("ix_sync_log_item").on(t.itemId, t.syncedAt),
+  })
+);
+
 // ─── Controle de migrações ────────────────────────────────────────────────────
 export const schemaMigrations = sqliteTable("schema_migrations", {
   version: integer("version").primaryKey(),
@@ -326,38 +302,29 @@ export const schemaMigrations = sqliteTable("schema_migrations", {
 });
 
 // ─── Tipos derivados ──────────────────────────────────────────────────────────
-export type Account = typeof accounts.$inferSelect;
-export type NewAccount = typeof accounts.$inferInsert;
-
-export type CreditCard = typeof creditCards.$inferSelect;
-export type NewCreditCard = typeof creditCards.$inferInsert;
-
-export type Invoice = typeof invoices.$inferSelect;
-export type NewInvoice = typeof invoices.$inferInsert;
-
-export type Salary = typeof salaries.$inferSelect;
-export type NewSalary = typeof salaries.$inferInsert;
-
-export type LivingCost = typeof livingCosts.$inferSelect;
-export type NewLivingCost = typeof livingCosts.$inferInsert;
-
-export type Debt = typeof debts.$inferSelect;
-export type NewDebt = typeof debts.$inferInsert;
-
-export type DebtInstallment = typeof debtInstallments.$inferSelect;
-export type NewDebtInstallment = typeof debtInstallments.$inferInsert;
-
-export type Entry = typeof entries.$inferSelect;
-export type NewEntry = typeof entries.$inferInsert;
-
-export type Investment = typeof investments.$inferSelect;
-export type NewInvestment = typeof investments.$inferInsert;
-
 export type Persona = typeof personas.$inferSelect;
 export type NewPersona = typeof personas.$inferInsert;
 
 export type Category = typeof categories.$inferSelect;
 export type NewCategory = typeof categories.$inferInsert;
 
+export type Account = typeof accounts.$inferSelect;
+export type NewAccount = typeof accounts.$inferInsert;
+
+export type CreditCard = typeof creditCards.$inferSelect;
+export type NewCreditCard = typeof creditCards.$inferInsert;
+
+export type Goal = typeof goals.$inferSelect;
+export type NewGoal = typeof goals.$inferInsert;
+
+export type Transaction = typeof transactions.$inferSelect;
+export type NewTransaction = typeof transactions.$inferInsert;
+
 export type PluggyItem = typeof pluggyItems.$inferSelect;
 export type NewPluggyItem = typeof pluggyItems.$inferInsert;
+
+export type PluggyAccount = typeof pluggyAccounts.$inferSelect;
+export type NewPluggyAccount = typeof pluggyAccounts.$inferInsert;
+
+export type PluggySyncLog = typeof pluggySyncLog.$inferSelect;
+export type NewPluggySyncLog = typeof pluggySyncLog.$inferInsert;

@@ -191,6 +191,31 @@ export function PerfilScreen() {
           ))}
         </ListCard>
 
+        {/* Integrações */}
+        <SectionTitle>Integrações</SectionTitle>
+        <ListCard>
+          <button
+            onClick={() => navigate("/integracoes/pluggy")}
+            className="w-full flex items-center gap-3.5 px-5 py-4 hover:bg-surface-subtle transition-colors group"
+          >
+            <div className="w-[38px] h-[38px] rounded-[11px] bg-[#FDE9ED] text-[#EF294B] flex items-center justify-center shrink-0">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" x2="21" y1="22" y2="22" />
+                <line x1="6" x2="6" y1="18" y2="11" />
+                <line x1="10" x2="10" y1="18" y2="11" />
+                <line x1="14" x2="14" y1="18" y2="11" />
+                <line x1="18" x2="18" y1="18" y2="11" />
+                <polygon points="12 2 20 7 4 7" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-[15px] font-semibold text-ink">Pluggy · MeuPluggy</p>
+              <p className="text-[13px] text-ink-secondary mt-0.5">importar lançamentos reais dos seus bancos</p>
+            </div>
+            <ChevronRight />
+          </button>
+        </ListCard>
+
         {/* Gostos & jeito */}
         <SectionTitle>Gostos & jeito</SectionTitle>
         <ListCard>

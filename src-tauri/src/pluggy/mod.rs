@@ -1,19 +1,20 @@
-/// Módulo Pluggy — integração bancária via BYOK.
+/// Módulo Pluggy — engine de integração bancária via BYOK (Caminho B: MeuPluggy).
 ///
-/// O CLIENT_ID/CLIENT_SECRET ficam no keychain (crate secrets).
-/// A UI nunca recebe os segredos; só recebe o connect_token de escopo reduzido.
+/// Arquitetura:
+///   - `auth`         → credenciais no keychain + cache de API Key (~2h)
+///   - `models`       → tipos da API Pluggy (deserialização)
+///   - `items`        → listar/consultar Items
+///   - `products`     → contas, transações paginadas, investimentos, identidade, empréstimos
+///   - `intelligence` → pagamentos recorrentes + enriquecimento de transações
+///   - `map`          → Pluggy → Quibo (decimal→centavos, sinal→tipo)
+///   - `sync`         → engine de polling idempotente alinhado ao nextAutoSyncAt
 ///
-/// Fluxo:
-///   UI → IPC → pluggy::create_connect_token()
-///     → lê segredo do keychain
-///     → POST /auth → API Key (em memória, ~2h)
-///     → POST /connect_token → token curto (~30min)
-///     → devolve só o token para a UI
-///
-/// Comandos IPC (a implementar em commands/pluggy.rs):
-///   - pluggy_create_connect_token
-///   - pluggy_sync_item
-///   - pluggy_list_items
-///   - pluggy_disconnect_item
+/// Estado Tauri registrado em lib.rs: `pluggy::auth::EstadoAuth`
 
 pub mod auth;
+pub mod intelligence;
+pub mod items;
+pub mod map;
+pub mod models;
+pub mod products;
+pub mod sync;

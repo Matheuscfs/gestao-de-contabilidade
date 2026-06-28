@@ -34,6 +34,6 @@ pub fn exists(service: &str) -> Result<bool, AppError> {
 /// Remove um segredo do keychain.
 pub fn delete(service: &str) -> Result<(), AppError> {
     entrada(service)?
-        .delete_credential()
+        .delete_password()
         .map_err(|e| AppError::Secret(e.to_string()))
 }

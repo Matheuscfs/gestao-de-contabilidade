@@ -1,0 +1,195 @@
+{
+  "total": 4,
+  "totalPages": 1,
+  "page": 1,
+  "results": [
+    {
+      "id": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "type": "BANK",
+      "subtype": "SAVINGS_ACCOUNT",
+      "name": "itau",
+      "balance": 1.33,
+      "currencyCode": "BRL",
+      "itemId": "c1137175-cf43-4223-9c4b-4c5ac2451512",
+      "number": "00039738-6",
+      "createdAt": "2026-06-03T16:12:58.451Z",
+      "updatedAt": "2026-06-27T16:36:30.334Z",
+      "marketingName": null,
+      "taxNumber": "132.709.064-39",
+      "owner": "GELTON AURELIANO",
+      "bankData": {
+        "transferNumber": "341/6530/00039738-6",
+        "closingBalance": 1.33,
+        "automaticallyInvestedBalance": 1.33,
+        "overdraftContractedLimit": 0,
+        "overdraftUsedLimit": 0,
+        "unarrangedOverdraftAmount": 0,
+        "hasReservedBalance": null,
+        "reservedBalances": null
+      },
+      "creditData": null
+    },
+    {
+      "id": "19e7672f-421f-4d31-af12-f03718603a83",
+      "type": "CREDIT",
+      "subtype": "CREDIT_CARD",
+      "name": "Itau Uniclass Visa Signature",
+      "balance": 0,
+      "currencyCode": "BRL",
+      "itemId": "c1137175-cf43-4223-9c4b-4c5ac2451512",
+      "number": "2127",
+      "createdAt": "2026-06-03T16:12:58.519Z",
+      "updatedAt": "2026-06-27T16:36:30.379Z",
+      "marketingName": "OUTROS",
+      "taxNumber": null,
+      "owner": "GELTON AURELIANO",
+      "bankData": null,
+      "creditData": {
+        "level": "SIGNATURE",
+        "brand": "VISA",
+        "brandAdditionalInfo": null,
+        "balanceCloseDate": null,
+        "balanceDueDate": "2026-06-17",
+        "availableCreditLimit": 1,
+        "balanceForeignCurrency": null,
+        "minimumPayment": 0,
+        "creditLimit": 1,
+        "isLimitFlexible": false,
+        "holderType": null,
+        "status": "ACTIVE",
+        "disaggregatedCreditLimits": [
+          {
+            "usedAmount": 0,
+            "limitAmount": 1,
+            "availableAmount": 1,
+            "isLimitFlexible": false,
+            "consolidationType": "CONSOLIDADO",
+            "creditLineLimitType": "LIMITE_CREDITO_TOTAL",
+            "identificationNumber": "2127",
+            "customizedLimitAmount": 1,
+            "usedAmountCurrencyCode": "BRL",
+            "limitAmountCurrencyCode": "BRL",
+            "availableAmountCurrencyCode": "BRL",
+            "customizedLimitAmountCurrencyCode": "BRL"
+          },
+          {
+            "lineName": "OUTROS",
+            "usedAmount": 0,
+            "limitAmount": 0,
+            "availableAmount": 0,
+            "isLimitFlexible": false,
+            "consolidationType": "CONSOLIDADO",
+            "limitAmountReason": "Limite zerado devido a conta em fase de cancelamento.",
+            "creditLineLimitType": "LIMITE_CREDITO_MODALIDADE_OPERACAO",
+            "identificationNumber": "2127",
+            "customizedLimitAmount": 1,
+            "lineNameAdditionalInfo": "SAQUE_CREDITO",
+            "usedAmountCurrencyCode": "BRL",
+            "limitAmountCurrencyCode": "BRL",
+            "availableAmountCurrencyCode": "BRL",
+            "customizedLimitAmountCurrencyCode": "BRL"
+          }
+        ],
+        "additionalCards": [
+          {
+            "number": "7812"
+          }
+        ]
+      }
+    },
+    {
+      "id": "08eebba0-7271-42ab-9336-d0b5b9c5d2af",
+      "type": "CREDIT",
+      "subtype": "CREDIT_CARD",
+      "name": "Itau Uniclass Mastercard Black",
+      "balance": 7271.77,
+      "currencyCode": "BRL",
+      "itemId": "c1137175-cf43-4223-9c4b-4c5ac2451512",
+      "number": "0069",
+      "createdAt": "2026-06-03T16:12:58.619Z",
+      "updatedAt": "2026-06-27T16:36:30.475Z",
+      "marketingName": null,
+      "taxNumber": null,
+      "owner": "GELTON AURELIANO",
+      "bankData": null,
+      "creditData": {
+        "level": "BLACK",
+        "brand": "MASTERCARD",
+        "brandAdditionalInfo": null,
+        "balanceCloseDate": null,
+        "balanceDueDate": "2026-06-18",
+        "availableCreditLimit": 11048.23,
+        "balanceForeignCurrency": null,
+        "minimumPayment": 1286.73,
+        "creditLimit": 18320,
+        "isLimitFlexible": false,
+        "holderType": null,
+        "status": "ACTIVE",
+        "disaggregatedCreditLimits": [
+          {
+            "usedAmount": 7271.77,
+            "limitAmount": 18320,
+            "availableAmount": 11048.23,
+            "isLimitFlexible": false,
+            "consolidationType": "CONSOLIDADO",
+            "creditLineLimitType": "LIMITE_CREDITO_TOTAL",
+            "identificationNumber": "0069",
+            "customizedLimitAmount": 18320,
+            "usedAmountCurrencyCode": "BRL",
+            "limitAmountCurrencyCode": "BRL",
+            "availableAmountCurrencyCode": "BRL",
+            "customizedLimitAmountCurrencyCode": "BRL"
+          },
+          {
+            "lineName": "OUTROS",
+            "usedAmount": 0,
+            "limitAmount": 0,
+            "availableAmount": 0,
+            "isLimitFlexible": false,
+            "consolidationType": "CONSOLIDADO",
+            "limitAmountReason": "Limite zerado devido a conta em fase de cancelamento.",
+            "creditLineLimitType": "LIMITE_CREDITO_MODALIDADE_OPERACAO",
+            "identificationNumber": "0069",
+            "customizedLimitAmount": 18320,
+            "lineNameAdditionalInfo": "SAQUE_CREDITO",
+            "usedAmountCurrencyCode": "BRL",
+            "limitAmountCurrencyCode": "BRL",
+            "availableAmountCurrencyCode": "BRL",
+            "customizedLimitAmountCurrencyCode": "BRL"
+          }
+        ],
+        "additionalCards": [
+          {
+            "number": "9086"
+          }
+        ]
+      }
+    },
+    {
+      "id": "2136bd9f-35ff-47c4-9ab5-3a9d8d774981",
+      "type": "BANK",
+      "subtype": "CHECKING_ACCOUNT",
+      "name": "itau",
+      "balance": 520,
+      "currencyCode": "BRL",
+      "itemId": "c1137175-cf43-4223-9c4b-4c5ac2451512",
+      "number": "00039738-6",
+      "createdAt": "2026-06-03T16:12:57.035Z",
+      "updatedAt": "2026-06-27T16:36:30.371Z",
+      "marketingName": null,
+      "taxNumber": "132.709.064-39",
+      "owner": "GELTON AURELIANO",
+      "bankData": {
+        "transferNumber": "341/6530/00039738-6",
+        "closingBalance": 520,
+        "automaticallyInvestedBalance": 520,
+        "overdraftContractedLimit": 0,
+        "overdraftUsedLimit": 0,
+        "unarrangedOverdraftAmount": 0,
+        "hasReservedBalance": null,
+        "reservedBalances": null
+      },
+      "creditData": null
+    }
+  ]
+}

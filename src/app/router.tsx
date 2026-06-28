@@ -12,6 +12,7 @@ import { PerfilScreen } from "@/screens/perfil";
 import { ConfiguracoesScreen } from "@/screens/perfil/configuracoes";
 import { ContasScreen } from "@/screens/perfil/contas";
 import { PersonasScreen } from "@/screens/perfil/personas";
+import { PluggyIntegracaoScreen } from "@/screens/perfil/integracoes/pluggy-screen";
 import { ReceitasScreen } from "@/screens/receitas/receitas-screen";
 import { OnboardingBoasVindasScreen } from "@/screens/onboarding/onboarding-boas-vindas";
 import { OnboardingNomeScreen } from "@/screens/onboarding/onboarding-nome";
@@ -50,6 +51,7 @@ export const router = createBrowserRouter([
       { path: "perfil", element: <PerfilScreen /> },
       { path: "investimentos", element: <InvestimentosScreen /> },
       { path: "configuracoes", element: <ConfiguracoesScreen /> },
+      { path: "integracoes/pluggy", element: <PluggyIntegracaoScreen /> },
     ],
   },
   {

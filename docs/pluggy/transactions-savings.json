@@ -1,0 +1,917 @@
+{
+  "total": 27,
+  "totalPages": 2,
+  "page": 1,
+  "results": [
+    {
+      "id": "d7e20550-1be3-4822-af4c-aaf7c3fb6f0b",
+      "description": "Rendimentos JUROS -ANIV.12 0005000",
+      "descriptionRaw": "Rendimentos JUROS -ANIV.12 0005000",
+      "currencyCode": "BRL",
+      "amount": 0.01,
+      "amountInAccountCurrency": null,
+      "date": "2026-06-12T05:21:38.080Z",
+      "category": "Interests charged",
+      "categoryId": "02020000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": "Rendimentos",
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-12T16:21:38.238Z",
+      "updatedAt": "2026-06-12T16:21:38.238Z"
+    },
+    {
+      "id": "1604d91f-39d8-4da7-a03f-5f2b66f2f17f",
+      "description": "Rendimentos JUROS -ANIV.12",
+      "descriptionRaw": "Rendimentos JUROS -ANIV.12",
+      "currencyCode": "BRL",
+      "amount": 0.01,
+      "amountInAccountCurrency": null,
+      "date": "2026-05-13T02:59:00.000Z",
+      "category": "Interests charged",
+      "categoryId": "02020000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "0d7cc9b2-1a5b-4a5c-ac1b-a8720ed97db7",
+      "description": "Rendimentos JUROS -ANIV.12",
+      "descriptionRaw": "Rendimentos JUROS -ANIV.12",
+      "currencyCode": "BRL",
+      "amount": 0.01,
+      "amountInAccountCurrency": null,
+      "date": "2026-04-14T02:59:00.000Z",
+      "category": "Interests charged",
+      "categoryId": "02020000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "e85f5157-a0f0-4fd7-8182-eb7905faa0da",
+      "description": "Rendimentos JUROS -ANIV.12",
+      "descriptionRaw": "Rendimentos JUROS -ANIV.12",
+      "currencyCode": "BRL",
+      "amount": 0.01,
+      "amountInAccountCurrency": null,
+      "date": "2026-03-13T02:59:00.000Z",
+      "category": "Interests charged",
+      "categoryId": "02020000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "cd3450d0-fec8-4f11-a647-839d794ae304",
+      "description": "Pagamento de Pix QR Code WIINPAY SERVICOS LTDA.",
+      "descriptionRaw": "Pagamento de Pix QR Code WIINPAY SERVICOS LTDA.",
+      "currencyCode": "BRL",
+      "amount": -3.99,
+      "amountInAccountCurrency": null,
+      "date": "2026-03-06T22:04:33.028Z",
+      "category": "Services",
+      "categoryId": "07000000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "PIX",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CNPJ",
+            "value": "48.533.288/0001-96"
+          },
+          "name": "WIINPAY SERVICOS LTDA.",
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "PIX",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "f0d5cf50-aca6-4460-bf4d-b26bf0dc9a10",
+      "description": "Pagamento de Pix QR Code UBER DO BRASIL TECNOLOGIA LTDA.",
+      "descriptionRaw": "Pagamento de Pix QR Code UBER DO BRASIL TECNOLOGIA LTDA.",
+      "currencyCode": "BRL",
+      "amount": -4.43,
+      "amountInAccountCurrency": null,
+      "date": "2026-02-26T00:56:16.083Z",
+      "category": "Taxi and ride-hailing",
+      "categoryId": "19010000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "PIX",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CNPJ",
+            "value": "17.895.646/0001-87"
+          },
+          "name": "UBER DO BRASIL TECNOLOGIA LTDA.",
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "PIX",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "50db2288-d632-4ec9-b157-b94362b5e834",
+      "description": "Rendimentos JUROS -ANIV.12",
+      "descriptionRaw": "Rendimentos JUROS -ANIV.12",
+      "currencyCode": "BRL",
+      "amount": 0.05,
+      "amountInAccountCurrency": null,
+      "date": "2026-02-13T02:59:00.000Z",
+      "category": "Interests charged",
+      "categoryId": "02020000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "c5470dce-1989-4b85-91cc-a7210f34eaaa",
+      "description": "Entrada REMUNER BASICA-ANIV.12",
+      "descriptionRaw": "Entrada REMUNER BASICA-ANIV.12",
+      "currencyCode": "BRL",
+      "amount": 0.02,
+      "amountInAccountCurrency": null,
+      "date": "2026-02-13T02:59:00.000Z",
+      "category": "Proceeds interests and dividends",
+      "categoryId": "03060000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 1,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "659f9dba-ea6f-48df-899d-d0668ef91a20",
+      "description": "Pagamento de Pix QR Code IVANI DA SILVA SANTOS 02415962465",
+      "descriptionRaw": "Pagamento de Pix QR Code IVANI DA SILVA SANTOS 02415962465",
+      "currencyCode": "BRL",
+      "amount": -9,
+      "amountInAccountCurrency": null,
+      "date": "2026-02-08T13:53:20.032Z",
+      "category": "Shopping",
+      "categoryId": "08000000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "PIX",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CNPJ",
+            "value": "32.710.086/0001-32"
+          },
+          "name": "IVANI DA SILVA SANTOS 02415962465",
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "PIX",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "257c565a-5a3d-4deb-bdfb-f73cac566e09",
+      "description": "Pix enviado ORUNMILA FERREIRA SILVA",
+      "descriptionRaw": "Pix enviado ORUNMILA FERREIRA SILVA",
+      "currencyCode": "BRL",
+      "amount": -50,
+      "amountInAccountCurrency": null,
+      "date": "2026-01-24T11:54:25.004Z",
+      "category": "Transfer - PIX",
+      "categoryId": "05070000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "PIX",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "084.401.754-00"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "PIX",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "f82518bb-80bb-49dc-9700-aac369115291",
+      "description": "Pix enviado FABIANO ALVES DA SILVA",
+      "descriptionRaw": "Pix enviado FABIANO ALVES DA SILVA",
+      "currencyCode": "BRL",
+      "amount": -200,
+      "amountInAccountCurrency": null,
+      "date": "2026-01-20T11:42:06.089Z",
+      "category": "Transfer - PIX",
+      "categoryId": "05070000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "paymentMethod": "PIX",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "089.847.424-81"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "DEBIT",
+      "operationType": "PIX",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "3dd8a5dc-60af-4fd2-8949-4c5317a8565a",
+      "description": "Rendimentos JUROS -ANIV.12",
+      "descriptionRaw": "Rendimentos JUROS -ANIV.12",
+      "currencyCode": "BRL",
+      "amount": 1.34,
+      "amountInAccountCurrency": null,
+      "date": "2026-01-13T02:59:00.000Z",
+      "category": "Interests charged",
+      "categoryId": "02020000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "ce3fa81a-0073-4ee0-ab86-124221ebda83",
+      "description": "Entrada REMUNER BASICA-ANIV.12",
+      "descriptionRaw": "Entrada REMUNER BASICA-ANIV.12",
+      "currencyCode": "BRL",
+      "amount": 0.43,
+      "amountInAccountCurrency": null,
+      "date": "2026-01-13T02:59:00.000Z",
+      "category": "Proceeds interests and dividends",
+      "categoryId": "03060000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 1,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "7d6e7147-540d-4a6f-bbe3-4954d1376e3e",
+      "description": "Entrada REMUNER BASICA-ANIV.12",
+      "descriptionRaw": "Entrada REMUNER BASICA-ANIV.12",
+      "currencyCode": "BRL",
+      "amount": 0.46,
+      "amountInAccountCurrency": null,
+      "date": "2025-12-13T02:59:00.000Z",
+      "category": "Proceeds interests and dividends",
+      "categoryId": "03060000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "0961d387-c217-433f-ba43-4bbd606ea8a3",
+      "description": "Rendimentos JUROS -ANIV.12",
+      "descriptionRaw": "Rendimentos JUROS -ANIV.12",
+      "currencyCode": "BRL",
+      "amount": 1.33,
+      "amountInAccountCurrency": null,
+      "date": "2025-12-13T02:59:00.000Z",
+      "category": "Interests charged",
+      "categoryId": "02020000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 1,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "09c9f464-90f7-4e68-860c-348f10ad1cf5",
+      "description": "Entrada REMUNER BASICA-ANIV.12",
+      "descriptionRaw": "Entrada REMUNER BASICA-ANIV.12",
+      "currencyCode": "BRL",
+      "amount": 0.46,
+      "amountInAccountCurrency": null,
+      "date": "2025-11-13T02:59:00.000Z",
+      "category": "Proceeds interests and dividends",
+      "categoryId": "03060000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "9fb9465f-8c37-416a-a27b-e504e2a926a3",
+      "description": "Rendimentos JUROS -ANIV.12",
+      "descriptionRaw": "Rendimentos JUROS -ANIV.12",
+      "currencyCode": "BRL",
+      "amount": 1.32,
+      "amountInAccountCurrency": null,
+      "date": "2025-11-13T02:59:00.000Z",
+      "category": "Interests charged",
+      "categoryId": "02020000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 1,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "d9207ac5-7dff-4b5b-98a7-b144a9476639",
+      "description": "Rendimentos JUROS -ANIV.12",
+      "descriptionRaw": "Rendimentos JUROS -ANIV.12",
+      "currencyCode": "BRL",
+      "amount": 1.31,
+      "amountInAccountCurrency": null,
+      "date": "2025-10-14T02:59:00.000Z",
+      "category": "Interests charged",
+      "categoryId": "02020000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "f04864ed-4773-4102-802c-ba30fe405019",
+      "description": "Entrada REMUNER BASICA-ANIV.12",
+      "descriptionRaw": "Entrada REMUNER BASICA-ANIV.12",
+      "currencyCode": "BRL",
+      "amount": 0.45,
+      "amountInAccountCurrency": null,
+      "date": "2025-10-14T02:59:00.000Z",
+      "category": "Proceeds interests and dividends",
+      "categoryId": "03060000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 1,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    },
+    {
+      "id": "b14139f4-621d-4cad-aa0a-c267afcf9dee",
+      "description": "Entrada REMUNER BASICA-ANIV.12",
+      "descriptionRaw": "Entrada REMUNER BASICA-ANIV.12",
+      "currencyCode": "BRL",
+      "amount": 0.46,
+      "amountInAccountCurrency": null,
+      "date": "2025-09-13T02:59:00.000Z",
+      "category": "Proceeds interests and dividends",
+      "categoryId": "03060000",
+      "balance": null,
+      "accountId": "bae3fda3-d7af-49ff-91ae-2acf26f68ad6",
+      "providerCode": null,
+      "status": "POSTED",
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "OTHER",
+        "reason": null,
+        "receiver": {
+          "accountNumber": null,
+          "branchNumber": null,
+          "documentNumber": {
+            "type": "CPF",
+            "value": "132.709.064-39"
+          },
+          "name": null,
+          "routingNumber": null,
+          "routingNumberISPB": null
+        },
+        "receiverReferenceId": null,
+        "referenceNumber": null,
+        "boletoMetadata": null
+      },
+      "type": "CREDIT",
+      "operationType": "OUTROS",
+      "operationTypeAdditionalInfo": null,
+      "creditCardMetadata": null,
+      "merchant": null,
+      "providerId": null,
+      "order": 0,
+      "createdAt": "2026-06-03T16:12:58.463Z",
+      "updatedAt": "2026-06-03T16:12:58.463Z"
+    }
+  ]
+}
