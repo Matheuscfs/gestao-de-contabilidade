@@ -32,7 +32,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
+          cache: "yarn"
 
       - name: Instalar Rust (stable)
         uses: dtolnay/rust-toolchain@stable
@@ -54,8 +54,8 @@ jobs:
             librsvg2-dev \
             patchelf
 
-      - name: Instalar dependências npm
-        run: npm ci
+      - name: Instalar dependências yarn
+        run: yarn install --frozen-lockfile
 
       - name: Build e release Tauri
         uses: tauri-apps/tauri-action@v0

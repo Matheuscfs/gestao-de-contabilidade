@@ -8,6 +8,6 @@
     "sql:allow-execute",
     "sql:allow-select",
     "sql:allow-load",
-    "shell:allow-open"
+    "opener:allow-open-url"
   ]
 }

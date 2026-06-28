@@ -1,0 +1,78 @@
+# ─── Quibo — Makefile ─────────────────────────────────────────────────────────
+# Comandos disponíveis:
+#   make dev      — inicia o app desktop com hot reload
+#   make refresh  — atualiza e reinstala todas as dependências (yarn + Cargo)
+#   make build    — builda o app para a plataforma atual (release)
+#   make clear    — remove dependências, artefatos de build e banco de dados local
+
+.PHONY: dev refresh build clear
+
+# ─── Cores para output legível ────────────────────────────────────────────────
+RESET  := \033[0m
+BOLD   := \033[1m
+CYAN   := \033[36m
+GREEN  := \033[32m
+YELLOW := \033[33m
+RED    := \033[31m
+
+# ─── Caminhos do banco de dados por SO ────────────────────────────────────────
+UNAME := $(shell uname -s)
+
+ifeq ($(UNAME), Darwin)
+  DB_DIR := $(HOME)/Library/Application\ Support/app.quibo
+endif
+ifeq ($(UNAME), Linux)
+  DB_DIR := $(HOME)/.local/share/app.quibo
+endif
+ifeq ($(OS), Windows_NT)
+  DB_DIR := $(APPDATA)\app.quibo
+endif
+
+# ─── dev ──────────────────────────────────────────────────────────────────────
+## Inicia o app desktop com hot reload (Vite + Tauri)
+dev:
+	@echo "$(CYAN)$(BOLD)▶ Iniciando Quibo em modo desenvolvimento...$(RESET)"
+	@yarn tauri dev
+
+# ─── refresh ──────────────────────────────────────────────────────────────────
+## Atualiza e reinstala todas as dependências yarn e Cargo
+refresh:
+	@echo "$(CYAN)$(BOLD)▶ Atualizando dependências...$(RESET)"
+
+	@echo ""
+	@echo "$(YELLOW)→ yarn: atualizando pacotes...$(RESET)"
+	@yarn upgrade
+	@yarn install
+
+	@echo ""
+	@echo "$(YELLOW)→ Cargo: atualizando crates...$(RESET)"
+	@cd src-tauri && cargo update
+
+	@echo ""
+	@echo "$(GREEN)$(BOLD)✓ Dependências atualizadas.$(RESET)"
+
+# ─── build ────────────────────────────────────────────────────────────────────
+## Builda o app em modo release para a plataforma atual (macOS / Windows / Linux)
+## Para builds multiplataforma use o workflow .github/workflows/release.yml (CI)
+build:
+	@echo "$(CYAN)$(BOLD)▶ Buildando Quibo (release)...$(RESET)"
+	@yarn tauri build
+	@echo ""
+	@echo "$(GREEN)$(BOLD)✓ Build gerado em src-tauri/target/release/bundle/$(RESET)"
+
+# ─── clear ────────────────────────────────────────────────────────────────────
+## Remove node_modules, artefatos Cargo e o banco de dados local
+clear:
+	@echo "$(RED)$(BOLD)▶ Limpando o projeto...$(RESET)"
+
+	@echo "$(YELLOW)→ Removendo node_modules...$(RESET)"
+	@rm -rf node_modules
+
+	@echo "$(YELLOW)→ Removendo artefatos Cargo (src-tauri/target)...$(RESET)"
+	@rm -rf src-tauri/target
+
+	@echo "$(YELLOW)→ Removendo banco de dados local ($(DB_DIR))...$(RESET)"
+	@rm -rf "$(DB_DIR)"
+
+	@echo ""
+	@echo "$(GREEN)$(BOLD)✓ Projeto limpo. Rode $(RESET)$(BOLD)make refresh$(RESET)$(GREEN) para reinstalar as dependências.$(RESET)"

@@ -1,5 +1,5 @@
 use tauri::Manager;
-use tauri_plugin_shell::ShellExt;
+use tauri_plugin_opener::OpenerExt;
 
 use crate::errors::AppError;
 
@@ -17,8 +17,8 @@ pub async fn db_path(app: tauri::AppHandle) -> Result<String, AppError> {
 /// Abre uma URL no navegador padrão do sistema.
 #[tauri::command]
 pub async fn open_external(url: String, app: tauri::AppHandle) -> Result<(), AppError> {
-    app.shell()
-        .open(&url, None)
+    app.opener()
+        .open_url(&url, None::<&str>)
         .map_err(|e| AppError::Internal(e.to_string()))
 }
 
