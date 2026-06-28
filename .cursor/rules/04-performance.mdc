@@ -6,64 +6,86 @@ alwaysApply: false
 
 # Performance — Quibo
 
-O Quibo é local-first. Consultas ao SQLite local devem ser **instantâneas** (< 50ms). Nenhuma tela deve ter loading perceptível em operação normal.
+O Quibo é local-first. Consultas ao SQLite devem ser **imperceptíveis** (< 50ms). Nenhuma tela deve exibir loading em operação normal.
 
-## Regras gerais
-
-- **Calcule no banco, não no front.** Aggregations, filtros, somas → SQL/Drizzle. Nunca traga todos os registros e filtre em JS.
-- **Paginação em listas longas.** Lançamentos e histórico são potencialmente ilimitados — use cursor-based pagination.
-- **Stale-while-revalidate:** `staleTime` de 30s+ em dados que não mudam a cada segundo.
-- **Evite waterfalls de queries.** Use `Promise.all` para queries independentes, nunca `await` em sequência quando paralelizável.
-- **Sem `useEffect` para derivar estado.** Calcule durante o render ou use `useMemo`.
+---
 
 ## SQLite / Drizzle
 
-- **Índices obrigatórios** em colunas de filtro frequente: `mes_referencia`, `status`, `lancamento_id`.
+- **Agregue no banco, não no front** — somas, filtros e agrupamentos vão em SQL. Nunca traga todos os registros para processar em JS.
+- **Índices em colunas de filtro frequente** — `mes_referencia`, `status`, `lancamento_id`.
 - **Transações** para operações que escrevem em múltiplas tabelas (confirmar lançamento, fechar mês).
-- **Prepared statements** — Drizzle já faz isso, mas evite query strings dinâmicas manuais.
-- **PRAGMA `journal_mode=WAL`** para permitir leituras concorrentes sem travar escritas.
+- **`PRAGMA journal_mode=WAL`** — leituras concorrentes sem travar escritas.
+- **Sem query strings dinâmicas** — Drizzle usa prepared statements; mantenha esse padrão.
 
 ```sql
--- ✅ GOOD: agrega no banco
-SELECT SUM(valor_centavos) as total
+-- ✅  agrega no banco
+SELECT SUM(valor_centavos) AS total
 FROM lancamentos
-WHERE mes_referencia = '2025-06' AND status = 'confirmado'
+WHERE mes_referencia = '2025-06'
+  AND status = 'confirmado'
 
--- ❌ BAD: traz tudo e soma no JS
+-- ❌  traz tudo e processa no JS
 SELECT * FROM lancamentos WHERE mes_referencia = '2025-06'
-// .filter(l => l.status === 'confirmado').reduce(...)
 ```
+
+---
 
 ## React / Renderização
 
-- **`React.memo`** em itens de lista com props estáveis (ItemLancamento, ItemCompromisso).
-- **`useMemo`** para listas derivadas (filtradas/ordenadas) quando a lista base é grande (> 100 items).
-- **`useCallback`** em callbacks passados para itens memoizados.
-- **`key` estável:** IDs do banco, nunca `index`.
-- **Virtualize** listas com > 200 itens (TanStack Virtual).
+- **`React.memo`** em itens de lista com props estáveis (`ItemLancamento`, `ItemCompromisso`).
+- **`useMemo`** em listas derivadas (filtradas / ordenadas) com base > 100 itens.
+- **`useCallback`** em callbacks passados para componentes memoizados.
+- **`key` estável** — IDs do banco; nunca `index`.
+- **Virtualização** para listas com > 200 itens — use TanStack Virtual.
+- **Sem `useEffect` para derivar estado** — calcule durante o render ou use `useMemo`.
 
 ```tsx
-// ✅ GOOD — memo em item de lista
+// ✅  memoização cirúrgica em item de lista
 export const ItemLancamento = React.memo(function ItemLancamento({
   lancamento,
   onConfirmar,
 }: ItemLancamentoProps) { ... })
 ```
 
+---
+
+## Queries paralelas
+
+Nunca encadeie `await` para queries independentes:
+
+```typescript
+// ❌  waterfall desnecessário
+const salarios = await buscarSalarios(mes)
+const custos   = await buscarCustos(mes)
+
+// ✅  paralelo
+const [salarios, custos] = await Promise.all([
+  buscarSalarios(mes),
+  buscarCustos(mes),
+])
+```
+
+---
+
 ## IPC Tauri
 
-- **Batch IPC calls:** agrupe operações relacionadas num único comando Rust em vez de N chamadas IPC.
-- **Prefira comandos assíncronos** (`async fn` no Rust) para não bloquear a thread principal.
-- **Limite payload:** não serializar objetos completos se só os IDs são necessários.
+- **Agrupe chamadas relacionadas** num único comando Rust em vez de N chamadas IPC.
+- **Comandos assíncronos** (`async fn`) — nunca bloqueie a thread principal do core.
+- **Payload mínimo** — não serialize objetos completos se apenas IDs são necessários.
+
+---
 
 ## Rust (core)
 
-- **Spawn em thread separada** para tarefas pesadas (sync Pluggy, processamento de IA).
-- **Cache em memória** para dados quase-imutáveis (categorias, contas) com `Arc<RwLock<...>>` ou similar.
-- **Evite clone desnecessário** de strings e vetores grandes em hot paths.
+- **Tarefas pesadas em thread separada** — sync Pluggy, processamento de IA.
+- **Cache em memória** para dados quase-imutáveis (categorias, contas) com `Arc<RwLock<T>>`.
+- **Sem clone desnecessário** de `String` e `Vec` em hot paths — prefira referências.
 
-## Monitoramento local (sem telemetria)
+---
 
-- Use `performance.now()` para medir queries críticas durante desenvolvimento.
-- Log de queries lentas (> 100ms) via `console.warn` em dev, silencioso em prod.
-- Nunca envie métricas para servidores externos — zero telemetria é regra do produto.
+## Monitoramento (sem telemetria)
+
+- `performance.now()` para medir queries críticas em desenvolvimento.
+- `console.warn` para queries > 100ms em dev; silencioso em prod.
+- Nenhuma métrica enviada a servidores externos — zero telemetria.

@@ -1,0 +1,13 @@
+{
+  "$schema": "../../node_modules/@tauri-apps/cli/schema/acl/capability.schema.json",
+  "identifier": "default",
+  "description": "Permissões padrão do Quibo",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "sql:allow-execute",
+    "sql:allow-select",
+    "sql:allow-load",
+    "shell:allow-open"
+  ]
+}

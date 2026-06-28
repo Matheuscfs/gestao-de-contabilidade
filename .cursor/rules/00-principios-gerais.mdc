@@ -1,48 +1,55 @@
 ---
-description: Princípios gerais do projeto Quibo — segurança operacional, clean code e filosofia do produto
+description: Regras absolutas de operação, filosofia do produto e clean code — aplica em toda sessão
 alwaysApply: true
 ---
 
 # Princípios Gerais — Quibo
 
-## Regras absolutas de operação
+## Regras de operação (não-negociáveis)
 
-### ❌ NUNCA faça sem ordem explícita do usuário
-- **Commitar** código (nenhum `git commit`, `git push`, `git merge`)
-- **Executar scripts** criados nesta sessão (`.sh`, `cargo run`, `npm run`, migrações de banco)
-- **Instalar dependências** novas sem confirmação explícita
-- **Deletar arquivos** ou pastas de forma irreversível
+Nunca execute as ações abaixo sem ordem explícita do usuário:
 
-> Ao terminar uma tarefa que envolva qualquer um desses pontos, **liste o que está pronto e pergunte** ao usuário o que executar.
+| Ação proibida | Exemplos |
+|---|---|
+| Commitar código | `git commit`, `git push`, `git merge` |
+| Executar scripts | `.sh`, `cargo run`, `npm run`, `pnpm dev` |
+| Rodar migrações | `drizzle-kit migrate`, qualquer SQL direto |
+| Instalar dependências | `npm install <pkg>`, `cargo add <crate>` |
+| Deletar arquivos | remoções irreversíveis de qualquer natureza |
+
+Ao concluir uma tarefa que envolva qualquer um desses pontos, liste o que foi feito e aguarde instrução.
+
+---
+
+## Filosofia do produto
+
+Decisões de código devem ser justificáveis por estes princípios:
+
+- **Local-first** — dado financeiro mora no SQLite da máquina; zero rede em operação normal.
+- **Privacidade como fundação** — nenhum dado sai da máquina sem ação explícita do usuário.
+- **Cálculo determinístico** — aritmética financeira é local e exata; IA recebe fatos calculados, nunca dado bruto.
+- **Calma, não alarme** — mensagens e interfaces reconfortantes mesmo com má notícia.
+- **Dinheiro em centavos inteiros** — `valor_centavos: i64` (Rust) / `valorCentavos: number` (TS). Nunca `float`.
+- **Sentence case sempre** — "Tá tranquilo", não "TÁ TRANQUILO" nem "Tá Tranquilo". Sem jargão financeiro.
+- **Zero telemetria** — nenhuma métrica enviada a servidores externos, em nenhuma circunstância.
 
 ---
 
 ## Clean code
 
-- **Nomes revelam intenção:** `confirmarLancamento()` não `process()`. Variáveis curtas só em escopos de 1–3 linhas.
-- **Uma responsabilidade por função/módulo.** Se precisar comentar "esta função faz X e Y", quebre em duas.
-- **Sem código morto:** remova imports, variáveis e funções não usadas imediatamente.
-- **Sem comentários redundantes:** comente *por que*, nunca *o que* o código faz (o código já diz).
-- **Prefira imutabilidade:** `const` por padrão; mutação só quando necessário e explícito.
-- **Trate erros explicitamente:** nunca `catch (e) {}` vazio. Log + rethrow com contexto.
+- **Nomes revelam intenção** — `confirmarLancamento` não `process`. Abreviações só em escopos de 1–3 linhas.
+- **Uma responsabilidade por função** — se o nome ou comentário precisar de "e", quebre em duas funções.
+- **Sem código morto** — imports, variáveis e funções não usadas são removidos imediatamente.
+- **Sem comentários óbvios** — comente o *porquê*, nunca o *quê*. O código já diz o quê.
+- **Imutabilidade por padrão** — `const` sempre; mutação explícita e localizada.
+- **Erros sempre tratados** — `catch (e) {}` vazio é proibido; log com contexto + rethrow tipado.
 
 ```typescript
-// ❌ BAD
+// ❌  nomes opacos, encadeamento ilegível
 const x = data.filter(i => i.s === 'c').reduce((a, b) => a + b.v, 0)
 
-// ✅ GOOD
+// ✅  intenção clara em cada passo
 const totalConfirmado = lancamentos
   .filter(l => l.status === 'confirmado')
   .reduce((soma, l) => soma + l.valorCentavos, 0)
 ```
-
----
-
-## Filosofia do produto (contexto para decisões)
-
-- **Local-first:** dado mora no SQLite da máquina do usuário. Zero chamadas de rede em operação normal.
-- **Privacidade como fundação:** nenhum dado financeiro sai da máquina sem ação explícita do usuário.
-- **IA recebe fatos calculados, nunca dado bruto:** a camada de cálculo é determinística e local.
-- **Calma, não alarme:** interfaces e mensagens são reconfortantes, mesmo com má notícia.
-- **Dinheiro em centavos inteiros:** `valorCentavos: number` (int). Nunca `float` para valores monetários.
-- **Sentence case sempre:** "Tá tranquilo" não "TÁ TRANQUILO" nem "Tá Tranquilo".

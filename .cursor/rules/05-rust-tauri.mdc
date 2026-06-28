@@ -6,14 +6,25 @@ alwaysApply: false
 
 # Rust & Tauri — Quibo
 
-## Estrutura de comandos Tauri
+## Naming conventions
 
-- **Um arquivo por domínio** em `src-tauri/src/commands/`: `lancamentos.rs`, `pluggy.rs`, `ia.rs`.
-- **Comandos finos:** cada `#[tauri::command]` faz uma coisa. Lógica complexa vai para módulos de serviço.
-- **Retorno padronizado:** `Result<T, String>` onde `String` é mensagem legível para o front.
+| Contexto | Convenção | Exemplo |
+|---|---|---|
+| Funções e módulos | `snake_case` | `confirmar_lancamento` |
+| Tipos e structs | `PascalCase` | `Lancamento`, `DbPool` |
+| Constantes | `UPPER_SNAKE_CASE` | `MAX_RETRIES` |
+| Arquivos | `snake_case.rs` | `lancamento_service.rs` |
+
+---
+
+## Estrutura de comandos
+
+- **Um arquivo por domínio** em `src-tauri/src/commands/` — `lancamentos.rs`, `pluggy.rs`, `ia.rs`.
+- **Comandos finos** — cada `#[tauri::command]` faz uma coisa; lógica complexa vai para módulos de serviço.
+- **Retorno padronizado** — `Result<T, String>`, onde `String` é mensagem legível pelo front.
 
 ```rust
-// ✅ GOOD
+// ✅
 #[tauri::command]
 pub async fn confirmar_lancamento(
     id: String,
@@ -25,61 +36,64 @@ pub async fn confirmar_lancamento(
 }
 ```
 
-## Naming (Rust)
-
-| Contexto | Convenção |
-|---|---|
-| Funções e módulos | `snake_case` |
-| Tipos e structs | `PascalCase` |
-| Constantes | `UPPER_SNAKE_CASE` |
-| Arquivos | `snake_case.rs` |
+---
 
 ## Serialização IPC
 
-- Use `serde` com `#[derive(Serialize, Deserialize)]` em todos os tipos que cruzam IPC.
-- **Datas como string:** `"2025-06-15"` (ISO 8601). Nunca timestamps Unix crus para o front.
-- **Valores monetários como `i64`** (centavos inteiros). Nunca `f64` para dinheiro.
-- Nomes de campos em `camelCase` para o front: `#[serde(rename_all = "camelCase")]`.
+- **`serde`** com `#[derive(Serialize, Deserialize)]` em todos os tipos que cruzam IPC.
+- **Campos em `camelCase`** para o front — `#[serde(rename_all = "camelCase")]`.
+- **Datas como string ISO** — `"2025-06-15"`. Nunca timestamps Unix crus para o front.
+- **Dinheiro como `i64`** (centavos inteiros). Nunca `f64` para valores monetários.
 
 ```rust
+// ✅
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Lancamento {
     pub id: String,
-    pub valor_centavos: i64,  // ✅ inteiro, não f64
-    pub mes_referencia: String, // ✅ "2025-06", não timestamp
+    pub valor_centavos: i64,      // inteiro, nunca f64
+    pub mes_referencia: String,   // "2025-06", nunca timestamp
     pub status: StatusLancamento,
 }
 ```
 
-## Segredos e Keychain
-
-- **Nunca** logue ou retorne chaves de API. Segredos ficam no keychain do SO.
-- Use `tauri-plugin-stronghold` ou `keyring` — nunca arquivo texto plano.
-- Segredos são lidos pelo Rust, **nunca expostos ao front**.
+---
 
 ## Tratamento de erros
 
-- **Sem `unwrap()` ou `expect()` em código de produção.** Use `?` com tipos de erro adequados.
-- Erros internos são detalhados nos logs Rust; a mensagem para o front é concisa e em português.
+Sem `unwrap()` ou `expect()` em código de produção. Use `?` com tipos de erro adequados.
 
 ```rust
-// ❌ BAD
+// ❌
 let conn = db.lock().unwrap();
 
-// ✅ GOOD
+// ✅
 let conn = db.lock().map_err(|e| format!("DB indisponível: {e}"))?;
 ```
 
+Erros internos são detalhados nos logs Rust; a mensagem para o front é concisa e em português.
+
+---
+
+## Segredos e keychain
+
+- Segredos ficam no keychain do SO — use `tauri-plugin-stronghold` ou `keyring`.
+- **Nunca** logue, serialize ou retorne chaves de API ao front.
+- Segredos são lidos pelo Rust e nunca expostos à camada de UI.
+
+---
+
 ## Concorrência e estado
 
-- State global do Tauri com `Mutex` ou `RwLock` explícito: `State<'_, Arc<Mutex<MinhaStruct>>>`.
-- Operações de rede (Pluggy, IA) em tasks assíncronas — nunca bloqueie a thread do comando.
-- **Sem data race:** evite compartilhar estado mutável sem lock; prefira canais (`tokio::sync::mpsc`) para comunicação entre tasks.
+- **State global** com `Mutex` ou `RwLock` explícito — `State<'_, Arc<Mutex<T>>>`.
+- **Operações de rede** (Pluggy, IA) em tasks assíncronas; nunca bloqueie a thread do comando.
+- **Canais** (`tokio::sync::mpsc`) para comunicação entre tasks assíncronas.
+
+---
 
 ## Migrações de banco
 
-- Migrações em `src-tauri/migrations/` numeradas: `0001_init.sql`, `0002_add_offset_meses.sql`.
-- **Idempotentes:** cada migração pode rodar N vezes sem efeito colateral.
-- Rode as migrações no startup do app, antes de qualquer comando do front.
-- **NUNCA execute migração sem revisão e ordem explícita.**
+- Arquivos em `src-tauri/migrations/`, numerados sequencialmente — `0001_init.sql`, `0002_add_offset_meses.sql`.
+- **Idempotentes** — cada migração pode rodar N vezes sem efeito colateral.
+- Executadas no startup do app, antes de qualquer comando do front.
+- Nunca execute uma migração sem revisão e ordem explícita do usuário.

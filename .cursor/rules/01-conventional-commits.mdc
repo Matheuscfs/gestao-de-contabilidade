@@ -1,61 +1,71 @@
 ---
-description: Padrão de Conventional Commits para o Quibo
+description: Formato de Conventional Commits para o Quibo — aplica em toda sessão
 alwaysApply: true
 ---
 
 # Conventional Commits — Quibo
 
-**NUNCA commite sem ordem explícita do usuário.** Quando solicitado a criar um commit, use o formato abaixo.
+Nunca commite sem ordem explícita do usuário. Quando solicitado, use este formato.
 
-## Formato
+## Estrutura
 
 ```
-<tipo>(<escopo>): <descrição curta em português>
+<tipo>(<escopo>): <descrição em português, imperativo>
 
-[corpo opcional — explica o POR QUÊ, não o o quê]
+[corpo — explica o porquê, não o quê; separado por linha em branco]
 
-[rodapé opcional — BREAKING CHANGE: ..., Closes #123]
+[rodapé — BREAKING CHANGE: ..., ou Closes #123]
 ```
 
-## Tipos permitidos
+Limite de 72 caracteres na primeira linha.
 
-| Tipo | Quando usar |
+---
+
+## Tipos
+
+| Tipo | Uso |
 |---|---|
-| `feat` | Nova funcionalidade para o usuário |
-| `fix` | Correção de bug |
-| `refactor` | Mudança de código que não adiciona feature nem corrige bug |
-| `style` | Formatação, tokens, ajuste visual sem mudança de lógica |
-| `perf` | Melhoria de performance |
-| `test` | Adição ou ajuste de testes |
-| `docs` | Documentação apenas |
-| `chore` | Build, deps, configurações de tooling |
-| `db` | Migrações de schema SQLite/Drizzle |
+| `feat` | nova funcionalidade visível ao usuário |
+| `fix` | correção de bug |
+| `refactor` | mudança interna sem adição de feature nem correção de bug |
+| `style` | tokens, formatação visual sem mudança de lógica |
+| `perf` | melhoria de performance mensurável |
+| `test` | adição ou ajuste de testes |
+| `docs` | documentação apenas |
+| `chore` | build, deps, configurações de tooling |
+| `db` | migrações de schema SQLite / Drizzle |
 
-## Escopos do Quibo
+---
 
-`dashboard` · `lancamentos` · `compromissos` · `salarios` · `custos` · `dividas` · `cartoes` · `contas` · `categorias` · `personas` · `investimentos` · `metas` · `pluggy` · `ia` · `insights` · `auth` · `db` · `ipc` · `rust` · `ui` · `tokens`
+## Escopos
 
-## Exemplos corretos
+`dashboard` · `lancamentos` · `compromissos` · `salarios` · `custos` · `dividas` · `cartoes` · `contas` · `categorias` · `personas` · `investimentos` · `metas` · `pluggy` · `ia` · `insights` · `db` · `ipc` · `rust` · `ui` · `tokens`
+
+---
+
+## Exemplos
 
 ```
 feat(lancamentos): adicionar gesto de confirmação com swipe
 
 fix(dashboard): corrigir cálculo de sobra quando há parcelas no mês
 
-refactor(db): extrair query de lançamentos confirmados para repositório próprio
+refactor(db): extrair query de lançamentos confirmados para repositório
 
 style(tokens): ajustar blue-500 para #4078E6 conforme design system
 
 perf(dashboard): memoizar lista de lançamentos filtrados por mês
 
-chore(deps): atualizar drizzle-orm para 0.x.x
+chore(deps): atualizar drizzle-orm para versão mais recente
 
-db(compromissos): adicionar coluna offset_meses para salários horistas
+db(compromissos): adicionar coluna offset_meses em salarios
 ```
+
+---
 
 ## Regras
 
-- Descrição em **português**, no **imperativo** ("adicionar", "corrigir", "extrair").
-- Máximo **72 caracteres** na primeira linha.
-- Corpo separado por linha em branco; explica motivação e contexto.
-- `BREAKING CHANGE:` no rodapé se a mudança quebra compatibilidade de schema ou IPC.
+- Descrição em **português**, no **imperativo** — "adicionar", "corrigir", "extrair".
+- Corpo explica a **motivação**, não a implementação.
+- `BREAKING CHANGE:` no rodapé quando quebra compatibilidade de schema ou IPC.
+- Escopo obrigatório quando a mudança é localizada num domínio específico.
