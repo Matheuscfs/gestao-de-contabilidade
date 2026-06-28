@@ -1,0 +1,105 @@
+---
+description: Padrão de código TypeScript e React para o Quibo
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# TypeScript & React — Quibo
+
+## TypeScript
+
+- **Strict mode sempre.** Sem `any` implícito. Use `unknown` quando o tipo for desconhecido e narrow explicitamente.
+- **Sem `as` desnecessário.** Se precisar de cast, documente o porquê num comentário.
+- **Tipos explícitos em fronteiras:** props, retorno de funções públicas, payloads de IPC.
+- **Dinheiro em centavos:** `valorCentavos: number` (inteiro). Nunca `float` para valores monetários.
+- **Datas como string ISO:** `'2025-06'` para mês, `'2025-06-15'` para dia. Nunca `Date` cruzando fronteiras IPC.
+
+```typescript
+// ❌ BAD
+function calcularSobra(data: any) { ... }
+
+// ✅ GOOD
+function calcularSobra(resumo: ResumoMes): number { ... }
+```
+
+## Naming
+
+| Contexto | Convenção | Exemplo |
+|---|---|---|
+| Componentes React | PascalCase | `ItemLancamento` |
+| Hooks | camelCase com `use` | `useLancamentosDoMes` |
+| Funções utilitárias | camelCase | `formatarMoeda` |
+| Constantes | UPPER_SNAKE | `STATUS_CONFIRMADO` |
+| Tipos e interfaces | PascalCase | `Lancamento`, `ResumoMes` |
+| Arquivos de componente | kebab-case | `item-lancamento.tsx` |
+| Arquivos de hook | kebab-case | `use-lancamentos-do-mes.ts` |
+
+## Componentes React
+
+- **Functional components apenas.** Sem class components.
+- **Props tipadas com interface nomeada** (não objeto inline anônimo).
+- **Evite prop drilling > 2 níveis.** Use Context ou Zustand.
+- **`key` sempre estável:** prefira IDs do banco, nunca `index` em listas que podem reordenar.
+- **Memoização cirúrgica:** `useMemo`/`useCallback` apenas onde há evidência de custo. Não prematuramente.
+
+```tsx
+// ❌ BAD
+export function Item({ data, onClick }: { data: any; onClick: () => void }) { ... }
+
+// ✅ GOOD
+interface ItemLancamentoProps {
+  lancamento: Lancamento
+  onConfirmar: (id: string) => void
+}
+
+export function ItemLancamento({ lancamento, onConfirmar }: ItemLancamentoProps) { ... }
+```
+
+## TanStack Query (dados remotos/IPC)
+
+- Uma query key por domínio: `['lancamentos', mes]`, `['compromissos', 'salarios']`.
+- `staleTime` explícito — nunca deixe o padrão de 0ms em dados financeiros.
+- Mutations com `onSuccess` invalidando apenas as queries afetadas.
+- Trate estados `isLoading`, `isError` sempre — nunca renderize dados que podem ser `undefined` sem guard.
+
+```typescript
+// ✅ GOOD
+const { data: lancamentos = [], isLoading } = useQuery({
+  queryKey: ['lancamentos', mesSelecionado],
+  queryFn: () => buscarLancamentos(mesSelecionado),
+  staleTime: 30_000,
+})
+```
+
+## Zustand (estado de UI)
+
+- Stores separadas por domínio: `useMesSelecionado`, `useUIStore`.
+- Sem lógica de negócio no store — apenas estado de apresentação.
+- Use `immer` para mutações complexas.
+
+## Tratamento de erros
+
+```typescript
+// ❌ BAD
+try { await confirmarLancamento(id) } catch (e) {}
+
+// ✅ GOOD
+try {
+  await confirmarLancamento(id)
+} catch (error) {
+  console.error('[confirmarLancamento] falha ao confirmar', { id, error })
+  throw new Error('Não foi possível confirmar o lançamento', { cause: error })
+}
+```
+
+## Formatação de valores monetários
+
+Sempre use a função utilitária central — **nunca formate manualmente inline:**
+
+```typescript
+// ❌ BAD
+`R$ ${(valor / 100).toFixed(2)}`
+
+// ✅ GOOD
+formatarMoeda(valorCentavos) // → "R$ 1.200,00"
+```

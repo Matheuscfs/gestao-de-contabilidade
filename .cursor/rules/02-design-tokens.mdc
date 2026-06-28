@@ -1,0 +1,96 @@
+---
+description: Design tokens de cor, tipografia e espaçamento do Quibo — use sempre estes tokens, nunca valores arbitrários
+globs: **/*.{ts,tsx,css,html}
+alwaysApply: false
+---
+
+# Design Tokens — Quibo
+
+**Regra:** use sempre tokens semânticos. Valores arbitrários de cor (`#abc123`, `rgb(...)`) são proibidos no código de UI.
+
+## Cores — Azul (marca)
+
+| Token Tailwind | Hex | Uso |
+|---|---|---|
+| `blue-50` | `#EEF4FE` | background hover sutil |
+| `blue-100` | `#DCE8FD` | badge, chip inativo |
+| `blue-200` | `#BBD3FB` | borda de foco suave |
+| `blue-300` | `#87BBF8` | decorativo |
+| `blue-400` | `#6098F0` | secundário |
+| `blue-500` | `#4078E6` | **primária** — ações, FAB, nav ativo, links |
+| `blue-600` | `#2F63D4` | hover sobre blue-500 |
+| `blue-700` | `#244FB0` | pressed / texto sobre fundo claro |
+| `blue-800` | `#1B3C84` | ênfase máxima |
+
+## Cores — Neutros
+
+| Token CSS / Tailwind | Hex | Uso |
+|---|---|---|
+| `surface` | `#FFFFFF` | cards, sheets, modais |
+| `canvas` | `#F7F8FA` | fundo do app |
+| `fill-100` | `#EFF1F5` | preenchimento sutil (zebra, hover) |
+| `line` | `#E3E6EC` | hairlines, divisores |
+| `line-strong` | `#D4D8E0` | bordas de controles |
+| `ink-faint` | `#8A909C` | legendas, hints, placeholders |
+| `ink-soft` | `#5B616E` | texto secundário |
+| `ink` | `#0E1116` | texto principal |
+| `true-black` | `#000000` | logo / título de impacto apenas |
+
+## Cores — Estado (significado, não decoração)
+
+| Token | Hex | Soft (bg) | Quando usar |
+|---|---|---|---|
+| `positive` | `#12A06B` | `#E2F4EC` | sobra, entrada confirmada, sucesso |
+| `negative` | `#D74A45` | `#FBE9E7` | falta, despesa, erro |
+| `attention` | `#E5982B` | `#FCF1DF` | vencendo, atenção, pendente |
+
+> **Regra semântica:** azul = marca/ação. Verde/vermelho = estado financeiro. **Nunca inverter.**
+
+## Tipografia
+
+- Família: **Hanken Grotesk** (Google Fonts) — única família permitida.
+- Números: sempre `tabular-nums lining-nums` (`font-variant-numeric`).
+- Case: **sentence case sempre** — nunca ALL CAPS, nunca Title Case em corpo de texto.
+
+| Escala | Tamanho / Peso | Uso |
+|---|---|---|
+| herói | `54px / 700` | número principal da home |
+| título | `21px / 600` | títulos de seção |
+| valor em linha | `15–17px / 600` | valores monetários em lista |
+| corpo | `14–15px / 500` | texto geral |
+| legenda | `12px / 400` | hints, labels, timestamps |
+
+## Espaçamento
+
+Base de 4px. Grid de 8px. Escala: `4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96`.
+
+## Raio de borda
+
+| Token | Valor | Uso |
+|---|---|---|
+| `rounded-sm` | `4px` | chips, badges |
+| `rounded-md` | `8px` | cards, inputs |
+| `rounded-lg` | `12px` | modais, sheets |
+| `rounded-full` | `9999px` | FAB, avatares |
+
+## Exemplos de uso correto
+
+```tsx
+// ❌ BAD — valor arbitrário
+<div className="bg-[#4078E6] text-[#0E1116]">
+
+// ✅ GOOD — token nomeado
+<div className="bg-blue-500 text-ink">
+
+// ❌ BAD — vermelho sem semântica
+<span className="text-red-500">R$ 1.200</span>
+
+// ✅ GOOD — estado semântico
+<span className="text-negative">R$ 1.200</span>
+
+// ❌ BAD — float monetário
+const saldo = 1200.50
+
+// ✅ GOOD — centavos inteiros
+const saldoCentavos = 120050
+```
