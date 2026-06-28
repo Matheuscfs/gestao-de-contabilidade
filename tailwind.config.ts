@@ -91,7 +91,7 @@ export default {
         lg: "0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.06)",
       },
       spacing: {
-        sidebar: "14rem",
+        sidebar: "4.5rem",
       },
       animation: {
         "fade-in": "fadeIn 0.15s ease-out",

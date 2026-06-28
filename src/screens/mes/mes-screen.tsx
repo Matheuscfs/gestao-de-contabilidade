@@ -1,48 +1,52 @@
-import { useMesStore } from "@/app/mes-store";
-import { formatarMesAno } from "@/utils/dates";
-
 export function MesScreen() {
-  const { mes, ano } = useMesStore();
-
   return (
-    <div className="p-6 animate-fade-in">
-      <header className="mb-6">
-        <p className="text-sm text-ink-muted font-medium uppercase tracking-wide">
-          {formatarMesAno(mes, ano)}
+    <div className="animate-fade-in">
+      {/* Sobra */}
+      <div className="text-center py-8 max-w-[680px] mx-auto">
+        <p className="text-sm font-semibold text-ink-secondary">sobra esse mês</p>
+        <p className="text-6xl font-bold tabular-nums text-positive mt-2 tracking-tight">
+          R$ —
         </p>
-        <h1 className="text-2xl font-semibold text-ink mt-0.5">
-          Como está o mês
-        </h1>
-      </header>
+        <p className="text-base font-semibold text-ink mt-3">
+          Tá tranquilo. Dá pra respirar.
+        </p>
+      </div>
 
-      <div className="grid grid-cols-1 gap-4 max-w-2xl">
-        <div className="bg-surface rounded-xl border border-border p-6">
-          <p className="text-sm text-ink-secondary">Sobra prevista</p>
-          <p className="text-4xl font-semibold tabular-nums text-positive mt-1">
-            R$ —
-          </p>
+      <div className="max-w-[680px] mx-auto space-y-4">
+        {/* Entrou / Saiu */}
+        <div className="bg-surface border border-border rounded-xl p-5">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-positive" />
+              <span className="text-sm font-semibold text-ink-secondary">Entrou</span>
+            </div>
+            <span className="text-base font-semibold text-ink tabular-nums">R$ —</span>
+          </div>
+          <div className="h-2 rounded-full bg-border-subtle overflow-hidden mb-5">
+            <div className="h-full w-full bg-positive rounded-full" />
+          </div>
+
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-negative" />
+              <span className="text-sm font-semibold text-ink-secondary">Saiu</span>
+            </div>
+            <span className="text-base font-semibold text-ink tabular-nums">R$ —</span>
+          </div>
+          <div className="h-2 rounded-full bg-border-subtle overflow-hidden">
+            <div className="h-full w-0 bg-negative rounded-full" />
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-surface rounded-xl border border-border p-4">
-            <p className="text-sm text-ink-secondary">Receita</p>
-            <p className="text-2xl font-semibold tabular-nums text-ink mt-1">
-              R$ —
-            </p>
+        {/* Falta confirmar */}
+        <div>
+          <div className="flex items-center justify-between mb-3 px-1">
+            <h2 className="text-xl font-semibold text-ink tracking-tight">Falta confirmar</h2>
+            <span className="text-sm font-semibold text-ink-secondary">—</span>
           </div>
-          <div className="bg-surface rounded-xl border border-border p-4">
-            <p className="text-sm text-ink-secondary">Despesa</p>
-            <p className="text-2xl font-semibold tabular-nums text-ink mt-1">
-              R$ —
-            </p>
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
+            <p className="px-5 py-4 text-sm text-ink-muted">Tudo em dia por aqui.</p>
           </div>
-        </div>
-
-        <div className="bg-surface rounded-xl border border-border p-4">
-          <p className="text-sm font-medium text-ink-secondary mb-3">
-            Falta confirmar
-          </p>
-          <p className="text-sm text-ink-muted">Tudo em dia por aqui.</p>
         </div>
       </div>
     </div>

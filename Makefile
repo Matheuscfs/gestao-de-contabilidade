@@ -35,21 +35,20 @@ dev:
 	@yarn tauri dev
 
 # ─── refresh ──────────────────────────────────────────────────────────────────
-## Atualiza e reinstala todas as dependências yarn e Cargo
+## Instala/sincroniza todas as dependências: yarn + Cargo
 refresh:
-	@echo "$(CYAN)$(BOLD)▶ Atualizando dependências...$(RESET)"
+	@echo "$(CYAN)$(BOLD)▶ Sincronizando dependências...$(RESET)"
 
 	@echo ""
-	@echo "$(YELLOW)→ yarn: atualizando pacotes...$(RESET)"
-	@yarn upgrade
+	@echo "$(YELLOW)→ yarn install...$(RESET)"
 	@yarn install
 
 	@echo ""
-	@echo "$(YELLOW)→ Cargo: atualizando crates...$(RESET)"
-	@cd src-tauri && cargo update
+	@echo "$(YELLOW)→ cargo fetch...$(RESET)"
+	@cd src-tauri && cargo fetch
 
 	@echo ""
-	@echo "$(GREEN)$(BOLD)✓ Dependências atualizadas.$(RESET)"
+	@echo "$(GREEN)$(BOLD)✓ Dependências sincronizadas.$(RESET)"
 
 # ─── build ────────────────────────────────────────────────────────────────────
 ## Builda o app em modo release para a plataforma atual (macOS / Windows / Linux)
