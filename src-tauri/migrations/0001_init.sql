@@ -43,9 +43,18 @@ CREATE TABLE IF NOT EXISTS accounts (
   is_primary            INTEGER NOT NULL DEFAULT 0,
   archived              INTEGER NOT NULL DEFAULT 0,
   persona_id            TEXT REFERENCES personas(id) ON DELETE SET NULL,
-  created_at            TEXT NOT NULL,
-  updated_at            TEXT NOT NULL
+
+  -- origem do registro
+  source           TEXT NOT NULL DEFAULT 'MANUAL' CHECK(source IN ('MANUAL','PLUGGY')),
+  pluggy_id        TEXT,   -- pluggy account_id (referência anti-duplicata)
+  pluggy_synced_at TEXT,   -- último sync com a Pluggy
+
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_account_pluggy ON accounts(pluggy_id)
+  WHERE pluggy_id IS NOT NULL;
 
 -- ── Cartões de crédito ────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS credit_cards (
@@ -58,9 +67,18 @@ CREATE TABLE IF NOT EXISTS credit_cards (
   color       TEXT NOT NULL DEFAULT '#4078E6',
   is_active   INTEGER NOT NULL DEFAULT 1,
   persona_id  TEXT REFERENCES personas(id) ON DELETE SET NULL,
-  created_at  TEXT NOT NULL,
-  updated_at  TEXT NOT NULL
+
+  -- origem do registro
+  source           TEXT NOT NULL DEFAULT 'MANUAL' CHECK(source IN ('MANUAL','PLUGGY')),
+  pluggy_id        TEXT,
+  pluggy_synced_at TEXT,
+
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_card_pluggy ON credit_cards(pluggy_id)
+  WHERE pluggy_id IS NOT NULL;
 
 -- ── Metas ─────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS goals (
@@ -77,16 +95,16 @@ CREATE TABLE IF NOT EXISTS goals (
 
 -- ── Transações (tabela central unificada) ─────────────────────────────────────
 --
--- Discriminador: `type`
+-- Discriminador `type`:
 --   INCOME, EXPENSE, TRANSFER   — lançamentos manuais pontuais
---   SALARY                      — regra de salário (is_template=1) ou ocorrência gerada (is_template=0)
+--   SALARY                      — regra salarial (is_template=1) ou ocorrência gerada (0)
 --   LIVING_COST                 — regra de custo fixo ou ocorrência gerada
 --   DEBT                        — configuração de dívida (is_template=1)
 --   DEBT_INSTALLMENT            — parcela de dívida (parent_id → DEBT)
 --   INVOICE                     — fatura de cartão de crédito
 --   INVESTMENT                  — investimento em carteira
 --
--- Padrão de prefixos para colunas específicas de tipo:
+-- Prefixos de colunas específicas por tipo:
 --   sal_  → SALARY
 --   lc_   → LIVING_COST
 --   dbt_  → DEBT / DEBT_INSTALLMENT
@@ -111,17 +129,17 @@ CREATE TABLE IF NOT EXISTS transactions (
   description TEXT NOT NULL,
 
   -- ── Valor ────────────────────────────────────────────────────────────────
-  amount_cents INTEGER,         -- valor principal (centavos inteiros)
-  due_date     TEXT,            -- vencimento (DEBT_INSTALLMENT, INVOICE, DEBT)
-  paid_at      TEXT,            -- data do pagamento
-  paid_cents   INTEGER,         -- valor pago (INVOICE parcial, DEBT)
+  amount_cents INTEGER,
+  due_date     TEXT,
+  paid_at      TEXT,
+  paid_cents   INTEGER,
 
   -- ── Competência ──────────────────────────────────────────────────────────
-  date         TEXT,            -- data da ocorrência
-  month        INTEGER,         -- mês de competência (1–12)
-  year         INTEGER,         -- ano de competência
-  start_date   TEXT,            -- início de validade de regras recorrentes
-  end_date     TEXT,            -- fim de validade
+  date       TEXT,
+  month      INTEGER,
+  year       INTEGER,
+  start_date TEXT,
+  end_date   TEXT,
 
   -- ── Vínculos de domínio ──────────────────────────────────────────────────
   account_id     TEXT REFERENCES accounts(id)     ON DELETE SET NULL,
@@ -129,11 +147,9 @@ CREATE TABLE IF NOT EXISTS transactions (
   category_id    TEXT REFERENCES categories(id)   ON DELETE SET NULL,
   persona_id     TEXT REFERENCES personas(id)     ON DELETE SET NULL,
   parent_id      TEXT REFERENCES transactions(id) ON DELETE SET NULL,
-    -- DEBT_INSTALLMENT → aponta para DEBT pai
-    -- Ocorrência de SALARY/LIVING_COST → aponta para o template
 
   -- ── Recorrência ──────────────────────────────────────────────────────────
-  is_template         INTEGER NOT NULL DEFAULT 0,  -- 1=regra/compromisso · 0=ocorrência
+  is_template         INTEGER NOT NULL DEFAULT 0,
   is_recurring        INTEGER NOT NULL DEFAULT 0,
   recurrence_group_id TEXT,
 
@@ -141,9 +157,10 @@ CREATE TABLE IF NOT EXISTS transactions (
   notes TEXT,
   tags  TEXT,  -- JSON array serializado: string[]
 
-  -- ── Pluggy (integração bancária) ─────────────────────────────────────────
-  pluggy_transaction_id TEXT,   -- ID da transação na Pluggy (chave de idempotência)
-  pluggy_account_id     TEXT,   -- qual conta Pluggy originou este lançamento
+  -- ── Origem do registro ───────────────────────────────────────────────────
+  source           TEXT NOT NULL DEFAULT 'MANUAL' CHECK(source IN ('MANUAL','PLUGGY')),
+  pluggy_id        TEXT,   -- pluggy transaction_id (chave de idempotência)
+  pluggy_synced_at TEXT,   -- quando foi sincronizado pela última vez
 
   -- ── SAL — campos exclusivos de SALARY ────────────────────────────────────
   sal_calculation_type  TEXT CHECK(sal_calculation_type IN ('FIXED','HOURLY')),
@@ -152,7 +169,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   sal_work_days         TEXT CHECK(sal_work_days IN ('ALL_DAYS','WEEKDAYS','CUSTOM')),
   sal_include_holidays  INTEGER,
   sal_payment_day       INTEGER,
-  sal_payment_offset    INTEGER DEFAULT 1,  -- 0=mesmo mês · 1=mês seguinte (padrão CLT)
+  sal_payment_offset    INTEGER DEFAULT 1,
 
   -- ── LC — campos exclusivos de LIVING_COST ────────────────────────────────
   lc_source_type  TEXT CHECK(lc_source_type IN ('ACCOUNT','CREDIT_CARD')),
@@ -160,18 +177,18 @@ CREATE TABLE IF NOT EXISTS transactions (
 
   -- ── DBT — campos de DEBT e DEBT_INSTALLMENT ──────────────────────────────
   dbt_sub_type               TEXT CHECK(dbt_sub_type IN ('INSTALLMENT','LOAN','PENDING','FLEXIBLE')),
-  dbt_total_cents            INTEGER,   -- valor total da dívida
+  dbt_total_cents            INTEGER,
   dbt_total_installments     INTEGER,
   dbt_remaining_installments INTEGER,
-  dbt_installment_number     INTEGER,   -- número desta parcela
-  dbt_installment_day        INTEGER,   -- dia de vencimento das parcelas
-  dbt_interest_rate          REAL,      -- % ao mês
+  dbt_installment_number     INTEGER,
+  dbt_installment_day        INTEGER,
+  dbt_interest_rate          REAL,
 
   -- ── INV — campos exclusivos de INVESTMENT ────────────────────────────────
   inv_sub_type             TEXT CHECK(inv_sub_type IN ('STOCK','CRYPTO','FIXED_INCOME','REAL_ESTATE','ETF','PENSION','OTHER')),
   inv_ticker               TEXT,
   inv_quantity             REAL,
-  inv_current_price_cents  INTEGER,  -- preço atual por unidade
+  inv_current_price_cents  INTEGER,
   inv_broker               TEXT,
 
   -- ── Auditoria ────────────────────────────────────────────────────────────
@@ -179,70 +196,69 @@ CREATE TABLE IF NOT EXISTS transactions (
   updated_at TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS ix_tx_type     ON transactions(type);
-CREATE INDEX IF NOT EXISTS ix_tx_month    ON transactions(year, month);
-CREATE INDEX IF NOT EXISTS ix_tx_account  ON transactions(account_id);
-CREATE INDEX IF NOT EXISTS ix_tx_card     ON transactions(credit_card_id);
-CREATE INDEX IF NOT EXISTS ix_tx_category ON transactions(category_id);
-CREATE INDEX IF NOT EXISTS ix_tx_parent   ON transactions(parent_id);
-CREATE INDEX IF NOT EXISTS ix_tx_template ON transactions(is_template, type);
+CREATE INDEX  IF NOT EXISTS ix_tx_type     ON transactions(type);
+CREATE INDEX  IF NOT EXISTS ix_tx_month    ON transactions(year, month);
+CREATE INDEX  IF NOT EXISTS ix_tx_account  ON transactions(account_id);
+CREATE INDEX  IF NOT EXISTS ix_tx_card     ON transactions(credit_card_id);
+CREATE INDEX  IF NOT EXISTS ix_tx_category ON transactions(category_id);
+CREATE INDEX  IF NOT EXISTS ix_tx_parent   ON transactions(parent_id);
+CREATE INDEX  IF NOT EXISTS ix_tx_template ON transactions(is_template, type);
+CREATE INDEX  IF NOT EXISTS ix_tx_source   ON transactions(source);
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_tx_pluggy ON transactions(pluggy_transaction_id)
-  WHERE pluggy_transaction_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_tx_pluggy ON transactions(pluggy_id)
+  WHERE pluggy_id IS NOT NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_tx_invoice ON transactions(credit_card_id, month, year)
   WHERE type = 'INVOICE' AND credit_card_id IS NOT NULL;
 
--- ── Pluggy: conexões (items) ──────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS pluggy_items (
-  id                TEXT PRIMARY KEY,
-  pluggy_item_id    TEXT NOT NULL,
-  connector_name    TEXT,
-  connector_id      INTEGER,
-  status            TEXT,
-  execution_status  TEXT,
-  last_synced_at    TEXT,
-  next_auto_sync_at TEXT,
-  error_code        TEXT,
-  error_message     TEXT,
-  created_at        TEXT NOT NULL,
-  updated_at        TEXT NOT NULL
+-- ── Integrações ───────────────────────────────────────────────────────────────
+--
+-- Uma linha por serviço externo conectado.
+-- type = 'PLUGGY' → banco conectado via Pluggy (uma linha por item)
+-- type = 'AI'     → modelo de IA conectado (uma linha por provedor)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS integrations (
+  id        TEXT PRIMARY KEY,
+  type      TEXT NOT NULL CHECK(type IN ('PLUGGY','AI')),
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+
+  -- ── PLUGGY — banco conectado ──────────────────────────────────────────────
+  pluggy_item_id          TEXT,   -- item_id da Pluggy (autorização OAuth)
+  pluggy_connector_name   TEXT,   -- nome legível do banco/instituição
+  pluggy_connector_id     INTEGER,
+  pluggy_status           TEXT,   -- PENDING | UPDATED | LOGIN_ERROR | WAITING_USER_INPUT | ERROR
+  pluggy_execution_status TEXT,
+  pluggy_last_synced_at   TEXT,
+  pluggy_next_sync_at     TEXT,
+  pluggy_error_code       TEXT,
+  pluggy_error_message    TEXT,
+
+  -- ── AI — modelo de inteligência artificial ────────────────────────────────
+  ai_provider   TEXT,   -- ANTHROPIC | OPENAI | GOOGLE | OPENROUTER
+  ai_model      TEXT,   -- claude-sonnet | claude-haiku | gpt-4o | gemini-pro | ...
+  -- chave armazenada no keychain do SO; este campo guarda só o rótulo de referência
+  ai_key_ref    TEXT,
+  -- permissões concedidas ao modelo
+  ai_can_read_monthly        INTEGER NOT NULL DEFAULT 1,  -- "Ler meu mês e gastos"
+  ai_can_use_life_context    INTEGER NOT NULL DEFAULT 1,  -- "Usar meu contexto de vida"
+  ai_notify_negative_balance INTEGER NOT NULL DEFAULT 1,  -- "Me avisar quando fechar no vermelho"
+  ai_monthly_email_summary   INTEGER NOT NULL DEFAULT 0   -- "Resumo do mês no e-mail"
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_pluggy_item ON pluggy_items(pluggy_item_id);
+-- Um item Pluggy por pluggy_item_id (pode ter vários bancos conectados)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_integration_pluggy_item ON integrations(pluggy_item_id)
+  WHERE pluggy_item_id IS NOT NULL;
 
--- ── Pluggy: contas bancárias espelhadas ───────────────────────────────────────
-CREATE TABLE IF NOT EXISTS pluggy_accounts (
-  id                     TEXT PRIMARY KEY,
-  pluggy_account_id      TEXT NOT NULL,
-  pluggy_item_id         TEXT NOT NULL REFERENCES pluggy_items(id) ON DELETE CASCADE,
-  type                   TEXT NOT NULL,  -- BANK | CREDIT
-  subtype                TEXT NOT NULL,  -- CHECKING_ACCOUNT | SAVINGS_ACCOUNT | CREDIT_CARD | INVESTMENT
-  name                   TEXT NOT NULL,
-  number                 TEXT,
-  balance_cents          INTEGER NOT NULL DEFAULT 0,
-  owner                  TEXT,
-  tax_number             TEXT,
-  -- campos de cartão (preenchidos quando subtype = CREDIT_CARD)
-  brand                  TEXT,
-  credit_limit_cents     INTEGER,
-  credit_available_cents INTEGER,
-  due_date               TEXT,
-  -- vínculos com entidades locais do Quibo
-  local_account_id       TEXT REFERENCES accounts(id)     ON DELETE SET NULL,
-  local_card_id          TEXT REFERENCES credit_cards(id) ON DELETE SET NULL,
-  synced_at              TEXT,
-  created_at             TEXT NOT NULL,
-  updated_at             TEXT NOT NULL
-);
+-- Um modelo de IA por provedor
+CREATE UNIQUE INDEX IF NOT EXISTS uq_integration_ai ON integrations(ai_provider)
+  WHERE type = 'AI' AND ai_provider IS NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_pluggy_account   ON pluggy_accounts(pluggy_account_id);
-CREATE INDEX        IF NOT EXISTS ix_pluggy_acct_item ON pluggy_accounts(pluggy_item_id);
-
--- ── Pluggy: histórico de sincronizações ───────────────────────────────────────
-CREATE TABLE IF NOT EXISTS pluggy_sync_log (
+-- ── Log de sincronizações (Pluggy) ────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS integration_sync_log (
   id               TEXT PRIMARY KEY,
-  item_id          TEXT NOT NULL REFERENCES pluggy_items(id) ON DELETE CASCADE,
+  integration_id   TEXT NOT NULL REFERENCES integrations(id) ON DELETE CASCADE,
   synced_at        TEXT NOT NULL,
   status           TEXT NOT NULL CHECK(status IN ('SUCCESS','PARTIAL','ERROR','SKIPPED')),
   entries_imported INTEGER NOT NULL DEFAULT 0,
@@ -250,4 +266,4 @@ CREATE TABLE IF NOT EXISTS pluggy_sync_log (
   duration_ms      INTEGER
 );
 
-CREATE INDEX IF NOT EXISTS ix_sync_log_item ON pluggy_sync_log(item_id, synced_at DESC);
+CREATE INDEX IF NOT EXISTS ix_sync_log ON integration_sync_log(integration_id, synced_at DESC);

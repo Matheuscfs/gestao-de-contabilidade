@@ -12,7 +12,7 @@ use super::map::{
     conta_pluggy_para_quibo, decimal_para_centavos, e_cartao_de_credito,
     investimento_pluggy_para_quibo, transacao_para_entry,
 };
-use super::models::{Account, SubtipoConta, TipoConta};
+use super::models::{Account, SubtipoConta};
 use super::products;
 
 // ─── Resultado de sincronização ───────────────────────────────────────────────
@@ -33,8 +33,6 @@ pub struct ResultadoSync {
 
 // ─── Verificação de necessidade de sync ──────────────────────────────────────
 
-/// Decide se deve sincronizar um Item agora.
-/// Política conservadora: ≤ 1×/dia por item, alinhado ao `nextAutoSyncAt`.
 pub fn deve_sincronizar(
     last_synced_at: Option<&str>,
     next_auto_sync_at: Option<&DateTime<Utc>>,
@@ -60,7 +58,6 @@ pub fn deve_sincronizar(
 
 // ─── Engine principal ─────────────────────────────────────────────────────────
 
-/// Sincroniza um Item específico pelo seu pluggy_item_id.
 pub async fn sincronizar_item(
     app: &AppHandle,
     estado: &EstadoAuth,
@@ -164,19 +161,18 @@ async fn sincronizar_item_interno(
     let desde = last_synced_at.and_then(|s| s.parse::<DateTime<Utc>>().ok());
 
     for conta in &contas {
-        upsert_conta_pluggy(&conn, &registro.item_id_local, conta, connector_name.as_deref())?;
+        // Espelha a conta no banco local (accounts ou credit_cards).
+        upsert_conta_pluggy(&conn, conta, connector_name.as_deref())?;
 
         let (account_id_local, credit_card_id_local) =
             resolver_conta_local(&conn, &conta.id)?;
 
         let e_credito = e_cartao_de_credito(conta);
-
         let transacoes = products::buscar_transacoes(estado, &conta.id, desde).await?;
 
         let (importados, atualizados) = upsert_transacoes(
             &conn,
             &transacoes,
-            &conta.id,
             account_id_local.as_deref(),
             credit_card_id_local.as_deref(),
             e_credito,
@@ -196,11 +192,11 @@ async fn sincronizar_item_interno(
 
     let agora = Utc::now().to_rfc3339();
     conn.execute(
-        "UPDATE pluggy_items
-            SET last_synced_at = ?1,
-                status         = 'UPDATED',
-                updated_at     = ?1
-          WHERE pluggy_item_id = ?2",
+        "UPDATE integrations
+            SET pluggy_last_synced_at = ?1,
+                pluggy_status         = 'UPDATED',
+                updated_at            = ?1
+          WHERE type = 'PLUGGY' AND pluggy_item_id = ?2",
         params![agora, pluggy_item_id],
     )?;
 
@@ -225,7 +221,6 @@ async fn sincronizar_item_interno(
     })
 }
 
-/// Sincroniza todos os Items registrados no banco local.
 pub async fn sincronizar_todos(
     app: &AppHandle,
     estado: &EstadoAuth,
@@ -235,8 +230,9 @@ pub async fn sincronizar_todos(
     let conn = Connection::open(&caminho_db)?;
 
     let ids: Vec<String> = {
-        let mut stmt =
-            conn.prepare("SELECT pluggy_item_id FROM pluggy_items ORDER BY created_at")?;
+        let mut stmt = conn.prepare(
+            "SELECT pluggy_item_id FROM integrations WHERE type='PLUGGY' ORDER BY created_at",
+        )?;
         let ids: Vec<String> = stmt
             .query_map([], |row| row.get(0))?
             .filter_map(|r| r.ok())
@@ -256,18 +252,17 @@ pub async fn sincronizar_todos(
 
 struct RegistroItem {
     last_synced_at: Option<String>,
-    /// ID interno (PK) da linha em `pluggy_items` — usado como FK em `pluggy_accounts`.
-    item_id_local: String,
 }
 
 fn ler_registro_item(conn: &Connection, pluggy_item_id: &str) -> Result<RegistroItem, AppError> {
     conn.query_row(
-        "SELECT last_synced_at, id FROM pluggy_items WHERE pluggy_item_id = ?1",
+        "SELECT pluggy_last_synced_at
+           FROM integrations
+          WHERE type = 'PLUGGY' AND pluggy_item_id = ?1",
         params![pluggy_item_id],
         |row| {
             Ok(RegistroItem {
                 last_synced_at: row.get(0)?,
-                item_id_local: row.get(1)?,
             })
         },
     )
@@ -292,14 +287,14 @@ fn atualizar_status_item(
     let agora = Utc::now().to_rfc3339();
 
     conn.execute(
-        "UPDATE pluggy_items
-            SET status              = ?1,
-                execution_status    = ?2,
-                next_auto_sync_at   = ?3,
-                error_code          = ?4,
-                error_message       = ?5,
-                updated_at          = ?6
-          WHERE pluggy_item_id = ?7",
+        "UPDATE integrations
+            SET pluggy_status           = ?1,
+                pluggy_execution_status = ?2,
+                pluggy_next_sync_at     = ?3,
+                pluggy_error_code       = ?4,
+                pluggy_error_message    = ?5,
+                updated_at              = ?6
+          WHERE type = 'PLUGGY' AND pluggy_item_id = ?7",
         params![
             status,
             execution_status,
@@ -314,116 +309,126 @@ fn atualizar_status_item(
     Ok(())
 }
 
-/// Espelha uma conta Pluggy na tabela `pluggy_accounts` (upsert idempotente).
+/// Upsert de uma conta Pluggy diretamente em `accounts` ou `credit_cards`.
+/// Cartão de crédito (SubtipoConta::CreditCard) → `credit_cards`
+/// Demais subtipos → `accounts`
 fn upsert_conta_pluggy(
     conn: &Connection,
-    item_id_local: &str,
     conta: &Account,
-    _connector_name: Option<&str>,
+    connector_name: Option<&str>,
 ) -> Result<(), AppError> {
-    let tipo_str = match conta.tipo {
-        TipoConta::Bank   => "BANK",
-        TipoConta::Credit => "CREDIT",
-        TipoConta::Outro  => "OTHER",
-    };
-    let subtipo_str = match conta.subtype {
-        SubtipoConta::CheckingAccount => "CHECKING_ACCOUNT",
-        SubtipoConta::SavingsAccount  => "SAVINGS_ACCOUNT",
-        SubtipoConta::CreditCard      => "CREDIT_CARD",
-        SubtipoConta::Investment      => "INVESTMENT",
-        SubtipoConta::Outro           => "OTHER",
-    };
-
     let balance_cents = decimal_para_centavos(conta.balance);
     let agora = Utc::now().to_rfc3339();
-    let id = format!("pa_{}", Utc::now().timestamp_nanos_opt().unwrap_or(0));
+    let id = format!("acc_{}", Utc::now().timestamp_nanos_opt().unwrap_or(0));
 
-    conn.execute(
-        "INSERT INTO pluggy_accounts (
-             id, pluggy_account_id, pluggy_item_id,
-             type, subtype, name, number,
-             balance_cents, owner, tax_number,
-             synced_at, created_at, updated_at
-         ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?12)
-         ON CONFLICT(pluggy_account_id) DO UPDATE SET
-             balance_cents = excluded.balance_cents,
-             synced_at     = excluded.synced_at,
-             updated_at    = excluded.updated_at",
-        params![
-            id,
-            conta.id,
-            item_id_local,
-            tipo_str,
-            subtipo_str,
-            conta.name,
-            conta.number,
-            balance_cents,
-            conta.owner,
-            conta.tax_number,
-            agora,
-        ],
-    )?;
+    match conta.subtype {
+        SubtipoConta::CreditCard => {
+            conn.execute(
+                "INSERT INTO credit_cards (
+                     id, name, brand, limit_cents, closing_day, due_day,
+                     source, pluggy_id, pluggy_synced_at,
+                     is_active, created_at, updated_at
+                 ) VALUES (?1,?2,'OTHER',0,1,10,'PLUGGY',?3,?4,1,?5,?5)
+                 ON CONFLICT(pluggy_id) DO UPDATE SET
+                     name             = excluded.name,
+                     pluggy_synced_at = excluded.pluggy_synced_at,
+                     updated_at       = excluded.updated_at",
+                params![id, conta.name, conta.id, agora, agora],
+            )?;
+        }
+        _ => {
+            let tipo_str = match conta.subtype {
+                SubtipoConta::CheckingAccount => "CHECKING",
+                SubtipoConta::SavingsAccount  => "SAVINGS",
+                SubtipoConta::Investment      => "INVESTMENT",
+                _                             => "OTHER",
+            };
+            conn.execute(
+                "INSERT INTO accounts (
+                     id, name, type, bank,
+                     balance_cents, source, pluggy_id, pluggy_synced_at,
+                     is_active, created_at, updated_at
+                 ) VALUES (?1,?2,?3,?4,?5,'PLUGGY',?6,?7,1,?8,?8)
+                 ON CONFLICT(pluggy_id) DO UPDATE SET
+                     balance_cents    = excluded.balance_cents,
+                     pluggy_synced_at = excluded.pluggy_synced_at,
+                     updated_at       = excluded.updated_at",
+                params![
+                    id,
+                    conta.name,
+                    tipo_str,
+                    connector_name,
+                    balance_cents,
+                    conta.id,
+                    agora,
+                    agora
+                ],
+            )?;
+        }
+    }
 
     Ok(())
 }
 
-/// Resolve os IDs locais (conta / cartão) mapeados para uma conta Pluggy.
-/// Retorna `(None, None)` quando a conta ainda não foi vinculada.
+/// Resolve IDs locais a partir do pluggy_id armazenado em accounts/credit_cards.
+/// Retorna `(account_id, credit_card_id)` — no máximo um deles será Some.
 fn resolver_conta_local(
     conn: &Connection,
     pluggy_account_id: &str,
 ) -> Result<(Option<String>, Option<String>), AppError> {
-    match conn.query_row(
-        "SELECT local_account_id, local_card_id
-           FROM pluggy_accounts
-          WHERE pluggy_account_id = ?1",
-        params![pluggy_account_id],
-        |row| {
-            Ok((
-                row.get::<_, Option<String>>(0)?,
-                row.get::<_, Option<String>>(1)?,
-            ))
-        },
-    ) {
-        Ok(ids) => Ok(ids),
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok((None, None)),
-        Err(e) => Err(AppError::Database(e)),
-    }
+    let account_id: Option<String> = conn
+        .query_row(
+            "SELECT id FROM accounts WHERE pluggy_id = ?1",
+            params![pluggy_account_id],
+            |row| row.get(0),
+        )
+        .ok();
+
+    let card_id: Option<String> = conn
+        .query_row(
+            "SELECT id FROM credit_cards WHERE pluggy_id = ?1",
+            params![pluggy_account_id],
+            |row| row.get(0),
+        )
+        .ok();
+
+    Ok((account_id, card_id))
 }
 
-/// Upsert em lote de transações na tabela central, garantindo idempotência
-/// via `pluggy_transaction_id`. Retorna `(novos, atualizados)`.
+/// Upsert em lote de transações da Pluggy na tabela central.
+/// Idempotente via `pluggy_id`. Retorna `(novos, atualizados)`.
 fn upsert_transacoes(
     conn: &Connection,
     transacoes: &[super::models::Transaction],
-    pluggy_account_id: &str,
     account_id: Option<&str>,
     credit_card_id: Option<&str>,
     e_credito: bool,
 ) -> Result<(u32, u32), AppError> {
     let mut novos = 0u32;
     let mut atualizados = 0u32;
+    let agora = Utc::now().to_rfc3339();
 
     for tx in transacoes {
         let entry = transacao_para_entry(tx, account_id, credit_card_id, e_credito);
 
         let linhas = conn.execute(
             "INSERT INTO transactions (
-                id, pluggy_transaction_id, pluggy_account_id,
+                id, pluggy_id, source, pluggy_synced_at,
                 description, amount_cents, type, status,
                 date, month, year,
                 account_id, credit_card_id,
                 tags, created_at, updated_at
-             ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)
-             ON CONFLICT(pluggy_transaction_id) DO UPDATE SET
-                description  = excluded.description,
-                amount_cents = excluded.amount_cents,
-                type         = excluded.type,
-                updated_at   = excluded.updated_at",
+             ) VALUES (?1,?2,'PLUGGY',?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)
+             ON CONFLICT(pluggy_id) DO UPDATE SET
+                description      = excluded.description,
+                amount_cents     = excluded.amount_cents,
+                type             = excluded.type,
+                pluggy_synced_at = excluded.pluggy_synced_at,
+                updated_at       = excluded.updated_at",
             params![
                 entry.id,
                 entry.pluggy_transaction_id,
-                pluggy_account_id,
+                agora,
                 entry.description,
                 entry.amount_cents,
                 entry.tipo.to_str(),
@@ -466,12 +471,12 @@ fn upsert_investimentos(
 
         conn.execute(
             "INSERT INTO transactions (
-                id, type, status, description,
-                amount_cents, date,
+                id, type, status, source,
+                description, amount_cents, date,
                 inv_sub_type, inv_ticker, inv_quantity,
                 inv_current_price_cents,
                 created_at, updated_at
-             ) VALUES (?1,'INVESTMENT','CONFIRMADO',?2,?3,?4,?5,?6,1.0,?7,?8,?8)
+             ) VALUES (?1,'INVESTMENT','CONFIRMADO','PLUGGY',?2,?3,?4,?5,?6,1.0,?7,?8,?8)
              ON CONFLICT(id) DO UPDATE SET
                 inv_current_price_cents = excluded.inv_current_price_cents,
                 updated_at              = excluded.updated_at",
@@ -516,20 +521,20 @@ fn gravar_log_sync(
     let agora = Utc::now().to_rfc3339();
     let id = format!("log_{}", Utc::now().timestamp_nanos_opt().unwrap_or(0));
 
-    let item_id_local: Option<String> = conn
+    let integration_id: Option<String> = conn
         .query_row(
-            "SELECT id FROM pluggy_items WHERE pluggy_item_id = ?1",
+            "SELECT id FROM integrations WHERE type='PLUGGY' AND pluggy_item_id = ?1",
             params![pluggy_item_id],
             |row| row.get(0),
         )
         .ok();
 
-    if let Some(item_id) = item_id_local {
+    if let Some(int_id) = integration_id {
         conn.execute(
-            "INSERT INTO pluggy_sync_log
-                (id, item_id, synced_at, status, entries_imported, error_message)
+            "INSERT INTO integration_sync_log
+                (id, integration_id, synced_at, status, entries_imported, error_message)
              VALUES (?1,?2,?3,?4,?5,?6)",
-            params![id, item_id, agora, status, entries_total, erro],
+            params![id, int_id, agora, status, entries_total, erro],
         )?;
     }
 
@@ -538,31 +543,33 @@ fn gravar_log_sync(
 
 // ─── Registro de Item novo ────────────────────────────────────────────────────
 
-/// Registra um novo Item no banco local após o usuário autorizar no MeuPluggy.
+/// Registra um novo item Pluggy em `integrations` após o usuário autorizar no MeuPluggy.
 pub fn registrar_item(
     conn: &Connection,
     pluggy_item_id: &str,
     connector_name: Option<&str>,
 ) -> Result<String, AppError> {
-    let id = format!("pi_{}", Utc::now().timestamp_nanos_opt().unwrap_or(0));
+    let id = format!("int_{}", Utc::now().timestamp_nanos_opt().unwrap_or(0));
     let agora = Utc::now().to_rfc3339();
 
     conn.execute(
-        "INSERT INTO pluggy_items (id, pluggy_item_id, connector_name, status, created_at, updated_at)
-         VALUES (?1,?2,?3,'PENDING',?4,?4)
+        "INSERT INTO integrations (
+             id, type, pluggy_item_id, pluggy_connector_name, pluggy_status,
+             created_at, updated_at
+         ) VALUES (?1,'PLUGGY',?2,?3,'PENDING',?4,?4)
          ON CONFLICT(pluggy_item_id) DO UPDATE SET
-             connector_name = COALESCE(excluded.connector_name, pluggy_items.connector_name),
-             updated_at     = excluded.updated_at",
+             pluggy_connector_name = COALESCE(excluded.pluggy_connector_name, integrations.pluggy_connector_name),
+             updated_at            = excluded.updated_at",
         params![id, pluggy_item_id, connector_name, agora],
     )?;
 
     Ok(id)
 }
 
-/// Remove o registro local de um Item (não deleta na Pluggy).
+/// Remove o registro local de um item Pluggy (não deleta na Pluggy).
 pub fn remover_item_local(conn: &Connection, pluggy_item_id: &str) -> Result<(), AppError> {
     conn.execute(
-        "DELETE FROM pluggy_items WHERE pluggy_item_id = ?1",
+        "DELETE FROM integrations WHERE type='PLUGGY' AND pluggy_item_id = ?1",
         params![pluggy_item_id],
     )?;
     Ok(())

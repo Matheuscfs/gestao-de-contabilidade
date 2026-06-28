@@ -61,14 +61,16 @@ pub async fn pluggy_remover_credenciais(
 
 fn query_items_db(conn: &Connection) -> rusqlite::Result<Vec<ItemResumo>> {
     let mut stmt = conn.prepare(
-        "SELECT pluggy_item_id, connector_name, status, last_synced_at,
-                next_auto_sync_at, error_code, error_message
-           FROM pluggy_items
+        "SELECT pluggy_item_id, pluggy_connector_name, pluggy_status,
+                pluggy_last_synced_at, pluggy_next_sync_at,
+                pluggy_error_code, pluggy_error_message
+           FROM integrations
+          WHERE type = 'PLUGGY'
           ORDER BY created_at",
     )?;
     let rows = stmt.query_map([], |row| {
         Ok(ItemResumo {
-            pluggy_item_id: row.get(0)?,
+            pluggy_item_id: row.get::<_, Option<String>>(0)?.unwrap_or_default(),
             connector_name: row.get(1)?,
             status: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
             last_synced_at: row.get(3)?,
@@ -203,9 +205,9 @@ pub struct ContaPluggyResumo {
     pub account_number: Option<String>,
 }
 
-/// Salva o mapeamento pluggy_account_id → conta/cartão local para um Item.
-/// O campo alvo (`local_account_id` ou `local_card_id`) é escolhido
-/// automaticamente pelo subtipo da conta Pluggy.
+/// Vincula contas/cartões existentes no Quibo às suas contrapartes na Pluggy.
+/// O mapa recebido é `{ pluggy_account_id: local_entity_id }`.
+/// Seta `pluggy_id` e `source='PLUGGY'` na entidade local correspondente.
 #[tauri::command]
 pub async fn pluggy_salvar_mapeamento(
     app: AppHandle,
@@ -217,33 +219,25 @@ pub async fn pluggy_salvar_mapeamento(
     let agora = chrono::Utc::now().to_rfc3339();
 
     for (pluggy_account_id, local_id) in &mapeamento {
-        let subtype: Option<String> = conn
-            .query_row(
-                "SELECT subtype FROM pluggy_accounts WHERE pluggy_account_id = ?1",
-                rusqlite::params![pluggy_account_id],
-                |row| row.get(0),
+        // Tenta atualizar em accounts primeiro.
+        let rows = conn
+            .execute(
+                "UPDATE accounts
+                    SET pluggy_id = ?1, source = 'PLUGGY', updated_at = ?3
+                  WHERE id = ?2",
+                rusqlite::params![pluggy_account_id, local_id, agora],
             )
-            .ok();
+            .map_err(|e| e.to_string())?;
 
-        match subtype.as_deref() {
-            Some("CREDIT_CARD") => {
-                conn.execute(
-                    "UPDATE pluggy_accounts
-                        SET local_card_id = ?1, updated_at = ?2
-                      WHERE pluggy_account_id = ?3",
-                    rusqlite::params![local_id, agora, pluggy_account_id],
-                )
-                .map_err(|e| e.to_string())?;
-            }
-            _ => {
-                conn.execute(
-                    "UPDATE pluggy_accounts
-                        SET local_account_id = ?1, updated_at = ?2
-                      WHERE pluggy_account_id = ?3",
-                    rusqlite::params![local_id, agora, pluggy_account_id],
-                )
-                .map_err(|e| e.to_string())?;
-            }
+        // Se não achou em accounts, tenta credit_cards.
+        if rows == 0 {
+            conn.execute(
+                "UPDATE credit_cards
+                    SET pluggy_id = ?1, source = 'PLUGGY', updated_at = ?3
+                  WHERE id = ?2",
+                rusqlite::params![pluggy_account_id, local_id, agora],
+            )
+            .map_err(|e| e.to_string())?;
         }
     }
 
