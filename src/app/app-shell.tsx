@@ -1,6 +1,7 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Sidebar } from "@/app/sidebar";
 import { useMesStore } from "@/app/mes-store";
+import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { formatarMesAno } from "@/utils/dates";
 
 const MONTH_ROUTES = new Set(["/mes", "/lancamentos"]);
@@ -24,6 +25,7 @@ export function AppShell() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { mes, ano, irParaMesAnterior, irParaProximoMes } = useMesStore();
+  const { onAdicionar } = useHeaderActionsStore();
 
   const showMonth = MONTH_ROUTES.has(pathname);
   const title = PAGE_TITLES[pathname] ?? "";
@@ -77,7 +79,10 @@ export function AppShell() {
             >
               MR
             </button>
-            <button className="inline-flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-brand text-white font-semibold text-[15px] shadow-[0_6px_16px_-4px_rgba(64,120,230,.45)] hover:bg-brand-600 transition-colors">
+            <button
+              onClick={() => onAdicionar?.()}
+              className="inline-flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-brand text-white font-semibold text-[15px] shadow-[0_6px_16px_-4px_rgba(64,120,230,.45)] hover:bg-brand-600 transition-colors"
+            >
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14" /><path d="M12 5v14" />
               </svg>
