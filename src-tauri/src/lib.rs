@@ -15,11 +15,12 @@ pub fn run() {
         .setup(|app| {
             let app_handle = app.handle().clone();
 
-            tauri::async_runtime::spawn(async move {
-                if let Err(e) = db::inicializar(&app_handle).await {
-                    eprintln!("[quibo] Erro ao inicializar banco: {e}");
-                }
-            });
+            // Bloqueante de propósito: garante que as migrações terminem antes
+            // do webview carregar e fazer qualquer chamada ao banco (sem corrida).
+            // É rápido (SQLite local) e roda só uma vez na inicialização.
+            if let Err(e) = tauri::async_runtime::block_on(db::inicializar(&app_handle)) {
+                eprintln!("[quibo] Erro ao inicializar banco: {e}");
+            }
 
             Ok(())
         })

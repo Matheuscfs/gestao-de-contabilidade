@@ -1,8 +1,10 @@
-import Database from "@tauri-apps/plugin-sql";
 import type { CreditCard } from "./schema";
+import { getSqlite } from "./client";
 
+// Conexão raw compartilhada (mesmo arquivo/caminho absoluto do client.ts),
+// garantindo consistência cross-platform.
 async function db() {
-  return Database.load("sqlite:quibo.db");
+  return getSqlite();
 }
 
 // ─── Linha raw do banco (snake_case) ─────────────────────────────────────────

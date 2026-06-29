@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { getSetting, setSetting } from "@/core/db/settings";
 import { usePerfilStore, inicializarPerfil } from "@/app/perfil-store";
+import { tratarErro } from "@/core/errors";
 
 export type ProvedorIA = "openai" | "anthropic" | "gemini" | "openrouter" | null;
 export type TomIA = "direto" | "gentil" | "didatico";
@@ -56,18 +57,23 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   concluirOnboarding: async () => {
     const { nome, foto } = get();
 
-    // Garante o flag imediatamente — mesmo se o banco falhar,
-    // o usuário não volta ao onboarding na mesma sessão.
-    localStorage.setItem("quibo:onboarding_done", "true");
-
     try {
       await setSetting(CHAVE_ONBOARDING, "true");
 
       const perfil = usePerfilStore.getState();
       if (nome.trim()) await perfil.atualizarNome(nome.trim());
       if (foto) await perfil.atualizarFoto(foto);
+
+      localStorage.setItem("quibo:onboarding_done", "true");
     } catch (e) {
-      console.error("[quibo] Erro ao persistir conclusão do onboarding:", e);
+      // Não prende o usuário no onboarding nesta sessão, mas avisa que o
+      // banco falhou — antes esse erro era engolido em silêncio.
+      localStorage.setItem("quibo:onboarding_done", "true");
+      tratarErro(e, {
+        contexto: "persistir conclusão do onboarding",
+        mensagemUsuario:
+          "Concluímos a configuração, mas houve um problema ao salvar seus dados no banco.",
+      });
     }
   },
 }));

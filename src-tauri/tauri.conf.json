@@ -51,9 +51,5 @@
       "timestampUrl": ""
     }
   },
-  "plugins": {
-    "sql": {
-      "preload": ["sqlite:quibo.db"]
-    }
-  }
+  "plugins": {}
 }
