@@ -3,7 +3,7 @@ import { AnaliseScreen } from "@/screens/analise/analise-screen";
 import { CartoesCreditoScreen } from "@/screens/cartoes";
 import { CategoriasScreen } from "@/screens/categorias/categorias-screen";
 import { CustoDeVidaScreen } from "@/screens/custo-de-vida";
-import { DividasScreen } from "@/screens/dividas/dividas-screen";
+import { DividasScreen } from "@/screens/dividas";
 import { IaScreen } from "@/screens/ia/ia-screen";
 import { InvestimentosScreen } from "@/screens/investimentos/investimentos-screen";
 import { LancamentosScreen } from "@/screens/lancamentos/lancamentos-screen";
