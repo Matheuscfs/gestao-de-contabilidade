@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "react-router-dom";
 import { router } from "@/app/router";
+import { inicializarOnboarding } from "@/screens/onboarding/onboarding-store";
 import "@/styles/globals.css";
 
 const queryClient = new QueryClient({
@@ -16,10 +17,20 @@ const queryClient = new QueryClient({
   },
 });
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  </React.StrictMode>
-);
+async function iniciar() {
+  try {
+    await inicializarOnboarding();
+  } catch (e) {
+    console.error("[quibo] Falha ao inicializar settings de onboarding:", e);
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </React.StrictMode>
+  );
+}
+
+iniciar();

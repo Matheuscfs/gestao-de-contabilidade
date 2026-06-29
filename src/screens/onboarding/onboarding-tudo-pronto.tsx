@@ -7,8 +7,8 @@ export function OnboardingTudoProntoScreen() {
 
   const primeiroNome = nome.trim().split(" ")[0] || "você";
 
-  function verMeuMes() {
-    concluirOnboarding();
+  async function verMeuMes() {
+    await concluirOnboarding();
     navigate("/mes", { replace: true });
   }
 

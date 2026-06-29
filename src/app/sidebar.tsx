@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import quiboMark from "@/assets/quibo-mark.png";
+import { usePerfilStore } from "@/app/perfil-store";
 
 type SvgPart = [string, Record<string, string | number>];
 
@@ -101,6 +102,7 @@ const NAV = [
 export function Sidebar() {
   const [hovered, setHovered] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { nome, foto, iniciais } = usePerfilStore();
 
   return (
     <aside className="drag-region shrink-0 w-[68px] flex flex-col items-center bg-surface border border-border rounded-[22px] py-3.5 shadow-xs">
@@ -147,10 +149,20 @@ export function Sidebar() {
         <div className="w-9 h-px bg-border" />
         <button
           onClick={() => navigate("/perfil")}
-          aria-label="Perfil"
-          className="w-9 h-9 rounded-full bg-brand-50 text-brand font-bold text-sm flex items-center justify-center border border-border hover:bg-brand hover:text-white transition-colors"
+          aria-label={nome ? `Perfil de ${nome}` : "Perfil"}
+          className="w-9 h-9 rounded-full overflow-hidden border border-border hover:ring-2 hover:ring-brand hover:ring-offset-1 transition-all"
         >
-          MR
+          {foto ? (
+            <img
+              src={foto}
+              alt={nome || "Perfil"}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-brand-50 text-brand font-bold text-sm flex items-center justify-center hover:bg-brand hover:text-white transition-colors">
+              {iniciais || "?"}
+            </div>
+          )}
         </button>
       </div>
     </aside>

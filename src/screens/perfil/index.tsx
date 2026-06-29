@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { usePerfilStore } from "@/app/perfil-store";
 
 function ChevronRight() {
   return (
@@ -55,19 +56,32 @@ function Divider() {
 
 export function PerfilScreen() {
   const navigate = useNavigate();
+  const { nome, foto, iniciais } = usePerfilStore();
 
   return (
     <div className="p-6 animate-fade-in">
       <div className="max-w-[720px] mx-auto">
         {/* Card do usuário */}
         <div className="bg-surface border border-border rounded-2xl px-6 py-5 flex items-center gap-[18px]">
-          <div className="w-[68px] h-[68px] rounded-full bg-brand-50 text-brand flex items-center justify-center font-bold text-2xl shrink-0">
-            MR
+          <div className="w-[68px] h-[68px] rounded-full overflow-hidden shrink-0">
+            {foto ? (
+              <img
+                src={foto}
+                alt={nome || "Perfil"}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-brand-50 text-brand flex items-center justify-center font-bold text-2xl">
+                {iniciais || "?"}
+              </div>
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[22px] font-bold text-ink tracking-tight">Marina Rocha</p>
+            <p className="text-[22px] font-bold text-ink tracking-tight">
+              {nome || "Seu nome"}
+            </p>
             <p className="text-sm text-ink-secondary mt-0.5">
-              marina@email.com · no Quibo desde mar 2025
+              no Quibo desde hoje
             </p>
           </div>
           <button className="h-[42px] px-[18px] rounded-full border border-border-strong bg-surface text-ink text-sm font-semibold hover:bg-surface-subtle transition-colors shrink-0">

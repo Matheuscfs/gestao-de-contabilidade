@@ -286,6 +286,13 @@ export const integrationSyncLog = sqliteTable(
   })
 );
 
+// ─── Configurações do app ─────────────────────────────────────────────────────
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 // ─── Controle de migrações ────────────────────────────────────────────────────
 export const schemaMigrations = sqliteTable("schema_migrations", {
   version: integer("version").primaryKey(),

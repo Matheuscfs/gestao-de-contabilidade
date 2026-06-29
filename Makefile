@@ -15,17 +15,20 @@ GREEN  := \033[32m
 YELLOW := \033[33m
 RED    := \033[31m
 
-# ─── Caminhos do banco de dados por SO ────────────────────────────────────────
+# ─── Caminhos por SO ──────────────────────────────────────────────────────────
 UNAME := $(shell uname -s)
 
 ifeq ($(UNAME), Darwin)
-  DB_DIR := $(HOME)/Library/Application\ Support/app.quibo
+  DB_DIR      := $(HOME)/Library/Application\ Support/app.quibo
+  WEBKIT_DIR  := $(HOME)/Library/WebKit/quibo
 endif
 ifeq ($(UNAME), Linux)
-  DB_DIR := $(HOME)/.local/share/app.quibo
+  DB_DIR      := $(HOME)/.local/share/app.quibo
+  WEBKIT_DIR  := $(HOME)/.local/share/WebKit/quibo
 endif
 ifeq ($(OS), Windows_NT)
-  DB_DIR := $(APPDATA)\app.quibo
+  DB_DIR      := $(APPDATA)\app.quibo
+  WEBKIT_DIR  :=
 endif
 
 # ─── dev ──────────────────────────────────────────────────────────────────────
@@ -72,6 +75,9 @@ clear:
 
 	@echo "$(YELLOW)→ Removendo banco de dados local ($(DB_DIR))...$(RESET)"
 	@rm -rf "$(DB_DIR)"
+
+	@echo "$(YELLOW)→ Removendo localStorage do WebView ($(WEBKIT_DIR))...$(RESET)"
+	@if [ -n "$(WEBKIT_DIR)" ]; then rm -rf "$(WEBKIT_DIR)"; fi
 
 	@echo ""
 	@echo "$(GREEN)$(BOLD)✓ Projeto limpo. Rode $(RESET)$(BOLD)make refresh$(RESET)$(GREEN) para reinstalar as dependências.$(RESET)"

@@ -56,6 +56,7 @@ fn aplicar_migracoes(conn: &Connection) -> Result<(), AppError> {
 
     let migracoes: &[(&str, i64)] = &[
         (include_str!("../../migrations/0001_init.sql"), 1),
+        (include_str!("../../migrations/0002_add_settings.sql"), 2),
     ];
 
     for (sql, versao) in migracoes {
