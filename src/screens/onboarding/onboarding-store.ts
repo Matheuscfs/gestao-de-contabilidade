@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { getSetting, setSetting } from "@/core/db/settings";
 import { usePerfilStore, inicializarPerfil } from "@/app/perfil-store";
 
-export type ProvedorIA = "openai" | "anthropic" | "gemini" | null;
+export type ProvedorIA = "openai" | "anthropic" | "gemini" | "openrouter" | null;
 export type TomIA = "direto" | "gentil" | "didatico";
 export type Foco = "reserva" | "dividas" | "objetivo" | "consciencia" | null;
 

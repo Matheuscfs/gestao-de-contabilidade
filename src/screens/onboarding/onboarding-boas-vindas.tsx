@@ -1,4 +1,4 @@
-import quiboMark from "@/assets/quibo-mark.png";
+import quiboMark from "@/assets/logo/quibo-mark.png";
 import { useNavigate } from "react-router-dom";
 
 export function OnboardingBoasVindasScreen() {

@@ -1,7 +1,7 @@
+import { usePerfilStore } from "@/app/perfil-store";
+import quiboMark from "@/assets/logo/quibo-mark.png";
 import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import quiboMark from "@/assets/quibo-mark.png";
-import { usePerfilStore } from "@/app/perfil-store";
 
 type SvgPart = [string, Record<string, string | number>];
 
@@ -73,7 +73,9 @@ function NavIcon({ name }: { name: string }) {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      {parts.map(([tag, attrs], i) => React.createElement(tag, { key: i, ...attrs }))}
+      {parts.map(([tag, attrs], i) =>
+        React.createElement(tag, { key: i, ...attrs }),
+      )}
     </svg>
   );
 }
