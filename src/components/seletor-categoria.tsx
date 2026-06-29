@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
 import { CategoriaIcon } from "@/components/categoria-icon";
-import { tratarErro } from "@/core/errors";
 import {
-  listarCategoriasPorTipo,
   contarPorCategoria,
+  listarCategoriasPorTipo,
   type Categoria,
   type TipoCategoria,
 } from "@/core/db/categorias";
+import { tratarErro } from "@/core/errors";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 // ─── Origem ───────────────────────────────────────────────────────────────────
 //
@@ -35,7 +35,16 @@ interface SeletorCategoriaProps {
 
 function IconAlterar() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
     </svg>
@@ -44,23 +53,53 @@ function IconAlterar() {
 
 function IconBusca() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-ink-muted shrink-0">
-      <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="text-ink-muted shrink-0"
+    >
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
     </svg>
   );
 }
 
 function IconFechar() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
     </svg>
   );
 }
 
 function IconCheck() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M20 6 9 17l-5-5" />
     </svg>
   );
@@ -134,7 +173,7 @@ export function SeletorCategoria({
 
   const selecionada = useMemo(
     () => categorias.find((c) => c.id === value) ?? null,
-    [categorias, value]
+    [categorias, value],
   );
 
   const filtradas = useMemo(() => {
@@ -159,7 +198,9 @@ export function SeletorCategoria({
   return (
     <div>
       {label && (
-        <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">{label}</span>
+        <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
+          {label}
+        </span>
       )}
 
       {/* Linha clicável */}
@@ -170,7 +211,11 @@ export function SeletorCategoria({
         style={{ border: "1px solid #D4D8E0" }}
       >
         {selecionada ? (
-          <AvatarCategoria cor={selecionada.color} icon={selecionada.icon} size={32} />
+          <AvatarCategoria
+            cor={selecionada.color}
+            icon={selecionada.icon}
+            size={32}
+          />
         ) : (
           <span
             className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -186,7 +231,7 @@ export function SeletorCategoria({
           {selecionada && (contagem[selecionada.id] ?? 0) > 0 && (
             <span className="block text-[12px] text-ink-muted">
               {contagem[selecionada.id]}{" "}
-              {contagem[selecionada.id] === 1 ? "registro" : "registros"} nesta categoria
+              {contagem[selecionada.id] === 1 ? "registro" : "registros"}
             </span>
           )}
         </span>
@@ -199,14 +244,18 @@ export function SeletorCategoria({
       {aberto && (
         <div
           className="fixed inset-0 flex items-center justify-center z-[90] p-4"
-          style={{ background: "rgba(14,17,22,.5)", backdropFilter: "blur(3px)" }}
+          style={{
+            background: "rgba(14,17,22,.5)",
+            backdropFilter: "blur(3px)",
+          }}
           onClick={() => setAberto(false)}
         >
           <div
             className="w-[460px] bg-surface rounded-[28px] animate-slide-up flex flex-col overflow-hidden"
             style={{
               maxHeight: "min(640px, calc(100vh - 48px))",
-              boxShadow: "0 24px 60px -12px rgba(14,17,22,.35), 0 0 0 1px rgba(14,17,22,.04)",
+              boxShadow:
+                "0 24px 60px -12px rgba(14,17,22,.35), 0 0 0 1px rgba(14,17,22,.04)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -253,8 +302,18 @@ export function SeletorCategoria({
                     aria-label="Limpar busca"
                     className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-ink-muted hover:bg-border-subtle transition-colors"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M18 6 6 18" />
+                      <path d="m6 6 12 12" />
                     </svg>
                   </button>
                 )}
@@ -269,11 +328,15 @@ export function SeletorCategoria({
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-colors text-left mb-1"
                 style={
                   value === null
-                    ? { background: "#F0F2F6", boxShadow: "inset 0 0 0 1.5px #C4CAD4" }
+                    ? {
+                        background: "#F0F2F6",
+                        boxShadow: "inset 0 0 0 1.5px #C4CAD4",
+                      }
                     : undefined
                 }
                 onMouseEnter={(e) => {
-                  if (value !== null) e.currentTarget.style.background = "#F7F8FA";
+                  if (value !== null)
+                    e.currentTarget.style.background = "#F7F8FA";
                 }}
                 onMouseLeave={(e) => {
                   if (value !== null) e.currentTarget.style.background = "";
@@ -286,8 +349,12 @@ export function SeletorCategoria({
                   <CategoriaIcon icon="tag" size={18} />
                 </span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[14px] font-semibold text-ink">Sem categoria</span>
-                  <span className="block text-[12px] text-ink-muted">deixar sem classificar</span>
+                  <span className="block text-[14px] font-semibold text-ink">
+                    Sem categoria
+                  </span>
+                  <span className="block text-[12px] text-ink-muted">
+                    deixar sem classificar
+                  </span>
                 </span>
                 {value === null && (
                   <span className="shrink-0 w-6 h-6 rounded-full bg-ink-muted text-white flex items-center justify-center">
@@ -301,14 +368,18 @@ export function SeletorCategoria({
               )}
 
               {carregando ? (
-                <div className="py-12 text-center text-sm text-ink-muted">Carregando…</div>
+                <div className="py-12 text-center text-sm text-ink-muted">
+                  Carregando…
+                </div>
               ) : filtradas.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
                   <span className="w-12 h-12 rounded-2xl bg-surface-subtle flex items-center justify-center text-ink-muted">
                     <IconBusca />
                   </span>
                   <p className="text-sm text-ink-muted">
-                    {busca ? `Nada encontrado para "${busca}".` : "Nenhuma categoria disponível."}
+                    {busca
+                      ? `Nada encontrado para "${busca}".`
+                      : "Nenhuma categoria disponível."}
                   </p>
                 </div>
               ) : (
@@ -322,11 +393,15 @@ export function SeletorCategoria({
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-colors text-left"
                       style={
                         ativo
-                          ? { background: `${c.color}14`, boxShadow: `inset 0 0 0 1.5px ${c.color}` }
+                          ? {
+                              background: `${c.color}14`,
+                              boxShadow: `inset 0 0 0 1.5px ${c.color}`,
+                            }
                           : undefined
                       }
                       onMouseEnter={(e) => {
-                        if (!ativo) e.currentTarget.style.background = "#F7F8FA";
+                        if (!ativo)
+                          e.currentTarget.style.background = "#F7F8FA";
                       }}
                       onMouseLeave={(e) => {
                         if (!ativo) e.currentTarget.style.background = "";
@@ -339,7 +414,7 @@ export function SeletorCategoria({
                         </span>
                         <span className="block text-[12px] text-ink-muted">
                           {n > 0
-                            ? `${n} ${n === 1 ? "registro" : "registros"} nesta categoria`
+                            ? `${n} ${n === 1 ? "registro" : "registros"}`
                             : "ainda não usada aqui"}
                         </span>
                       </span>

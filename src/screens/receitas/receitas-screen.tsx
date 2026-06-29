@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { MoneyInput } from "@/components/money-input";
 import { SeletorCategoria } from "@/components/seletor-categoria";
@@ -88,8 +89,7 @@ function descreverPeriodo(start: string | null, end: string | null): string | nu
 
 function detalheHora(r: Receita): string {
   const rate = r.hourlyRateCents != null ? formatarBRL(r.hourlyRateCents) : "—";
-  const horas = r.hoursPerDay ?? 0;
-  return `${rate}/h · ${horas}h/dia · ${DIAS_UTEIS_MES} dias úteis`;
+  return `${rate}/h`;
 }
 
 // ─── Ícones ───────────────────────────────────────────────────────────────────
@@ -241,10 +241,13 @@ function CampoData({
 // ─── Tela principal ───────────────────────────────────────────────────────────
 
 export function ReceitasScreen() {
+  const reduzido = useReducedMotion();
   const [receitas, setReceitas] = useState<Receita[]>([]);
   const [categoriasDB, setCategoriasDB] = useState<Category[]>([]);
   const [contasDB, setContasDB] = useState<Conta[]>([]);
   const [carregando, setCarregando] = useState(true);
+  // Linha recém-criada que recebe o "flash" verde de aterrissagem.
+  const [destacadoId, setDestacadoId] = useState<string | null>(null);
 
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todas");
@@ -282,7 +285,7 @@ export function ReceitasScreen() {
 
   // ── Carregamento ─────────────────────────────────────────────────────────────
 
-  const carregarDados = useCallback(async () => {
+  const carregarDados = useCallback(async (): Promise<Receita[]> => {
     setCarregando(true);
     try {
       const [lista, cats, contas] = await Promise.all([
@@ -293,11 +296,13 @@ export function ReceitasScreen() {
       setReceitas(lista);
       setCategoriasDB(cats);
       setContasDB(contas);
+      return lista;
     } catch (e) {
       tratarErro(e, {
         contexto: "carregar receitas",
         mensagemUsuario: "Não foi possível carregar as receitas.",
       });
+      return [];
     } finally {
       setCarregando(false);
     }
@@ -383,7 +388,7 @@ export function ReceitasScreen() {
   const cltPreview =
     modalidade === "CLT" && valorMensalPreview > 0 ? calcularCLT(valorMensalPreview) : null;
 
-  const podeSalvar = nome.trim().length > 0 && valorValido && !salvando;
+  const podeSalvar = nome.trim().length > 0 && categoryId !== "" && valorValido && !salvando;
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
@@ -391,6 +396,10 @@ export function ReceitasScreen() {
     setErroModal(null);
     if (!nome.trim()) {
       setErroModal("Informe o nome da receita.");
+      return;
+    }
+    if (!categoryId) {
+      setErroModal("Selecione uma categoria.");
       return;
     }
     if (tipo === "FIXO" && amountCents <= 0) {
@@ -421,13 +430,22 @@ export function ReceitasScreen() {
         startDate: startDate || null,
         endDate: semDataFim ? null : endDate || null,
       };
+      const idsAntes = new Set(receitas.map((r) => r.id));
       if (editando) {
         await editarReceita(editando.id, dados);
       } else {
         await criarReceita(dados);
       }
-      await carregarDados();
+      const lista = await carregarDados();
       setModalAberto(false);
+      // Destaca a linha recém-criada para ela "aterrissar" com o flash verde.
+      if (!editando) {
+        const novo = lista.find((r) => !idsAntes.has(r.id));
+        if (novo) {
+          setDestacadoId(novo.id);
+          setTimeout(() => setDestacadoId((id) => (id === novo.id ? null : id)), 1600);
+        }
+      }
       setEditando(null);
       toast.sucesso(editando ? "Receita atualizada" : "Receita adicionada");
     } catch (e) {
@@ -625,13 +643,30 @@ export function ReceitasScreen() {
             )}
           </div>
         ) : (
-          receitasExibidas.map((r, i) => {
+          <AnimatePresence initial={false}>
+          {receitasExibidas.map((r, i) => {
             const cat = r.categoryId ? categoriasPorId[r.categoryId] : null;
             const conta = r.accountId ? contasPorId[r.accountId] : null;
             const periodo = descreverPeriodo(r.startDate, r.endDate);
             const ehHora = r.tipo === "HORA";
+            const novo = r.id === destacadoId;
             return (
-              <div key={r.id}>
+              <motion.div
+                key={r.id}
+                initial={reduzido ? false : { opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={reduzido ? { opacity: 0 } : { opacity: 0, height: 0 }}
+                transition={{ type: "spring", stiffness: 380, damping: 34 }}
+                style={{ overflow: "hidden" }}
+              >
+                <motion.div
+                  animate={
+                    novo && !reduzido
+                      ? { backgroundColor: ["rgba(18,160,107,0.16)", "rgba(18,160,107,0)"] }
+                      : { backgroundColor: "rgba(18,160,107,0)" }
+                  }
+                  transition={{ duration: 1.5, ease: "easeOut" }}
+                >
                 <div
                   className="grid px-5 items-center group"
                   style={{ gridTemplateColumns: GRID, minHeight: "62px" }}
@@ -730,10 +765,12 @@ export function ReceitasScreen() {
                     </button>
                   </div>
                 </div>
+                </motion.div>
                 {i < receitasExibidas.length - 1 && <div className="h-px bg-border-subtle mx-5" />}
-              </div>
+              </motion.div>
             );
-          })
+          })}
+          </AnimatePresence>
         )}
       </div>
 
@@ -745,12 +782,12 @@ export function ReceitasScreen() {
           onClick={fecharModal}
         >
           <div
-            className="w-[600px] bg-surface rounded-3xl shadow-lg animate-slide-up overflow-y-auto"
-            style={{ padding: "30px 30px 26px", maxHeight: "calc(100vh - 48px)" }}
+            className="w-[900px] max-w-[calc(100vw-32px)] bg-surface rounded-3xl shadow-lg animate-slide-up flex flex-col overflow-hidden"
+            style={{ maxHeight: "calc(100vh - 32px)" }}
             onClick={(e) => e.stopPropagation()}
           >
             {confirmandoExclusao ? (
-              <>
+              <div style={{ padding: "30px 30px 26px" }}>
                 <div className="flex items-center justify-between mb-6">
                   <p className="text-[21px] font-bold text-ink tracking-tight">Excluir receita</p>
                   <button
@@ -785,11 +822,11 @@ export function ReceitasScreen() {
                     {excluindo ? "Excluindo…" : "Excluir mesmo assim"}
                   </button>
                 </div>
-              </>
+              </div>
             ) : (
               <>
-                {/* Cabeçalho */}
-                <div className="flex items-center justify-between mb-[22px]">
+                {/* Cabeçalho — fixo */}
+                <div className="flex items-center justify-between shrink-0 border-b border-border-subtle" style={{ padding: "26px 30px 18px" }}>
                   <p className="text-[21px] font-bold text-ink tracking-tight">
                     {editando ? "Editar receita" : "Nova receita"}
                   </p>
@@ -804,6 +841,10 @@ export function ReceitasScreen() {
                   </button>
                 </div>
 
+                {/* Corpo — duas colunas, tamanho fixo, sem scroll */}
+                <div className="flex-1 flex gap-6 items-stretch" style={{ padding: "22px 30px 26px" }}>
+                {/* Coluna principal */}
+                <div className="flex-1 min-w-0">
                 {/* Nome */}
                 <label className="block mb-4">
                   <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">Nome da receita</span>
@@ -846,7 +887,7 @@ export function ReceitasScreen() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <SeletorCategoria
-                      label="Categoria (opcional)"
+                      label="Categoria"
                       value={categoryId || null}
                       onChange={(id) => setCategoryId(id ?? "")}
                       tipo="INCOME"
@@ -950,57 +991,7 @@ export function ReceitasScreen() {
                         />
                       </div>
                     </div>
-                    <div className="flex items-center justify-between rounded-xl px-4 py-3 mb-2" style={{ border: "1px solid #E3E6EC", background: "#F6FAF7" }}>
-                      <span className="text-[13px] font-semibold text-[#5B616E]">
-                        Estimado em {formatarMesAno(MES_ATUAL, ANO_ATUAL)}
-                      </span>
-                      <span className="text-[15px] font-bold text-positive tabular-nums">
-                        {valorMensalPreview > 0 ? formatarBRL(valorMensalPreview) : "R$ —"}
-                      </span>
-                    </div>
-                    <p className="text-[12px] text-ink-muted mb-4">
-                      Cálculo: valor da hora × horas por dia × dias úteis do mês. Em{" "}
-                      {formatarMesAno(MES_ATUAL, ANO_ATUAL)} são <strong>{DIAS_UTEIS_MES} dias úteis</strong> (descontando
-                      fins de semana e feriados nacionais); o valor é recalculado a cada mês.
-                    </p>
                   </>
-                )}
-
-                {/* Estimativa CLT — líquido e impostos retidos */}
-                {cltPreview && (
-                  <div className="rounded-2xl p-4 mb-5" style={{ border: "1px solid #DCE7F7", background: "#F4F8FE" }}>
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-[13px] font-bold text-[#2F63C9]">
-                        Estimativa CLT · tabelas {CLT_ANO_REFERENCIA}
-                      </p>
-                      <span className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide">
-                        valor = bruto
-                      </span>
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[13px] font-medium text-ink-secondary">Salário bruto</span>
-                        <span className="text-[13px] font-semibold text-ink tabular-nums">{formatarBRL(cltPreview.brutoCents)}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[13px] font-medium text-ink-secondary">INSS</span>
-                        <span className="text-[13px] font-semibold text-negative tabular-nums">− {formatarBRL(cltPreview.inssCents)}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[13px] font-medium text-ink-secondary">IRRF</span>
-                        <span className="text-[13px] font-semibold text-negative tabular-nums">− {formatarBRL(cltPreview.irrfCents)}</span>
-                      </div>
-                      <div className="h-px bg-[#DCE7F7] my-1.5" />
-                      <div className="flex items-center justify-between">
-                        <span className="text-[14px] font-bold text-ink">Líquido estimado</span>
-                        <span className="text-[15px] font-bold text-positive tabular-nums">{formatarBRL(cltPreview.liquidoCents)}</span>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-ink-muted mt-3 leading-relaxed">
-                      + FGTS de <strong>{formatarBRL(cltPreview.fgtsCents)}</strong> depositado pelo empregador (não descontado do salário).
-                      Estimativa sem dependentes/outras deduções — o valor real na folha pode variar.
-                    </p>
-                  </div>
                 )}
 
                 {/* Período */}
@@ -1030,14 +1021,79 @@ export function ReceitasScreen() {
                   />
                 </div>
 
-                {/* Erro */}
-                {erroModal && (
-                  <div className="rounded-xl px-4 py-3 mb-4 text-[13px] font-medium" style={{ background: "#FBE9E7", color: "#9B1C1C", border: "1px solid #FCA5A5" }}>
-                    {erroModal}
-                  </div>
-                )}
+                </div>
+                {/* /coluna principal */}
 
-                {/* Ações */}
+                {/* Sidebar — resumo e cálculo */}
+                <aside
+                  className="w-[300px] shrink-0 self-stretch rounded-2xl p-5 flex flex-col gap-4"
+                  style={{ background: "#F7F9FC", border: "1px solid #E7ECF3" }}
+                >
+                  <div>
+                    <p className="text-[12px] font-semibold text-ink-muted uppercase tracking-wide">Resumo</p>
+                    <p className="text-[28px] font-bold text-positive tabular-nums tracking-tight mt-1">
+                      {valorMensalPreview > 0 ? formatarBRL(valorMensalPreview) : "R$ —"}
+                    </p>
+                    <p className="text-[12px] font-medium text-ink-muted mt-0.5">
+                      estimado em {formatarMesAno(MES_ATUAL, ANO_ATUAL)}
+                      {paymentDay !== "" ? ` · cai dia ${paymentDay}` : ""}
+                    </p>
+                  </div>
+
+                  {tipo === "HORA" && (
+                    <div className="rounded-xl p-3" style={{ background: "#fff", border: "1px solid #E7ECF3" }}>
+                      <p className="text-[12px] text-ink-secondary leading-relaxed">
+                        Valor da hora × horas por dia × dias úteis. Em {formatarMesAno(MES_ATUAL, ANO_ATUAL)} são{" "}
+                        <strong>{DIAS_UTEIS_MES} dias úteis</strong> (sem fins de semana e feriados); recalcula a cada mês.
+                      </p>
+                    </div>
+                  )}
+
+                  {cltPreview && (
+                    <div className="rounded-xl p-3.5" style={{ background: "#fff", border: "1px solid #DCE7F7" }}>
+                      <p className="text-[12px] font-bold text-[#2F63C9] mb-2.5">
+                        Estimativa CLT · {CLT_ANO_REFERENCIA}
+                      </p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[12px] font-medium text-ink-secondary">Salário bruto</span>
+                          <span className="text-[12px] font-semibold text-ink tabular-nums">{formatarBRL(cltPreview.brutoCents)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[12px] font-medium text-ink-secondary">INSS</span>
+                          <span className="text-[12px] font-semibold text-negative tabular-nums">− {formatarBRL(cltPreview.inssCents)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[12px] font-medium text-ink-secondary">IRRF</span>
+                          <span className="text-[12px] font-semibold text-negative tabular-nums">− {formatarBRL(cltPreview.irrfCents)}</span>
+                        </div>
+                        <div className="h-px bg-[#DCE7F7] my-1" />
+                        <div className="flex items-center justify-between">
+                          <span className="text-[13px] font-bold text-ink">Líquido estimado</span>
+                          <span className="text-[14px] font-bold text-positive tabular-nums">{formatarBRL(cltPreview.liquidoCents)}</span>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-ink-muted mt-2.5 leading-relaxed">
+                        + FGTS de <strong>{formatarBRL(cltPreview.fgtsCents)}</strong> pago pelo empregador. Estimativa sem
+                        dependentes; o valor real na folha pode variar.
+                      </p>
+                    </div>
+                  )}
+
+                  {erroModal && (
+                    <div
+                      className="mt-auto rounded-xl px-3.5 py-2.5 text-[12px] font-medium"
+                      style={{ background: "#FBE9E7", color: "#9B1C1C", border: "1px solid #FCA5A5" }}
+                    >
+                      {erroModal}
+                    </div>
+                  )}
+                </aside>
+                </div>
+                {/* /corpo duas colunas */}
+
+                {/* Ações — fixas no rodapé */}
+                <div className="shrink-0 border-t border-border-subtle" style={{ padding: "16px 30px 24px" }}>
                 <div className="flex gap-2.5">
                   {editando ? (
                     <button
@@ -1064,6 +1120,7 @@ export function ReceitasScreen() {
                   >
                     {salvando ? "Salvando…" : editando ? "Salvar alterações" : "Adicionar receita"}
                   </button>
+                </div>
                 </div>
               </>
             )}

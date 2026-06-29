@@ -1,3 +1,7 @@
+import { motion } from "motion/react";
+
+const POP = { type: "spring", stiffness: 500, damping: 16 } as const;
+
 export function LancamentosScreen() {
   return (
     <div className="animate-fade-in">
@@ -22,14 +26,17 @@ export function LancamentosScreen() {
               <p className="text-[13px] text-ink-secondary mt-0.5">entra · —</p>
             </div>
             <span className="text-base font-semibold text-positive tabular-nums mr-3.5">+ R$ —</span>
-            <button
+            <motion.button
               aria-label="Confirmar"
-              className="w-[46px] h-[46px] rounded-full border-2 border-brand text-brand flex items-center justify-center hover:bg-brand hover:text-white transition-all shrink-0"
+              className="w-[46px] h-[46px] rounded-full border-2 border-brand text-brand flex items-center justify-center hover:bg-brand hover:text-white transition-colors shrink-0"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.82 }}
+              transition={POP}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 6 9 17l-5-5" />
               </svg>
-            </button>
+            </motion.button>
           </div>
 
           <div className="flex items-center gap-3.5 px-5 py-4 border-b border-border-subtle">
@@ -44,14 +51,17 @@ export function LancamentosScreen() {
               <p className="text-[13px] text-ink-secondary mt-0.5">sai · vence em breve</p>
             </div>
             <span className="text-base font-semibold text-ink tabular-nums mr-3.5">− R$ —</span>
-            <button
+            <motion.button
               aria-label="Confirmar"
-              className="w-[46px] h-[46px] rounded-full border-2 border-brand text-brand flex items-center justify-center hover:bg-brand hover:text-white transition-all shrink-0"
+              className="w-[46px] h-[46px] rounded-full border-2 border-brand text-brand flex items-center justify-center hover:bg-brand hover:text-white transition-colors shrink-0"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.82 }}
+              transition={POP}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 6 9 17l-5-5" />
               </svg>
-            </button>
+            </motion.button>
           </div>
 
           <div className="px-5 py-4 text-sm text-ink-muted text-center">

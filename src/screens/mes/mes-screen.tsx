@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { useNavigate } from "react-router-dom";
+import { AnimatedMoney } from "@/components/motion/animated-money";
+import { Cascade, CascadeItem } from "@/components/motion/cascade";
+import { TiltCard } from "@/components/motion/tilt-card";
 import { listarContas, type Conta } from "@/core/db/contas";
 import { listarPersonas, type PersonaComTotais } from "@/core/db/personas";
 import {
@@ -244,7 +248,7 @@ function WidgetSaldo() {
   const topo = [...contas].sort((a, b) => b.balanceCents - a.balanceCents).slice(0, 3);
 
   return (
-    <div className="bg-surface border border-border rounded-xl p-5">
+    <div className="h-full bg-surface border border-border rounded-xl p-5">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-ink-muted">
           <IcoCarteira />
@@ -258,9 +262,10 @@ function WidgetSaldo() {
         <p className="text-sm text-ink-muted py-2">Nenhuma conta cadastrada ainda.</p>
       ) : (
         <>
-          <p className="text-3xl font-bold text-ink tabular-nums tracking-tight">
-            {formatarBRL(total)}
-          </p>
+          <AnimatedMoney
+            cents={total}
+            className="block text-3xl font-bold text-ink tabular-nums tracking-tight"
+          />
           <p className="text-xs text-ink-muted mt-1">
             em {contas.length} {contas.length === 1 ? "conta" : "contas"}
           </p>
@@ -304,7 +309,7 @@ function WidgetPersonas() {
   const maior = comGasto[0]?.despesasCents ?? 0;
 
   return (
-    <div className="bg-surface border border-border rounded-xl p-5">
+    <div className="h-full bg-surface border border-border rounded-xl p-5">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-ink-muted">
           <IcoPessoas />
@@ -336,12 +341,14 @@ function WidgetPersonas() {
                 </span>
               </div>
               <div className="h-1.5 rounded-full bg-border-subtle overflow-hidden">
-                <div
+                <motion.div
                   className="h-full rounded-full"
-                  style={{
+                  style={{ background: p.color }}
+                  initial={{ width: 0 }}
+                  animate={{
                     width: `${maior > 0 ? Math.max(6, (p.despesasCents / maior) * 100) : 0}%`,
-                    background: p.color,
                   }}
+                  transition={{ type: "spring", stiffness: 120, damping: 20, delay: 0.15 }}
                 />
               </div>
             </div>
@@ -355,54 +362,88 @@ function WidgetPersonas() {
 // ─── Tela ─────────────────────────────────────────────────────────────────────
 
 export function MesScreen() {
+  const reduzido = useReducedMotion();
+
   return (
-    <div className="animate-fade-in">
-      {/* Sobra */}
-      <div className="text-center py-8 max-w-[680px] mx-auto">
+    <div>
+      {/* Sobra — herói da tela, entra com um leve "respiro" */}
+      <motion.div
+        className="text-center py-8 max-w-[680px] mx-auto"
+        initial={reduzido ? false : { opacity: 0, y: 10, filter: "blur(8px)" }}
+        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      >
         <p className="text-sm font-semibold text-ink-secondary">sobra esse mês</p>
-        <p className="text-6xl font-bold tabular-nums text-positive mt-2 tracking-tight">
+        <motion.p
+          className="text-6xl font-bold tabular-nums text-positive mt-2 tracking-tight"
+          initial={reduzido ? false : { scale: 0.92 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.1 }}
+        >
           R$ —
-        </p>
+        </motion.p>
         <p className="text-base font-semibold text-ink mt-3">
           Tá tranquilo. Dá pra respirar.
         </p>
-      </div>
+      </motion.div>
 
-      <div className="max-w-[680px] mx-auto space-y-4">
+      <Cascade className="max-w-[680px] mx-auto space-y-4">
         {/* Entrou / Saiu */}
-        <div className="bg-surface border border-border rounded-xl p-5">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-positive" />
-              <span className="text-sm font-semibold text-ink-secondary">Entrou</span>
+        <CascadeItem>
+          <TiltCard className="bg-surface border border-border rounded-xl p-5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-positive" />
+                <span className="text-sm font-semibold text-ink-secondary">Entrou</span>
+              </div>
+              <span className="text-base font-semibold text-ink tabular-nums">R$ —</span>
             </div>
-            <span className="text-base font-semibold text-ink tabular-nums">R$ —</span>
-          </div>
-          <div className="h-2 rounded-full bg-border-subtle overflow-hidden mb-5">
-            <div className="h-full w-full bg-positive rounded-full" />
-          </div>
+            <div className="h-2 rounded-full bg-border-subtle overflow-hidden mb-5">
+              <motion.div
+                className="h-full bg-positive rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: "100%" }}
+                transition={{ type: "spring", stiffness: 120, damping: 20, delay: 0.25 }}
+              />
+            </div>
 
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-negative" />
-              <span className="text-sm font-semibold text-ink-secondary">Saiu</span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-negative" />
+                <span className="text-sm font-semibold text-ink-secondary">Saiu</span>
+              </div>
+              <span className="text-base font-semibold text-ink tabular-nums">R$ —</span>
             </div>
-            <span className="text-base font-semibold text-ink tabular-nums">R$ —</span>
-          </div>
-          <div className="h-2 rounded-full bg-border-subtle overflow-hidden">
-            <div className="h-full w-0 bg-negative rounded-full" />
-          </div>
-        </div>
+            <div className="h-2 rounded-full bg-border-subtle overflow-hidden">
+              <motion.div
+                className="h-full bg-negative rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: "0%" }}
+                transition={{ type: "spring", stiffness: 120, damping: 20, delay: 0.3 }}
+              />
+            </div>
+          </TiltCard>
+        </CascadeItem>
 
         {/* Sincronização do banco (Pluggy) */}
-        <WidgetPluggy />
+        <CascadeItem>
+          <WidgetPluggy />
+        </CascadeItem>
 
         {/* Resumo do estado: saldo + distribuição por persona */}
         <div className="grid grid-cols-2 gap-4">
-          <WidgetSaldo />
-          <WidgetPersonas />
+          <CascadeItem className="h-full">
+            <TiltCard className="h-full rounded-xl">
+              <WidgetSaldo />
+            </TiltCard>
+          </CascadeItem>
+          <CascadeItem className="h-full">
+            <TiltCard className="h-full rounded-xl">
+              <WidgetPersonas />
+            </TiltCard>
+          </CascadeItem>
         </div>
-      </div>
+      </Cascade>
     </div>
   );
 }
