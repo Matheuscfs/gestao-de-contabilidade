@@ -1,13 +1,16 @@
+import openFinanceLogo from "@/assets/integration/openfinance.png";
+import pluggyLogo from "@/assets/integration/pluggy.svg";
+import { BANCOS } from "@/consts/banks";
 import { useNavigate } from "react-router-dom";
 import { StepDots } from "./step-dots";
 
-const bancos = [
-  { sigla: "Nu", bg: "#820AD1" },
-  { sigla: "It", bg: "#EC7000" },
-  { sigla: "in", bg: "#FF7A00" },
-  { sigla: "Br", bg: "#CC092F" },
-  { sigla: "Cx", bg: "#1B5EAE" },
-];
+const BANCOS_DESTAQUE = ["Nubank", "Itaú", "Bradesco", "Inter", "C6 Bank"];
+
+const bancosDestaque = BANCOS_DESTAQUE.map((nome) =>
+  BANCOS.find((b) => b.name === nome),
+).filter(Boolean) as typeof BANCOS;
+
+const totalBancos = BANCOS.length;
 
 export function OnboardingBancoScreen() {
   const navigate = useNavigate();
@@ -21,62 +24,74 @@ export function OnboardingBancoScreen() {
           passo 3 de 5 · opcional
         </p>
 
-        <h1 className="font-bold text-[30px] leading-tight tracking-[-0.02em] text-ink mt-[10px]">
-          Conectar seu banco?
+        <h1 className="font-bold text-[28px] leading-tight tracking-[-0.02em] text-ink mt-[10px]">
+          Traga seus dados reais
         </h1>
 
-        <p className="font-medium text-[15px] text-[#5B616E] mt-[10px] leading-relaxed">
-          Pelo Pluggy, o Quibo lê seus lançamentos com segurança.
-          Você só confirma — a gente nunca move seu dinheiro.
+        <p className="font-medium text-[14px] text-[#5B616E] mt-[8px] leading-relaxed">
+          Opções de integração com empresas de conexão bancária.
         </p>
 
+        {/* Card Pluggy + OpenFinance */}
         <div
-          className="w-full flex items-center gap-[14px] rounded-2xl p-4 mt-[22px] text-left"
-          style={{ background: "#EAF1FD", border: "1px solid #D5E4FB" }}
+          className="w-full rounded-2xl p-4 mt-[20px]"
+          style={{ background: "#F8F9FB", border: "1px solid #E3E6EC" }}
         >
-          <div className="w-[42px] h-[42px] rounded-xl bg-surface text-brand-700 flex items-center justify-center shrink-0">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
-            </svg>
+          {/* Logos lado a lado */}
+          <div className="flex items-center justify-center gap-3">
+            <img
+              src={pluggyLogo}
+              alt="Pluggy"
+              className="h-[22px] object-contain"
+            />
+            <div className="w-px h-5 bg-border" />
+            <img
+              src={openFinanceLogo}
+              alt="Open Finance"
+              className="h-[18px] object-contain"
+            />
           </div>
-          <p className="font-medium text-[13px] leading-[1.45]" style={{ color: "#1F3D7A" }}>
-            <strong style={{ color: "#16336E" }}>Open Finance, regulado pelo Banco Central.</strong>{" "}
-            Conexão só de leitura — dá pra desconectar a qualquer hora.
+
+          <p className="font-medium text-[12.5px] text-ink-secondary mt-3 leading-relaxed">
+            A integração é feita pelo{" "}
+            <strong className="text-ink">Pluggy</strong>, parceiro certificado
+            do Open Finance. Seus dados criptografados de forma segura.
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-[10px] justify-center mt-[18px]">
-          {bancos.map(({ sigla, bg }) => (
+        {/* Logos dos bancos */}
+        <div className="flex items-center gap-[10px] mt-[20px]">
+          {bancosDestaque.map((banco) => (
             <div
-              key={sigla}
-              className="w-[54px] h-[54px] rounded-[15px] flex items-center justify-center font-bold text-[17px] text-white"
-              style={{ background: bg }}
+              key={banco.name}
+              title={banco.name}
+              className="w-[50px] h-[50px] rounded-[14px] bg-surface border border-border flex items-center justify-center overflow-hidden p-[10px]"
             >
-              {sigla}
+              <img
+                src={banco.icon}
+                alt={banco.name}
+                className="w-full h-full object-contain"
+              />
             </div>
           ))}
-          <div className="w-[54px] h-[54px] rounded-[15px] bg-[#F0F2F6] text-[#5B616E] flex items-center justify-center font-bold text-[17px]">
-            +30
+
+          <div className="w-[50px] h-[50px] rounded-[14px] bg-surface border border-border flex items-center justify-center">
+            <span className="font-bold text-[12px] text-ink-secondary">
+              +{totalBancos - bancosDestaque.length}
+            </span>
           </div>
         </div>
 
-        <button
-          onClick={() => navigate("/onboarding/meta")}
-          className="w-full h-[52px] rounded-full bg-brand text-white font-semibold text-base mt-6 cursor-pointer transition-colors hover:bg-brand-600 flex items-center justify-center gap-[9px]"
-          style={{ boxShadow: "0 6px 16px -4px rgba(64,120,230,.45)" }}
-        >
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-          </svg>
-          Conectar pelo Pluggy
-        </button>
+        <p className="font-medium text-[12px] text-ink-muted mt-2">
+          {totalBancos}+ bancos e fintechs suportados
+        </p>
 
         <button
           onClick={() => navigate("/onboarding/meta")}
-          className="h-11 bg-transparent border-none text-[#5B616E] font-semibold text-sm cursor-pointer mt-2 hover:text-ink transition-colors"
+          className="w-full h-[52px] rounded-full bg-brand text-white font-semibold text-base mt-6 cursor-pointer transition-colors hover:bg-brand-600"
+          style={{ boxShadow: "0 6px 16px -4px rgba(64,120,230,.45)" }}
         >
-          Agora não
+          Continuar
         </button>
       </div>
     </div>
