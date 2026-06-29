@@ -175,6 +175,9 @@ export const transactions = sqliteTable(
     notes: text("notes"),
     tags: text("tags"),
 
+    /** INCOME → modalidade da fonte de renda: PJ | CLT | OUTRO */
+    incomeModality: text("income_modality"),
+
     // ── Origem do registro ────────────────────────────────────────────────
     /** MANUAL | PLUGGY */
     source: text("source").notNull().default("MANUAL"),

@@ -721,6 +721,7 @@ export function CustoDeVidaScreen() {
                   value={accountId}
                   onChange={setAccountId}
                   origem={{ type: "LIVING_COST", isTemplate: true }}
+                  autoSelecionarPrincipal={editandoId === null}
                 />
               </div>
             </div>

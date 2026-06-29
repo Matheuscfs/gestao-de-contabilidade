@@ -106,6 +106,20 @@ export function contarDiasTrabalhados(
   return contagem;
 }
 
+/** Mês (1-12) e ano correntes. */
+export function mesAnoAtual(): { mes: number; ano: number } {
+  const hoje = new Date();
+  return { mes: hoje.getMonth() + 1, ano: hoje.getFullYear() };
+}
+
+/**
+ * Dias úteis de um mês específico: dias de semana (seg–sex) descontando os
+ * feriados nacionais daquele ano. Varia mês a mês.
+ */
+export function diasUteisNoMes(mes: number, ano: number): number {
+  return contarDiasTrabalhados(mes, ano, "WEEKDAYS", false);
+}
+
 /** Verifica se um compromisso está vigente num determinado mês. */
 export function estaVigemNoMes(
   startDate: string | null | undefined,

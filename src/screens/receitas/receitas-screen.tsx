@@ -2,22 +2,34 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { MoneyInput } from "@/components/money-input";
 import { SeletorCategoria } from "@/components/seletor-categoria";
+import { SeletorConta } from "@/components/seletor-conta";
+import { ContaAvatar } from "@/components/conta-avatar";
 import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
 import { formatarBRL } from "@/utils/money";
+import { hoje, diasUteisNoMes, mesAnoAtual, formatarMesAno } from "@/utils/dates";
 import {
   listarReceitas,
   criarReceita,
   editarReceita,
   excluirReceita,
   listarCategoriasReceita,
+  calcularValorMensal,
   type Receita,
+  type TipoReceita,
 } from "@/core/db/receitas";
+import { listarContas, type Conta } from "@/core/db/contas";
 import type { Category } from "@/core/db/schema";
+import {
+  calcularCLT,
+  MODALIDADE_LABEL,
+  CLT_ANO_REFERENCIA,
+  type Modalidade,
+} from "@/consts/clt";
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
-type Filtro = "todas" | "recorrentes" | "pontuais";
+type Filtro = "todas" | "fixas" | "hora";
 type Ordenacao = "MAIOR" | "MENOR" | "AZ" | "ZA";
 
 const ORDENACAO_LABEL: Record<Ordenacao, string> = {
@@ -27,18 +39,57 @@ const ORDENACAO_LABEL: Record<Ordenacao, string> = {
   ZA: "Z–A",
 };
 
+const HORAS_PADRAO = 8;
+
+const MODALIDADE_OPCOES: { value: Modalidade; label: string }[] = [
+  { value: "PJ", label: MODALIDADE_LABEL.PJ },
+  { value: "CLT", label: MODALIDADE_LABEL.CLT },
+  { value: "OUTRO", label: MODALIDADE_LABEL.OUTRO },
+];
+
+// Mês corrente e seus dias úteis (dias de semana − feriados nacionais).
+// As receitas por hora valem por mês conforme essa contagem.
+const { mes: MES_ATUAL, ano: ANO_ATUAL } = mesAnoAtual();
+const DIAS_UTEIS_MES = diasUteisNoMes(MES_ATUAL, ANO_ATUAL);
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Valor mensal de referência (mês corrente) de uma receita. */
+function valorMes(r: Receita): number {
+  return calcularValorMensal(r, DIAS_UTEIS_MES);
+}
+
 function computarStats(lista: Receita[]) {
-  const recorrentes = lista.filter((r) => r.isRecurring);
-  const pontuais = lista.filter((r) => !r.isRecurring);
+  const fixas = lista.filter((r) => r.tipo === "FIXO");
+  const hora = lista.filter((r) => r.tipo === "HORA");
   return {
     cadastradas: lista.length,
-    totalRecorrente: recorrentes.reduce((s, r) => s + r.amountCents, 0),
-    totalPontual: pontuais.reduce((s, r) => s + r.amountCents, 0),
-    temRecorrente: recorrentes.length > 0,
-    temPontual: pontuais.length > 0,
+    totalMensal: lista.reduce((s, r) => s + valorMes(r), 0),
+    totalFixo: fixas.reduce((s, r) => s + valorMes(r), 0),
+    totalHora: hora.reduce((s, r) => s + valorMes(r), 0),
+    countFixo: fixas.length,
+    countHora: hora.length,
   };
+}
+
+/** "2026-06-29" → "29/06/26" */
+function dataCurta(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y.slice(2)}`;
+}
+
+function descreverPeriodo(start: string | null, end: string | null): string | null {
+  if (start && end) return `${dataCurta(start)} – ${dataCurta(end)}`;
+  if (start) return `desde ${dataCurta(start)}`;
+  if (end) return `até ${dataCurta(end)}`;
+  return null;
+}
+
+function detalheHora(r: Receita): string {
+  const rate = r.hourlyRateCents != null ? formatarBRL(r.hourlyRateCents) : "—";
+  const horas = r.hoursPerDay ?? 0;
+  return `${rate}/h · ${horas}h/dia · ${DIAS_UTEIS_MES} dias úteis`;
 }
 
 // ─── Ícones ───────────────────────────────────────────────────────────────────
@@ -67,11 +118,132 @@ function IconFechar() {
   );
 }
 
+// ─── Select simples reutilizável ──────────────────────────────────────────────
+
+function CampoSelect<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string }[];
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">{label}</span>
+      <span className="relative flex items-center h-[52px] pl-4 pr-3 bg-surface rounded-xl focus-within:border-brand transition-colors" style={{ border: "1px solid #D4D8E0" }}>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value as T)}
+          className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink font-sans cursor-pointer appearance-none pr-5"
+        >
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <span className="pointer-events-none absolute right-3 text-ink-muted">
+          <IconChevron />
+        </span>
+      </span>
+    </label>
+  );
+}
+
+// ─── Campo numérico reutilizável (dia, horas, dias úteis) ─────────────────────
+
+function CampoNumero({
+  label,
+  hint,
+  value,
+  onChange,
+  min,
+  max,
+  placeholder,
+  sufixo,
+}: {
+  label: string;
+  hint?: string;
+  value: number | "";
+  onChange: (v: number | "") => void;
+  min: number;
+  max: number;
+  placeholder?: string;
+  sufixo?: string;
+}) {
+  return (
+    <label className="flex-1 block min-w-0">
+      <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
+        {label} {hint && <span className="font-normal text-ink-muted">{hint}</span>}
+      </span>
+      <span className="flex items-center h-[52px] px-4 bg-surface rounded-xl focus-within:border-brand transition-colors" style={{ border: "1px solid #D4D8E0" }}>
+        <input
+          type="number"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === "") return onChange("");
+            const n = parseInt(val, 10);
+            if (!isNaN(n)) onChange(Math.min(max, Math.max(min, n)));
+          }}
+          placeholder={placeholder}
+          className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink placeholder:text-ink-placeholder font-sans"
+        />
+        {sufixo && <span className="text-[13px] text-ink-muted font-medium shrink-0">{sufixo}</span>}
+      </span>
+    </label>
+  );
+}
+
+function CampoData({
+  label,
+  hint,
+  value,
+  onChange,
+  disabled,
+  min,
+}: {
+  label: string;
+  hint?: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  min?: string;
+}) {
+  return (
+    <label className="flex-1 block min-w-0">
+      <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
+        {label} {hint && <span className="font-normal text-ink-muted">{hint}</span>}
+      </span>
+      <span
+        className="flex items-center h-[52px] px-4 rounded-xl focus-within:border-brand transition-colors"
+        style={{ border: "1px solid #D4D8E0", background: disabled ? "#F5F6F8" : "#fff", opacity: disabled ? 0.6 : 1 }}
+      >
+        <input
+          type="date"
+          value={value}
+          min={min}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+          className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink placeholder:text-ink-placeholder font-sans disabled:cursor-not-allowed"
+        />
+      </span>
+    </label>
+  );
+}
+
 // ─── Tela principal ───────────────────────────────────────────────────────────
 
 export function ReceitasScreen() {
   const [receitas, setReceitas] = useState<Receita[]>([]);
   const [categoriasDB, setCategoriasDB] = useState<Category[]>([]);
+  const [contasDB, setContasDB] = useState<Conta[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   const [busca, setBusca] = useState("");
@@ -89,27 +261,38 @@ export function ReceitasScreen() {
   const [erroModal, setErroModal] = useState<string | null>(null);
 
   // Campos do formulário
+  const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [amountCents, setAmountCents] = useState(0);
-  const [isRecurring, setIsRecurring] = useState(true);
-  const [pagador, setPagador] = useState("");
+  const [accountId, setAccountId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string>("");
+  const [modalidade, setModalidade] = useState<Modalidade>("PJ");
+  const [tipo, setTipo] = useState<TipoReceita>("FIXO");
+  const [amountCents, setAmountCents] = useState(0);
+  const [hourlyRateCents, setHourlyRateCents] = useState(0);
+  const [hoursPerDay, setHoursPerDay] = useState<number | "">(HORAS_PADRAO);
+  const [paymentDay, setPaymentDay] = useState<number | "">("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [semDataFim, setSemDataFim] = useState(true);
 
   const { setOnAdicionar } = useHeaderActionsStore();
 
   const categoriasPorId = Object.fromEntries(categoriasDB.map((c) => [c.id, c]));
+  const contasPorId = Object.fromEntries(contasDB.map((c) => [c.id, c]));
 
   // ── Carregamento ─────────────────────────────────────────────────────────────
 
   const carregarDados = useCallback(async () => {
     setCarregando(true);
     try {
-      const [lista, cats] = await Promise.all([
+      const [lista, cats, contas] = await Promise.all([
         listarReceitas(),
         listarCategoriasReceita(),
+        listarContas(),
       ]);
       setReceitas(lista);
       setCategoriasDB(cats);
+      setContasDB(contas);
     } catch (e) {
       tratarErro(e, {
         contexto: "carregar receitas",
@@ -128,11 +311,19 @@ export function ReceitasScreen() {
 
   const abrirModalNovo = useCallback(() => {
     setEditando(null);
+    setNome("");
     setDescricao("");
-    setAmountCents(0);
-    setIsRecurring(true);
-    setPagador("");
+    setAccountId(null);
     setCategoryId("");
+    setModalidade("PJ");
+    setTipo("FIXO");
+    setAmountCents(0);
+    setHourlyRateCents(0);
+    setHoursPerDay(HORAS_PADRAO);
+    setPaymentDay("");
+    setStartDate(hoje());
+    setEndDate("");
+    setSemDataFim(true);
     setConfirmandoExclusao(false);
     setErroModal(null);
     setModalAberto(true);
@@ -140,11 +331,19 @@ export function ReceitasScreen() {
 
   function abrirModalEditar(r: Receita) {
     setEditando(r);
-    setDescricao(r.description);
-    setAmountCents(r.amountCents);
-    setIsRecurring(r.isRecurring);
-    setPagador(r.pagador ?? "");
+    setNome(r.name);
+    setDescricao(r.descricao ?? "");
+    setAccountId(r.accountId);
     setCategoryId(r.categoryId ?? "");
+    setModalidade(r.modalidade);
+    setTipo(r.tipo);
+    setAmountCents(r.tipo === "FIXO" ? r.amountCents : 0);
+    setHourlyRateCents(r.hourlyRateCents ?? 0);
+    setHoursPerDay(r.hoursPerDay ?? HORAS_PADRAO);
+    setPaymentDay(r.paymentDay ?? "");
+    setStartDate(r.startDate ?? "");
+    setEndDate(r.endDate ?? "");
+    setSemDataFim(r.endDate == null);
     setConfirmandoExclusao(false);
     setErroModal(null);
     setModalAberto(true);
@@ -163,28 +362,64 @@ export function ReceitasScreen() {
     return () => setOnAdicionar(null);
   }, [abrirModalNovo, setOnAdicionar]);
 
-  // ── CRUD ──────────────────────────────────────────────────────────────────
+  // ── Derivados do formulário ─────────────────────────────────────────────────
 
-  const podeSalvar = descricao.trim().length > 0 && amountCents > 0 && !salvando;
+  const valorMensalPreview = calcularValorMensal(
+    {
+      tipo,
+      amountCents,
+      hourlyRateCents,
+      hoursPerDay: hoursPerDay === "" ? null : hoursPerDay,
+    },
+    DIAS_UTEIS_MES
+  );
+
+  const valorValido =
+    tipo === "FIXO"
+      ? amountCents > 0
+      : hourlyRateCents > 0 && hoursPerDay !== "" && hoursPerDay > 0;
+
+  // CLT: estima descontos/líquido a partir do valor mensal bruto.
+  const cltPreview =
+    modalidade === "CLT" && valorMensalPreview > 0 ? calcularCLT(valorMensalPreview) : null;
+
+  const podeSalvar = nome.trim().length > 0 && valorValido && !salvando;
+
+  // ── CRUD ──────────────────────────────────────────────────────────────────
 
   async function salvar() {
     setErroModal(null);
-    if (!descricao.trim()) {
-      setErroModal("Informe o nome da fonte de receita.");
+    if (!nome.trim()) {
+      setErroModal("Informe o nome da receita.");
       return;
     }
-    if (amountCents <= 0) {
+    if (tipo === "FIXO" && amountCents <= 0) {
       setErroModal("Informe o valor da receita.");
+      return;
+    }
+    if (tipo === "HORA" && !valorValido) {
+      setErroModal("Para receita por hora, informe o valor da hora e as horas por dia.");
+      return;
+    }
+    if (!semDataFim && startDate && endDate && endDate < startDate) {
+      setErroModal("A data de finalização não pode ser anterior à data de início.");
       return;
     }
     setSalvando(true);
     try {
       const dados = {
-        description: descricao.trim(),
-        amountCents,
-        isRecurring,
-        pagador: pagador.trim() || null,
+        name: nome.trim(),
+        descricao: descricao.trim() || null,
+        accountId,
         categoryId: categoryId || null,
+        modalidade,
+        tipo,
+        amountCents,
+        hourlyRateCents: tipo === "HORA" ? hourlyRateCents : null,
+        hoursPerDay: tipo === "HORA" && hoursPerDay !== "" ? hoursPerDay : null,
+        paymentDay: paymentDay === "" ? null : paymentDay,
+        startDate: startDate || null,
+        endDate: semDataFim ? null : endDate || null,
       };
       if (editando) {
         await editarReceita(editando.id, dados);
@@ -245,25 +480,26 @@ export function ReceitasScreen() {
 
   const receitasExibidas = receitas
     .filter((r) => {
-      if (filtro === "recorrentes" && !r.isRecurring) return false;
-      if (filtro === "pontuais" && r.isRecurring) return false;
+      if (filtro === "fixas" && r.tipo !== "FIXO") return false;
+      if (filtro === "hora" && r.tipo !== "HORA") return false;
       if (busca.trim()) {
         const termo = busca.toLowerCase();
         return (
-          r.description.toLowerCase().includes(termo) ||
-          (r.pagador?.toLowerCase().includes(termo) ?? false)
+          r.name.toLowerCase().includes(termo) ||
+          (r.descricao?.toLowerCase().includes(termo) ?? false) ||
+          (r.accountId ? contasPorId[r.accountId]?.name.toLowerCase().includes(termo) ?? false : false)
         );
       }
       return true;
     })
     .sort((a, b) => {
-      if (ordenacao === "MAIOR") return b.amountCents - a.amountCents;
-      if (ordenacao === "MENOR") return a.amountCents - b.amountCents;
-      if (ordenacao === "AZ") return a.description.localeCompare(b.description, "pt-BR");
-      return b.description.localeCompare(a.description, "pt-BR");
+      if (ordenacao === "MAIOR") return valorMes(b) - valorMes(a);
+      if (ordenacao === "MENOR") return valorMes(a) - valorMes(b);
+      if (ordenacao === "AZ") return a.name.localeCompare(b.name, "pt-BR");
+      return b.name.localeCompare(a.name, "pt-BR");
     });
 
-  const GRID = "minmax(0,1fr) 160px 150px 150px 44px";
+  const GRID = "minmax(0,1fr) 158px 150px 138px 120px 44px";
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -278,16 +514,24 @@ export function ReceitasScreen() {
           </p>
         </div>
         <div className="flex-1 px-5 py-4 border-r border-border-subtle">
-          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">entram todo mês</p>
+          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">total todo mês</p>
           <p className="text-[22px] font-bold text-positive tabular-nums mt-1">
-            {carregando || !stats.temRecorrente ? "R$ —" : formatarBRL(stats.totalRecorrente)}
+            {carregando || stats.cadastradas === 0 ? "R$ —" : formatarBRL(stats.totalMensal)}
           </p>
         </div>
-        <div className="flex-1 px-5 py-4">
-          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">pontuais</p>
+        <div className="flex-1 px-5 py-4 border-r border-border-subtle">
+          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">valor fixo</p>
           <p className="text-[22px] font-bold text-ink tabular-nums mt-1">
-            {carregando || !stats.temPontual ? "R$ —" : formatarBRL(stats.totalPontual)}
+            {carregando || stats.countFixo === 0 ? "R$ —" : formatarBRL(stats.totalFixo)}
           </p>
+          <p className="text-[11px] font-medium text-ink-muted mt-0.5">{stats.countFixo} fonte(s)</p>
+        </div>
+        <div className="flex-1 px-5 py-4">
+          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">por hora</p>
+          <p className="text-[22px] font-bold text-ink tabular-nums mt-1">
+            {carregando || stats.countHora === 0 ? "R$ —" : formatarBRL(stats.totalHora)}
+          </p>
+          <p className="text-[11px] font-medium text-ink-muted mt-0.5">{stats.countHora} fonte(s)</p>
         </div>
       </div>
 
@@ -303,9 +547,9 @@ export function ReceitasScreen() {
               className="flex-1 min-w-0 border-none outline-none bg-transparent text-sm text-ink placeholder:text-ink-placeholder"
             />
           </div>
-          {(["todas", "recorrentes", "pontuais"] as Filtro[]).map((f) => {
+          {(["todas", "fixas", "hora"] as Filtro[]).map((f) => {
             const ativo = filtro === f;
-            const label = f === "todas" ? "Todas" : f === "recorrentes" ? "Recorrentes" : "Pontuais";
+            const label = f === "todas" ? "Todas" : f === "fixas" ? "Valor fixo" : "Por hora";
             return (
               <button
                 key={f}
@@ -356,9 +600,10 @@ export function ReceitasScreen() {
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <div className="grid px-5 h-10 bg-surface-subtle border-b border-border items-center" style={{ gridTemplateColumns: GRID }}>
           <span className="text-xs font-semibold text-ink-muted">Fonte</span>
-          <span className="text-xs font-semibold text-ink-muted">De quem</span>
-          <span className="text-xs font-semibold text-ink-muted">Recorrência</span>
-          <span className="text-xs font-semibold text-ink-muted text-right">Valor</span>
+          <span className="text-xs font-semibold text-ink-muted">Tipo</span>
+          <span className="text-xs font-semibold text-ink-muted">Conta</span>
+          <span className="text-xs font-semibold text-ink-muted">Quando</span>
+          <span className="text-xs font-semibold text-ink-muted text-right">Valor / mês</span>
           <span />
         </div>
 
@@ -382,50 +627,93 @@ export function ReceitasScreen() {
         ) : (
           receitasExibidas.map((r, i) => {
             const cat = r.categoryId ? categoriasPorId[r.categoryId] : null;
+            const conta = r.accountId ? contasPorId[r.accountId] : null;
+            const periodo = descreverPeriodo(r.startDate, r.endDate);
+            const ehHora = r.tipo === "HORA";
             return (
               <div key={r.id}>
                 <div
                   className="grid px-5 items-center group"
-                  style={{ gridTemplateColumns: GRID, minHeight: "56px" }}
+                  style={{ gridTemplateColumns: GRID, minHeight: "62px" }}
                 >
-                  {/* Fonte (+ categoria) */}
-                  <div className="py-3.5 pr-4 min-w-0">
-                    <p className="text-[14px] font-semibold text-ink leading-snug truncate">
-                      {r.description}
-                    </p>
-                    {cat && (
-                      <span className="inline-flex items-center gap-1.5 mt-0.5">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cat.color }} />
-                        <span className="text-[12px] font-medium text-ink-muted truncate">{cat.name}</span>
+                  {/* Fonte (+ descrição/categoria) */}
+                  <div className="py-3 pr-4 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-[14px] font-semibold text-ink leading-snug truncate">
+                        {r.name}
+                      </p>
+                      <span
+                        className="shrink-0 inline-flex items-center h-[18px] px-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide"
+                        style={{
+                          background: r.modalidade === "CLT" ? "#E2F4EC" : "#F0F2F6",
+                          color: r.modalidade === "CLT" ? "#0B6E4A" : "#5B616E",
+                        }}
+                      >
+                        {MODALIDADE_LABEL[r.modalidade]}
                       </span>
-                    )}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                      {cat && (
+                        <span className="inline-flex items-center gap-1 shrink-0">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cat.color }} />
+                          <span className="text-[12px] font-medium text-ink-muted">{cat.name}</span>
+                        </span>
+                      )}
+                      {cat && r.descricao && <span className="text-ink-placeholder text-[12px]">·</span>}
+                      {r.descricao && (
+                        <span className="text-[12px] font-medium text-ink-muted truncate">{r.descricao}</span>
+                      )}
+                    </div>
                   </div>
 
-                  {/* De quem */}
-                  <div className="py-3.5 pr-4">
-                    <span className="text-[13px] font-medium text-ink-secondary truncate">
-                      {r.pagador || "—"}
-                    </span>
-                  </div>
-
-                  {/* Recorrência */}
-                  <div className="py-3.5 pr-4">
+                  {/* Tipo */}
+                  <div className="py-3 pr-4 min-w-0">
                     <span
                       className="inline-flex items-center h-[22px] px-2.5 rounded-full text-[12px] font-semibold"
                       style={{
-                        background: r.isRecurring ? "#E2F4EC" : "#F0F2F6",
-                        color: r.isRecurring ? "#0B6E4A" : "#5B616E",
+                        background: ehHora ? "#FBF1E0" : "#E8EEFB",
+                        color: ehHora ? "#9A6B12" : "#2F63C9",
                       }}
                     >
-                      {r.isRecurring ? "Recorrente" : "Pontual"}
+                      {ehHora ? "Por hora" : "Valor fixo"}
                     </span>
+                    {ehHora && (
+                      <p className="text-[11px] font-medium text-ink-muted mt-1 truncate">{detalheHora(r)}</p>
+                    )}
+                  </div>
+
+                  {/* Conta */}
+                  <div className="py-3 pr-4 min-w-0">
+                    {conta ? (
+                      <span className="inline-flex items-center gap-2 min-w-0">
+                        <ContaAvatar icon={conta.icon} cor={conta.color} size={24} />
+                        <span className="text-[13px] font-medium text-ink-secondary truncate">{conta.name}</span>
+                      </span>
+                    ) : (
+                      <span className="text-[13px] font-medium text-ink-placeholder">—</span>
+                    )}
+                  </div>
+
+                  {/* Quando */}
+                  <div className="py-3 pr-4 min-w-0">
+                    {r.paymentDay ? (
+                      <p className="text-[13px] font-medium text-ink-secondary">todo dia {r.paymentDay}</p>
+                    ) : (
+                      <p className="text-[13px] font-medium text-ink-placeholder">sem dia fixo</p>
+                    )}
+                    {periodo && <p className="text-[11px] font-medium text-ink-muted mt-0.5 truncate">{periodo}</p>}
                   </div>
 
                   {/* Valor */}
-                  <div className="py-3.5 text-right">
+                  <div className="py-3 text-right">
                     <p className="text-[14px] font-semibold text-positive tabular-nums">
-                      {formatarBRL(r.amountCents)}
+                      {formatarBRL(valorMes(r))}
                     </p>
+                    {r.modalidade === "CLT" && valorMes(r) > 0 && (
+                      <p className="text-[11px] font-medium text-ink-muted tabular-nums mt-0.5">
+                        líq. {formatarBRL(calcularCLT(valorMes(r)).liquidoCents)}
+                      </p>
+                    )}
                   </div>
 
                   {/* Editar */}
@@ -457,7 +745,7 @@ export function ReceitasScreen() {
           onClick={fecharModal}
         >
           <div
-            className="w-[520px] bg-surface rounded-3xl shadow-lg animate-slide-up overflow-y-auto"
+            className="w-[600px] bg-surface rounded-3xl shadow-lg animate-slide-up overflow-y-auto"
             style={{ padding: "30px 30px 26px", maxHeight: "calc(100vh - 48px)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -477,7 +765,7 @@ export function ReceitasScreen() {
                 <div className="rounded-2xl p-4 mb-6" style={{ background: "#FFF8F8", border: "1px solid #FECACA" }}>
                   <p className="text-[14px] font-semibold text-[#991B1B]">Isso não pode ser desfeito</p>
                   <p className="text-[13px] text-[#7F1D1D] mt-1">
-                    A receita <strong>{editando?.description}</strong> será removida permanentemente.
+                    A receita <strong>{editando?.name}</strong> será removida permanentemente.
                   </p>
                 </div>
                 <div className="flex gap-2.5">
@@ -516,14 +804,13 @@ export function ReceitasScreen() {
                   </button>
                 </div>
 
-                {/* Fonte */}
+                {/* Nome */}
                 <label className="block mb-4">
-                  <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">Fonte de receita</span>
+                  <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">Nome da receita</span>
                   <span className="flex items-center h-[52px] px-4 bg-surface rounded-xl focus-within:border-brand transition-colors" style={{ border: "1px solid #D4D8E0" }}>
                     <input
-                      value={descricao}
-                      onChange={(e) => setDescricao(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && podeSalvar && salvar()}
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
                       placeholder="Ex: Salário, Freelance, Aluguel recebido…"
                       autoFocus
                       className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink placeholder:text-ink-placeholder font-sans"
@@ -531,39 +818,55 @@ export function ReceitasScreen() {
                   </span>
                 </label>
 
-                {/* Valor + De quem */}
-                <div className="flex gap-3 mb-4">
-                  <label className="flex-1 block">
-                    <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">Valor</span>
-                    <MoneyInput centavos={amountCents} onChange={setAmountCents} placeholder="0,00" />
-                  </label>
-                  <label className="flex-1 block">
-                    <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
-                      De quem <span className="font-normal text-ink-muted">(opcional)</span>
-                    </span>
-                    <span className="flex items-center h-[52px] px-4 bg-surface rounded-xl focus-within:border-brand transition-colors" style={{ border: "1px solid #D4D8E0" }}>
-                      <input
-                        value={pagador}
-                        onChange={(e) => setPagador(e.target.value)}
-                        placeholder="Ex: Empresa X, Cliente…"
-                        className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink placeholder:text-ink-placeholder font-sans"
-                      />
-                    </span>
-                  </label>
+                {/* Descrição */}
+                <label className="block mb-4">
+                  <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
+                    Descrição <span className="font-normal text-ink-muted">(opcional)</span>
+                  </span>
+                  <span className="flex items-center h-[52px] px-4 bg-surface rounded-xl focus-within:border-brand transition-colors" style={{ border: "1px solid #D4D8E0" }}>
+                    <input
+                      value={descricao}
+                      onChange={(e) => setDescricao(e.target.value)}
+                      placeholder="Ex: Contrato PJ com a Empresa X…"
+                      className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink placeholder:text-ink-placeholder font-sans"
+                    />
+                  </span>
+                </label>
+
+                {/* Conta + Categoria */}
+                <div className="flex gap-3 mb-5">
+                  <div className="flex-1 min-w-0">
+                    <SeletorConta
+                      label="Conta"
+                      value={accountId}
+                      onChange={setAccountId}
+                      origem={{ type: "INCOME", isTemplate: true }}
+                      autoSelecionarPrincipal={editando === null}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <SeletorCategoria
+                      label="Categoria (opcional)"
+                      value={categoryId || null}
+                      onChange={(id) => setCategoryId(id ?? "")}
+                      tipo="INCOME"
+                      origem={{ type: "INCOME", isTemplate: true }}
+                    />
+                  </div>
                 </div>
 
-                {/* Recorrência */}
-                <p className="text-[13px] font-semibold text-[#5B616E] mb-2.5">Recorrência</p>
-                <div className="flex gap-2 mb-5">
+                {/* Tipo de receita */}
+                <p className="text-[13px] font-semibold text-[#5B616E] mb-2.5">Tipo de receita</p>
+                <div className="flex gap-2 mb-4">
                   {[
-                    { rec: true, label: "Recorrente", sub: "entra todo mês" },
-                    { rec: false, label: "Pontual", sub: "uma vez só" },
+                    { t: "FIXO" as TipoReceita, label: "Valor fixo", sub: "o mesmo valor todo mês" },
+                    { t: "HORA" as TipoReceita, label: "Valor por hora", sub: "calculado por horas trabalhadas" },
                   ].map((opt) => {
-                    const ativo = isRecurring === opt.rec;
+                    const ativo = tipo === opt.t;
                     return (
                       <button
-                        key={opt.label}
-                        onClick={() => setIsRecurring(opt.rec)}
+                        key={opt.t}
+                        onClick={() => setTipo(opt.t)}
                         className="flex-1 rounded-xl px-4 py-3 text-left transition-colors"
                         style={{
                           border: ativo ? "1px solid #87BBF8" : "1px solid #E3E6EC",
@@ -581,14 +884,149 @@ export function ReceitasScreen() {
                   })}
                 </div>
 
-                {/* Categoria — seletor padrão (linha clicável + modal) */}
-                <div className="mb-6">
-                  <SeletorCategoria
-                    label="Categoria (opcional)"
-                    value={categoryId || null}
-                    onChange={(id) => setCategoryId(id ?? "")}
-                    tipo="INCOME"
-                    origem={{ type: "INCOME", isTemplate: true }}
+                {/* Campos por tipo — modalidade fica na mesma linha do valor + dia */}
+                {tipo === "FIXO" ? (
+                  <div className="flex gap-3 mb-4 items-start">
+                    <div className="flex-1 min-w-0">
+                      <CampoSelect
+                        label="Modalidade"
+                        value={modalidade}
+                        onChange={setModalidade}
+                        options={MODALIDADE_OPCOES}
+                      />
+                    </div>
+                    <label className="flex-1 block min-w-0">
+                      <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
+                        {modalidade === "CLT" ? "Valor bruto" : "Valor"}
+                      </span>
+                      <MoneyInput centavos={amountCents} onChange={setAmountCents} placeholder="0,00" />
+                    </label>
+                    <div className="w-[96px] shrink-0">
+                      <CampoNumero
+                        label="Dia"
+                        value={paymentDay}
+                        onChange={setPaymentDay}
+                        min={1}
+                        max={31}
+                        placeholder="5"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex gap-3 mb-3 items-start">
+                      <div className="flex-1 min-w-0">
+                        <CampoSelect
+                          label="Modalidade"
+                          value={modalidade}
+                          onChange={setModalidade}
+                          options={MODALIDADE_OPCOES}
+                        />
+                      </div>
+                      <label className="flex-1 block min-w-0">
+                        <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
+                          {modalidade === "CLT" ? "Valor da hora (bruto)" : "Valor da hora"}
+                        </span>
+                        <MoneyInput centavos={hourlyRateCents} onChange={setHourlyRateCents} placeholder="0,00" />
+                      </label>
+                      <div className="w-[104px] shrink-0">
+                        <CampoNumero
+                          label="Horas/dia"
+                          value={hoursPerDay}
+                          onChange={setHoursPerDay}
+                          min={1}
+                          max={24}
+                          placeholder="8"
+                        />
+                      </div>
+                      <div className="w-[80px] shrink-0">
+                        <CampoNumero
+                          label="Dia"
+                          value={paymentDay}
+                          onChange={setPaymentDay}
+                          min={1}
+                          max={31}
+                          placeholder="5"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl px-4 py-3 mb-2" style={{ border: "1px solid #E3E6EC", background: "#F6FAF7" }}>
+                      <span className="text-[13px] font-semibold text-[#5B616E]">
+                        Estimado em {formatarMesAno(MES_ATUAL, ANO_ATUAL)}
+                      </span>
+                      <span className="text-[15px] font-bold text-positive tabular-nums">
+                        {valorMensalPreview > 0 ? formatarBRL(valorMensalPreview) : "R$ —"}
+                      </span>
+                    </div>
+                    <p className="text-[12px] text-ink-muted mb-4">
+                      Cálculo: valor da hora × horas por dia × dias úteis do mês. Em{" "}
+                      {formatarMesAno(MES_ATUAL, ANO_ATUAL)} são <strong>{DIAS_UTEIS_MES} dias úteis</strong> (descontando
+                      fins de semana e feriados nacionais); o valor é recalculado a cada mês.
+                    </p>
+                  </>
+                )}
+
+                {/* Estimativa CLT — líquido e impostos retidos */}
+                {cltPreview && (
+                  <div className="rounded-2xl p-4 mb-5" style={{ border: "1px solid #DCE7F7", background: "#F4F8FE" }}>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-[13px] font-bold text-[#2F63C9]">
+                        Estimativa CLT · tabelas {CLT_ANO_REFERENCIA}
+                      </p>
+                      <span className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide">
+                        valor = bruto
+                      </span>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[13px] font-medium text-ink-secondary">Salário bruto</span>
+                        <span className="text-[13px] font-semibold text-ink tabular-nums">{formatarBRL(cltPreview.brutoCents)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[13px] font-medium text-ink-secondary">INSS</span>
+                        <span className="text-[13px] font-semibold text-negative tabular-nums">− {formatarBRL(cltPreview.inssCents)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[13px] font-medium text-ink-secondary">IRRF</span>
+                        <span className="text-[13px] font-semibold text-negative tabular-nums">− {formatarBRL(cltPreview.irrfCents)}</span>
+                      </div>
+                      <div className="h-px bg-[#DCE7F7] my-1.5" />
+                      <div className="flex items-center justify-between">
+                        <span className="text-[14px] font-bold text-ink">Líquido estimado</span>
+                        <span className="text-[15px] font-bold text-positive tabular-nums">{formatarBRL(cltPreview.liquidoCents)}</span>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-ink-muted mt-3 leading-relaxed">
+                      + FGTS de <strong>{formatarBRL(cltPreview.fgtsCents)}</strong> depositado pelo empregador (não descontado do salário).
+                      Estimativa sem dependentes/outras deduções — o valor real na folha pode variar.
+                    </p>
+                  </div>
+                )}
+
+                {/* Período */}
+                <div className="flex items-center justify-between mb-2.5">
+                  <p className="text-[13px] font-semibold text-[#5B616E]">Período</p>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={semDataFim}
+                      onChange={(e) => {
+                        setSemDataFim(e.target.checked);
+                        if (e.target.checked) setEndDate("");
+                      }}
+                      className="w-4 h-4 accent-brand cursor-pointer"
+                    />
+                    <span className="text-[13px] font-medium text-ink-secondary">Não tem data de finalização</span>
+                  </label>
+                </div>
+                <div className="flex gap-3 mb-6">
+                  <CampoData label="Data de início" value={startDate} onChange={setStartDate} />
+                  <CampoData
+                    label="Data de finalização"
+                    value={endDate}
+                    onChange={setEndDate}
+                    disabled={semDataFim}
+                    min={startDate || undefined}
                   />
                 </div>
 

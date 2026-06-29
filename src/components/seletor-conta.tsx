@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { ContaIcon } from "@/components/conta-icon";
 import { ContaAvatar } from "@/components/conta-avatar";
 import { tratarErro } from "@/core/errors";
@@ -21,6 +21,13 @@ interface SeletorContaProps {
   label?: string;
   /** texto da opção "sem conta" (null) */
   placeholderVazio?: string;
+  /**
+   * Quando `value` chega `null`, seleciona automaticamente a conta marcada
+   * como principal assim que as contas carregam. Use só em criação de novos
+   * registros — em edição manteria a conta original e não deve sobrescrever
+   * um lançamento salvo deliberadamente sem conta.
+   */
+  autoSelecionarPrincipal?: boolean;
 }
 
 // ─── Ícones auxiliares ────────────────────────────────────────────────────────
@@ -66,6 +73,7 @@ export function SeletorConta({
   origem,
   label,
   placeholderVazio = "Sem conta",
+  autoSelecionarPrincipal = false,
 }: SeletorContaProps) {
   const [contas, setContas] = useState<Conta[]>([]);
   const [contagem, setContagem] = useState<Record<string, number>>({});
@@ -95,6 +103,22 @@ export function SeletorConta({
   useEffect(() => {
     carregar();
   }, [carregar]);
+
+  // Auto-seleciona a conta principal (apenas uma vez, em criação) quando
+  // nenhuma conta foi escolhida ainda.
+  const autoFeito = useRef(false);
+  useEffect(() => {
+    if (!autoSelecionarPrincipal || autoFeito.current || carregando) return;
+    if (value !== null) {
+      autoFeito.current = true;
+      return;
+    }
+    const principal = contas.find((c) => c.isPrimary);
+    if (principal) {
+      autoFeito.current = true;
+      onChange(principal.id);
+    }
+  }, [autoSelecionarPrincipal, carregando, contas, value, onChange]);
 
   function abrir() {
     setBusca("");
