@@ -1,4 +1,5 @@
 import { usePerfilStore } from "@/app/perfil-store";
+import { tratarErro } from "@/core/errors";
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboardingStore } from "../../store/onboarding";
@@ -68,7 +69,10 @@ export function OnboardingNomeScreen() {
       await atualizarNome(nomeTrimado);
       if (foto) await atualizarFoto(foto);
     } catch (e) {
-      console.error("[quibo] Erro ao salvar nome/foto:", e);
+      tratarErro(e, {
+        contexto: "salvar nome/foto",
+        mensagemUsuario: "Não foi possível salvar seus dados.",
+      });
     } finally {
       setSalvando(false);
     }

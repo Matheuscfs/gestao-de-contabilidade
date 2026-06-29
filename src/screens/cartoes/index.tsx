@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { MoneyInput } from "@/components/money-input";
+import { toast } from "@/components/toast";
+import { tratarErro } from "@/core/errors";
 import { formatarBRL } from "@/utils/money";
 import {
   listarCartoes,
@@ -201,7 +203,10 @@ export function CartoesCreditoScreen() {
       const lista = await listarCartoes();
       setCartoes(lista);
     } catch (e) {
-      console.error("Erro ao carregar cartões:", e);
+      tratarErro(e, {
+        contexto: "carregar cartões",
+        mensagemUsuario: "Não foi possível carregar os cartões.",
+      });
     } finally {
       setCarregando(false);
     }
@@ -282,10 +287,14 @@ export function CartoesCreditoScreen() {
       }
       await carregarCartoes();
       fecharModal();
+      toast.sucesso(cartaoEditando ? "Cartão atualizado" : "Cartão adicionado");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.error("Erro ao salvar cartão:", e);
-      setErroModal(msg);
+      setErroModal(
+        tratarErro(e, {
+          contexto: "salvar cartão",
+          mensagemUsuario: "Não foi possível salvar o cartão.",
+        })
+      );
     } finally {
       setSalvando(false);
     }
@@ -298,8 +307,12 @@ export function CartoesCreditoScreen() {
       await deletarCartao(cartaoEditando.id);
       await carregarCartoes();
       fecharModal();
+      toast.sucesso("Cartão excluído");
     } catch (e) {
-      console.error("Erro ao excluir cartão:", e);
+      tratarErro(e, {
+        contexto: "excluir cartão",
+        mensagemUsuario: "Não foi possível excluir o cartão.",
+      });
     } finally {
       setSalvando(false);
     }
@@ -314,7 +327,10 @@ export function CartoesCreditoScreen() {
         )
       );
     } catch (e) {
-      console.error("Erro ao alternar status do cartão:", e);
+      tratarErro(e, {
+        contexto: "alternar status do cartão",
+        mensagemUsuario: "Não foi possível alterar o status do cartão.",
+      });
     }
   }
 

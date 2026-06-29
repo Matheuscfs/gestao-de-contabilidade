@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboardingStore } from "../../store/onboarding";
 import { usePerfilStore } from "@/app/perfil-store";
+import { tratarErro } from "@/core/errors";
 
 export function OnboardingTudoProntoScreen() {
   const navigate = useNavigate();
@@ -16,7 +17,10 @@ export function OnboardingTudoProntoScreen() {
     try {
       await concluirOnboarding();
     } catch (e) {
-      console.error("[quibo] Erro ao concluir onboarding:", e);
+      tratarErro(e, {
+        contexto: "concluir onboarding",
+        mensagemUsuario: "Não foi possível concluir a configuração inicial.",
+      });
     }
     navigate("/mes", { replace: true });
   }

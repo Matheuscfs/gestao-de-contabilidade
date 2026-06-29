@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { MoneyInput } from "@/components/money-input";
+import { toast } from "@/components/toast";
+import { tratarErro } from "@/core/errors";
 import { formatarBRL } from "@/utils/money";
 import { getDb, getSqlite } from "@/core/db/client";
 import { categories } from "@/core/db/schema";
@@ -204,7 +206,10 @@ export function CustoDeVidaScreen() {
       setCustos(listaCustos);
       setCategoriasDB(listaCats);
     } catch (err) {
-      console.error("Erro ao carregar custos de vida:", err);
+      tratarErro(err, {
+        contexto: "carregar custos de vida",
+        mensagemUsuario: "Não foi possível carregar os custos de vida.",
+      });
     } finally {
       setCarregando(false);
     }
@@ -267,10 +272,14 @@ export function CustoDeVidaScreen() {
       setModalAberto(false);
       setEditandoId(null);
       setErroModal(null);
+      toast.sucesso(editandoId ? "Custo atualizado" : "Custo adicionado");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("Erro ao salvar custo de vida:", msg);
-      setErroModal(msg);
+      setErroModal(
+        tratarErro(err, {
+          contexto: "salvar custo de vida",
+          mensagemUsuario: "Não foi possível salvar o custo de vida.",
+        })
+      );
     } finally {
       setSalvando(false);
     }
@@ -290,8 +299,12 @@ export function CustoDeVidaScreen() {
       await dbDeletarCusto(confirmarDeletarId);
       await carregarDados();
       setConfirmarDeletarId(null);
+      toast.sucesso("Custo excluído");
     } catch (err) {
-      console.error("Erro ao deletar custo de vida:", err);
+      tratarErro(err, {
+        contexto: "excluir custo de vida",
+        mensagemUsuario: "Não foi possível excluir o custo de vida.",
+      });
     } finally {
       setDeletando(false);
     }

@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { MoneyInput } from "@/components/money-input";
+import { toast } from "@/components/toast";
+import { tratarErro } from "@/core/errors";
+import {
+  SUBTIPOS_DIVIDA as SUBTIPOS,
+  labelSubtipoDivida as labelSubtipo,
+  type SubTipoDivida as SubTipo,
+} from "@/consts/dividas";
 import { formatarBRL } from "@/utils/money";
 import {
   listarDividas,
@@ -13,22 +20,6 @@ import {
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
 type Filtro = "todas" | "aberto" | "quitadas";
-// Valores devem corresponder ao CHECK constraint da migração:
-// CHECK(dbt_sub_type IN ('INSTALLMENT','LOAN','PENDING','FLEXIBLE'))
-type SubTipo = "LOAN" | "INSTALLMENT" | "PENDING" | "FLEXIBLE";
-
-// ─── Constantes ───────────────────────────────────────────────────────────────
-
-const SUBTIPOS: { id: SubTipo; label: string }[] = [
-  { id: "LOAN", label: "Empréstimo" },
-  { id: "INSTALLMENT", label: "Parcelamento" },
-  { id: "PENDING", label: "Em aberto" },
-  { id: "FLEXIBLE", label: "Outro" },
-];
-
-function labelSubtipo(sub: string | null): string {
-  return SUBTIPOS.find((s) => s.id === sub)?.label ?? "Outro";
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -111,7 +102,10 @@ export function DividasScreen() {
       const lista = await listarDividas();
       setDividas(lista);
     } catch (e) {
-      console.error("Erro ao carregar dívidas:", e);
+      tratarErro(e, {
+        contexto: "carregar dívidas",
+        mensagemUsuario: "Não foi possível carregar as dívidas.",
+      });
     } finally {
       setCarregando(false);
     }
@@ -202,9 +196,15 @@ export function DividasScreen() {
 
       await carregarDividas();
       fecharModal();
+      toast.sucesso(editando ? "Dívida atualizada" : "Dívida adicionada");
     } catch (e) {
-      console.error("Erro ao salvar dívida:", e);
-      setErroModal("Não foi possível salvar. Tente novamente.");
+      // o erro fica também no modal; o toast cobre o feedback global
+      setErroModal(
+        tratarErro(e, {
+          contexto: "salvar dívida",
+          mensagemUsuario: "Não foi possível salvar. Tente novamente.",
+        })
+      );
     } finally {
       setSalvando(false);
     }
@@ -217,8 +217,12 @@ export function DividasScreen() {
       await excluirDivida(editando.id);
       await carregarDividas();
       fecharModal();
+      toast.sucesso("Dívida excluída");
     } catch (e) {
-      console.error("Erro ao excluir dívida:", e);
+      tratarErro(e, {
+        contexto: "excluir dívida",
+        mensagemUsuario: "Não foi possível excluir a dívida.",
+      });
     } finally {
       setExcluindo(false);
     }
@@ -580,7 +584,7 @@ function FormularioDivida({
               onChange={(e) => {
                 const v = Math.max(1, parseInt(e.target.value) || 1);
                 setTotalParcelas(v);
-                setParcelasPagas((prev) => Math.min(prev, v));
+                setParcelasPagas(Math.min(parcelasPagas, v));
               }}
               className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink [appearance:textfield]"
             />

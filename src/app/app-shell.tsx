@@ -1,34 +1,17 @@
 import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { useMesStore } from "@/app/mes-store";
 import { Sidebar } from "@/app/sidebar";
+import { ROTAS_COM_MES, TITULOS_PAGINA } from "@/consts/navigation";
 import { formatarMesAno } from "@/utils/dates";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
-
-const MONTH_ROUTES = new Set(["/mes", "/lancamentos"]);
-
-const PAGE_TITLES: Record<string, string> = {
-  "/receitas": "Receitas",
-  "/custo-de-vida": "Custo de vida",
-  "/cartoes": "Cartões de crédito",
-  "/dividas": "Dívidas",
-  "/contas": "Contas",
-  "/categorias": "Categorias",
-  "/personas": "Personas",
-  "/analise": "Análise",
-  "/ia": "Quibo IA",
-  "/perfil": "Perfil",
-  "/investimentos": "Investimentos",
-  "/configuracoes": "Configurações",
-};
+import { Outlet, useLocation } from "react-router-dom";
 
 export function AppShell() {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
   const { mes, ano, irParaMesAnterior, irParaProximoMes } = useMesStore();
   const { onAdicionar } = useHeaderActionsStore();
 
-  const showMonth = MONTH_ROUTES.has(pathname);
-  const title = PAGE_TITLES[pathname] ?? "";
+  const showMonth = ROTAS_COM_MES.has(pathname);
+  const title = TITULOS_PAGINA[pathname] ?? "";
 
   return (
     <div className="h-full bg-surface-subtle overflow-hidden flex gap-3 p-4">

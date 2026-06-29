@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboardingStore, type Foco } from "../../store/onboarding";
 import { usePerfilStore } from "@/app/perfil-store";
+import { tratarErro } from "@/core/errors";
 import { StepDots } from "./step-dots";
 
 interface CardOpcaoProps {
@@ -147,7 +148,10 @@ export function OnboardingMetaScreen() {
       await atualizarFocos(focos);
       await atualizarFocoFrase(fraseTrimada);
     } catch (e) {
-      console.error("[quibo] Erro ao salvar foco:", e);
+      tratarErro(e, {
+        contexto: "salvar foco",
+        mensagemUsuario: "Não foi possível salvar suas preferências.",
+      });
     } finally {
       setSalvando(false);
     }
