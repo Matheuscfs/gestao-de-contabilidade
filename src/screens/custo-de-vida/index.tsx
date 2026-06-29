@@ -3,7 +3,7 @@ import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { MoneyInput } from "@/components/money-input";
 import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
-import { formatarBRL } from "@/utils/money";
+import { formatarBRL, formatarBRLCompacto } from "@/utils/money";
 import { getDb, getSqlite } from "@/core/db/client";
 import { categories } from "@/core/db/schema";
 import type { Category } from "@/core/db/schema";
@@ -153,6 +153,65 @@ function IconeMenu() {
   );
 }
 
+// ─── Bolha de categoria (seletor "molecular") ─────────────────────────────────
+
+function CategoriaBolha({
+  nome,
+  cor,
+  valor,
+  size,
+  selecionado,
+  onClick,
+}: {
+  nome: string;
+  cor: string;
+  valor: number | null;
+  size: number;
+  selecionado: boolean;
+  onClick: () => void;
+}) {
+  const temValor = valor !== null && valor > 0;
+  const grande = size >= 78;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={nome}
+      className="rounded-full flex flex-col items-center justify-center text-center transition-all shrink-0 outline-none"
+      style={{
+        width: size,
+        height: size,
+        padding: 5,
+        background: selecionado ? cor : `${cor}1A`,
+        border: `2px solid ${selecionado ? cor : "transparent"}`,
+        boxShadow: selecionado ? `0 0 0 4px ${cor}33` : "none",
+      }}
+    >
+      <span
+        className="font-bold leading-[1.05] line-clamp-2"
+        style={{
+          color: selecionado ? "#fff" : cor,
+          fontSize: grande ? 11 : 9.5,
+        }}
+      >
+        {nome}
+      </span>
+      {temValor && (
+        <span
+          className="tabular-nums font-semibold leading-tight mt-0.5 whitespace-nowrap"
+          style={{
+            color: selecionado ? "rgba(255,255,255,.88)" : "#4A5264",
+            fontSize: grande ? 10 : 8.5,
+          }}
+        >
+          {formatarBRLCompacto(valor)}
+        </span>
+      )}
+    </button>
+  );
+}
+
 // ─── Tela principal ───────────────────────────────────────────────────────────
 
 export function CustoDeVidaScreen() {
@@ -237,7 +296,7 @@ export function CustoDeVidaScreen() {
     setEditandoId(custo.id);
     setDescricao(custo.descricao);
     setAmountCents(custo.amountCents);
-    setIsFixo(custo.isFixo);
+    setIsFixo(true); // custo de vida é sempre fixo
     setLcDayOfMonth(custo.lcDayOfMonth ?? "");
     setCategoryId(custo.categoryId ?? "");
     setErroModal(null);
@@ -380,6 +439,28 @@ export function CustoDeVidaScreen() {
   };
 
   const custoPorId = Object.fromEntries(custos.map((c) => [c.id, c]));
+
+  // Total já cadastrado por categoria (exibido em cada bolha do seletor)
+  const totalPorCategoria = custos.reduce<Record<string, number>>((acc, c) => {
+    if (c.categoryId) {
+      acc[c.categoryId] = (acc[c.categoryId] ?? 0) + c.amountCents;
+    }
+    return acc;
+  }, {});
+
+  // Tamanho de cada bolha proporcional ao valor (área ∝ √valor) — categorias
+  // com mais gasto ficam maiores. Vazias ficam no tamanho base.
+  const maxValorCategoria = Math.max(
+    1,
+    ...categoriasDB.map((c) => totalPorCategoria[c.id] ?? 0)
+  );
+  const TAM_BASE = 58;
+  const TAM_MAX = 96;
+  const tamanhoBolha = (valor: number) =>
+    valor <= 0
+      ? TAM_BASE
+      : TAM_BASE +
+        Math.round(Math.sqrt(valor / maxValorCategoria) * (TAM_MAX - TAM_BASE));
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -644,14 +725,14 @@ export function CustoDeVidaScreen() {
           onClick={fecharModal}
         >
           <div
-            className="w-[480px] bg-surface rounded-3xl shadow-lg animate-slide-up overflow-y-auto"
+            className="w-[600px] bg-surface rounded-3xl shadow-lg animate-slide-up overflow-y-auto"
             style={{ padding: "30px 30px 26px", maxHeight: "calc(100vh - 48px)" }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Cabeçalho */}
             <div className="flex items-center justify-between mb-[22px]">
               <p className="text-[21px] font-bold text-ink tracking-tight">
-                {editandoId ? "Editar despesa" : "Nova despesa"}
+                {editandoId ? "Editar custo de vida" : "Novo custo de vida"}
               </p>
               <button
                 onClick={fecharModal}
@@ -696,61 +777,11 @@ export function CustoDeVidaScreen() {
               </span>
             </label>
 
-            {/* Tipo: Fixo / Variável */}
-            <p className="text-[13px] font-semibold text-[#5B616E] mt-1.5 mb-2.5">
-              Esse custo é fixo ou varia todo mês?
-            </p>
-            <div className="flex gap-2 mb-5">
-              {[
-                {
-                  valor: true,
-                  label: "Fixo",
-                  desc: "mesmo valor todo mês",
-                },
-                {
-                  valor: false,
-                  label: "Variável",
-                  desc: "muda de mês em mês",
-                },
-              ].map((op) => {
-                const ativo = isFixo === op.valor;
-                return (
-                  <button
-                    key={String(op.valor)}
-                    onClick={() => {
-                      setIsFixo(op.valor);
-                      // "Variável" não tem dia fixo — limpa o campo escondido.
-                      if (!op.valor) setLcDayOfMonth("");
-                    }}
-                    className="flex-1 py-3 px-4 rounded-xl text-left cursor-pointer transition-all"
-                    style={{
-                      border: ativo
-                        ? "1.5px solid #87BBF8"
-                        : "1.5px solid #E3E6EC",
-                      background: ativo ? "#EAF1FD" : "#F7F8FA",
-                    }}
-                  >
-                    <p
-                      className="text-[14px] font-semibold"
-                      style={{ color: ativo ? "#2F63C9" : "#0E1116" }}
-                    >
-                      {op.label}
-                    </p>
-                    <p className="text-[12px] font-medium text-[#5B616E] mt-0.5">
-                      {op.desc}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Valor + Dia do mês (lado a lado quando fixo) */}
-            <div className={`flex gap-3 mb-4 ${isFixo ? "" : ""}`}>
+            {/* Preço + Dia da despesa */}
+            <div className="flex gap-3 mb-4">
               <label className="flex-1 block">
                 <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
-                  {isFixo
-                    ? "Quanto custa?"
-                    : "Quanto costuma custar? (estimativa)"}
+                  Quanto custa?
                 </span>
                 <MoneyInput
                   centavos={amountCents}
@@ -759,78 +790,74 @@ export function CustoDeVidaScreen() {
                 />
               </label>
 
-              {isFixo && (
-                <label className="flex-1 block">
-                  <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
-                    Dia do mês{" "}
-                    <span className="font-normal text-ink-muted">(opcional)</span>
-                  </span>
-                  <span
-                    className="flex items-center h-[52px] px-4 bg-surface rounded-xl focus-within:border-brand transition-colors"
-                    style={{ border: "1px solid #D4D8E0" }}
-                  >
-                    <input
-                      type="number"
-                      min={1}
-                      max={31}
-                      value={lcDayOfMonth}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === "") {
-                          setLcDayOfMonth("");
-                          return;
-                        }
-                        const n = parseInt(val, 10);
-                        if (!isNaN(n)) {
-                          setLcDayOfMonth(Math.min(31, Math.max(1, n)));
-                        }
-                      }}
-                      placeholder="Ex: 5, 15…"
-                      className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink placeholder:text-ink-placeholder font-sans"
-                    />
-                  </span>
-                </label>
-              )}
-            </div>
-
-            {/* Categoria */}
-            {categoriasDB.length > 0 && (
-              <label className="block mb-6">
+              <label className="flex-1 block">
                 <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
-                  Categoria{" "}
+                  Dia da despesa{" "}
                   <span className="font-normal text-ink-muted">(opcional)</span>
                 </span>
                 <span
                   className="flex items-center h-[52px] px-4 bg-surface rounded-xl focus-within:border-brand transition-colors"
                   style={{ border: "1px solid #D4D8E0" }}
                 >
-                  <select
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                    className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink font-sans cursor-pointer appearance-none"
-                  >
-                    <option value="">Sem categoria</option>
-                    {categoriasDB.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-ink-muted shrink-0 pointer-events-none"
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={lcDayOfMonth}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "") {
+                        setLcDayOfMonth("");
+                        return;
+                      }
+                      const n = parseInt(val, 10);
+                      if (!isNaN(n)) {
+                        setLcDayOfMonth(Math.min(31, Math.max(1, n)));
+                      }
+                    }}
+                    placeholder="Ex: 5, 15…"
+                    className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink placeholder:text-ink-placeholder font-sans"
+                  />
                 </span>
               </label>
+            </div>
+
+            {/* Categoria — cluster "molecular" de bolhas clicáveis */}
+            {categoriasDB.length > 0 && (
+              <div className="mb-6">
+                <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
+                  Categoria{" "}
+                  <span className="font-normal text-ink-muted">(opcional)</span>
+                </span>
+                <div className="border border-border rounded-2xl bg-surface-subtle px-4 py-5">
+                  <div className="flex flex-wrap justify-center items-center gap-2.5">
+                    <CategoriaBolha
+                      nome="Sem categoria"
+                      cor="#8C95A6"
+                      valor={null}
+                      size={TAM_BASE}
+                      selecionado={categoryId === ""}
+                      onClick={() => setCategoryId("")}
+                    />
+                    {categoriasDB.map((cat) => {
+                      const v = totalPorCategoria[cat.id] ?? 0;
+                      return (
+                        <CategoriaBolha
+                          key={cat.id}
+                          nome={cat.name}
+                          cor={cat.color}
+                          valor={v}
+                          size={tamanhoBolha(v)}
+                          selecionado={categoryId === cat.id}
+                          onClick={() =>
+                            setCategoryId(categoryId === cat.id ? "" : cat.id)
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Erro */}
@@ -844,10 +871,7 @@ export function CustoDeVidaScreen() {
             )}
 
             {/* Ações */}
-            <div
-              className="flex gap-2.5"
-              style={{ marginTop: categoriasDB.length === 0 && !erroModal ? "8px" : "0" }}
-            >
+            <div className="flex gap-2.5">
               <button
                 onClick={fecharModal}
                 disabled={salvando}

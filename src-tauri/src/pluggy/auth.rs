@@ -1,12 +1,14 @@
 use chrono::{DateTime, Duration, Utc};
+use rusqlite::{params, Connection};
 use tokio::sync::Mutex;
 
+use crate::db;
 use crate::errors::AppError;
-use crate::secrets;
 
 use super::models::CredenciaisPluggy;
 
-const PLUGGY_SERVICE: &str = "pluggy";
+/// Chave em `app_settings` onde as credenciais do Pluggy ficam salvas (JSON).
+const PLUGGY_SETTINGS_KEY: &str = "pluggy_credentials";
 const PLUGGY_API: &str = "https://api.pluggy.ai";
 /// Margem de segurança: invalida o cache 15min antes do vencimento real (~2h).
 const MARGEM_EXPIRACAO_MINS: i64 = 15;
@@ -27,13 +29,16 @@ impl CacheApiKey {
 }
 
 /// Estado global da autenticação Pluggy, mantido em memória via Tauri State.
+/// Guarda o `AppHandle` para conseguir ler as credenciais do banco sem precisar
+/// propagar o handle por todas as chamadas de API.
 pub struct EstadoAuth {
+    app: tauri::AppHandle,
     cache: Mutex<Option<CacheApiKey>>,
 }
 
 impl EstadoAuth {
-    pub fn novo() -> Self {
-        Self { cache: Mutex::new(None) }
+    pub fn novo(app: tauri::AppHandle) -> Self {
+        Self { app, cache: Mutex::new(None) }
     }
 
     /// Retorna uma API Key válida, usando o cache quando possível.
@@ -47,7 +52,7 @@ impl EstadoAuth {
             }
         }
 
-        let chave = gerar_api_key_remota().await?;
+        let chave = gerar_api_key_remota(&self.app).await?;
         *guard = Some(CacheApiKey {
             chave: chave.clone(),
             expira_em: Utc::now() + Duration::minutes(DURACAO_CACHE_MINS),
@@ -81,8 +86,8 @@ impl EstadoAuth {
 
 // ─── Chamada remota ───────────────────────────────────────────────────────────
 
-async fn gerar_api_key_remota() -> Result<String, AppError> {
-    let credenciais = ler_credenciais()?;
+async fn gerar_api_key_remota(app: &tauri::AppHandle) -> Result<String, AppError> {
+    let credenciais = ler_credenciais(app)?;
 
     let client = reqwest::Client::new();
     let resp = client
@@ -116,28 +121,63 @@ async fn gerar_api_key_remota() -> Result<String, AppError> {
 
 // ─── Credenciais ──────────────────────────────────────────────────────────────
 
-pub fn salvar_credenciais(client_id: &str, client_secret: &str) -> Result<(), AppError> {
+fn abrir_conn(app: &tauri::AppHandle) -> Result<Connection, AppError> {
+    Ok(Connection::open(db::caminho_banco(app)?)?)
+}
+
+pub fn salvar_credenciais(
+    app: &tauri::AppHandle,
+    client_id: &str,
+    client_secret: &str,
+) -> Result<(), AppError> {
     let payload = serde_json::to_string(&CredenciaisPluggy {
         client_id: client_id.into(),
         client_secret: client_secret.into(),
     })
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    secrets::set(PLUGGY_SERVICE, &payload)
+    let agora = Utc::now().to_rfc3339();
+    abrir_conn(app)?.execute(
+        "INSERT INTO app_settings (key, value, updated_at) VALUES (?1, ?2, ?3)
+         ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3",
+        params![PLUGGY_SETTINGS_KEY, payload, agora],
+    )?;
+    Ok(())
 }
 
-pub fn ler_credenciais() -> Result<CredenciaisPluggy, AppError> {
-    let json = secrets::get(PLUGGY_SERVICE)?;
+pub fn ler_credenciais(app: &tauri::AppHandle) -> Result<CredenciaisPluggy, AppError> {
+    let json: String = abrir_conn(app)?
+        .query_row(
+            "SELECT value FROM app_settings WHERE key = ?1",
+            params![PLUGGY_SETTINGS_KEY],
+            |row| row.get(0),
+        )
+        .map_err(|e| match e {
+            rusqlite::Error::QueryReturnedNoRows => {
+                AppError::Secret("Credenciais Pluggy não configuradas".into())
+            }
+            outro => AppError::from(outro),
+        })?;
+
     serde_json::from_str(&json)
-        .map_err(|_| AppError::Secret("Credenciais Pluggy malformadas no keychain".into()))
+        .map_err(|_| AppError::Secret("Credenciais Pluggy malformadas no banco".into()))
 }
 
-pub fn credenciais_existem() -> Result<bool, AppError> {
-    secrets::exists(PLUGGY_SERVICE)
+pub fn credenciais_existem(app: &tauri::AppHandle) -> Result<bool, AppError> {
+    let total: i64 = abrir_conn(app)?.query_row(
+        "SELECT COUNT(*) FROM app_settings WHERE key = ?1",
+        params![PLUGGY_SETTINGS_KEY],
+        |row| row.get(0),
+    )?;
+    Ok(total > 0)
 }
 
-pub fn remover_credenciais() -> Result<(), AppError> {
-    secrets::delete(PLUGGY_SERVICE)
+pub fn remover_credenciais(app: &tauri::AppHandle) -> Result<(), AppError> {
+    abrir_conn(app)?.execute(
+        "DELETE FROM app_settings WHERE key = ?1",
+        params![PLUGGY_SETTINGS_KEY],
+    )?;
+    Ok(())
 }
 
 /// Gera um Connect Token de uso limitado (~30min) para autorizar leitura do MeuPluggy.

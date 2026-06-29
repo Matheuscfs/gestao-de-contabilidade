@@ -1,7 +1,7 @@
 /// Módulo Pluggy — engine de integração bancária via BYOK (Caminho B: MeuPluggy).
 ///
 /// Arquitetura:
-///   - `auth`         → credenciais no keychain + cache de API Key (~2h)
+///   - `auth`         → credenciais no banco (app_settings) + cache de API Key (~2h)
 ///   - `models`       → tipos da API Pluggy (deserialização)
 ///   - `items`        → listar/consultar Items
 ///   - `products`     → contas, transações paginadas, investimentos, identidade, empréstimos

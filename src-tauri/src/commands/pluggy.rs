@@ -15,20 +15,21 @@ use crate::pluggy::{
 
 // ─── Credenciais ──────────────────────────────────────────────────────────────
 
-/// Salva CLIENT_ID e CLIENT_SECRET no keychain e valida gerando uma API Key.
+/// Salva CLIENT_ID e CLIENT_SECRET no banco local e valida gerando uma API Key.
 /// A UI só recebe confirmação — os segredos nunca saem do Rust.
 #[tauri::command]
 pub async fn pluggy_salvar_credenciais(
+    app: AppHandle,
     client_id: String,
     client_secret: String,
     estado: State<'_, EstadoAuth>,
 ) -> Result<(), String> {
-    auth::salvar_credenciais(&client_id, &client_secret)
+    auth::salvar_credenciais(&app, &client_id, &client_secret)
         .map_err(|e| e.to_string())?;
 
     // Valida gerando uma API Key — se falhar, as credenciais são inválidas.
     estado.api_key().await.map_err(|e| {
-        let _ = auth::remover_credenciais();
+        let _ = auth::remover_credenciais(&app);
         format!("Credenciais inválidas: {e}")
     })?;
 
@@ -37,8 +38,8 @@ pub async fn pluggy_salvar_credenciais(
 
 /// Retorna se as credenciais estão configuradas (sem expor os valores).
 #[tauri::command]
-pub fn pluggy_status_credenciais() -> Result<StatusCredenciais, String> {
-    let configurado = auth::credenciais_existem().map_err(|e| e.to_string())?;
+pub fn pluggy_status_credenciais(app: AppHandle) -> Result<StatusCredenciais, String> {
+    let configurado = auth::credenciais_existem(&app).map_err(|e| e.to_string())?;
     Ok(StatusCredenciais { configurado })
 }
 
@@ -48,13 +49,14 @@ pub struct StatusCredenciais {
     pub configurado: bool,
 }
 
-/// Remove as credenciais do keychain e invalida o cache de API Key.
+/// Remove as credenciais do banco local e invalida o cache de API Key.
 #[tauri::command]
 pub async fn pluggy_remover_credenciais(
-    _estado: State<'_, EstadoAuth>,
+    app: AppHandle,
+    estado: State<'_, EstadoAuth>,
 ) -> Result<(), String> {
-    _estado.invalidar_cache().await;
-    auth::remover_credenciais().map_err(|e| e.to_string())
+    estado.invalidar_cache().await;
+    auth::remover_credenciais(&app).map_err(|e| e.to_string())
 }
 
 // ─── Items ────────────────────────────────────────────────────────────────────

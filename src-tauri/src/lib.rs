@@ -4,14 +4,14 @@ pub mod db;
 pub mod errors;
 pub mod market;
 pub mod pluggy;
-pub mod secrets;
+
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        .manage(pluggy::auth::EstadoAuth::novo())
         .setup(|app| {
             let app_handle = app.handle().clone();
 
@@ -22,13 +22,12 @@ pub fn run() {
                 eprintln!("[quibo] Erro ao inicializar banco: {e}");
             }
 
+            // Estado de auth do Pluggy precisa do handle para ler credenciais do banco.
+            app.manage(pluggy::auth::EstadoAuth::novo(app_handle));
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            // Secrets
-            commands::secrets::secret_set,
-            commands::secrets::secret_get_status,
-            commands::secrets::secret_delete,
             // System
             commands::system::db_path,
             commands::system::open_external,
