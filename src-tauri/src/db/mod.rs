@@ -22,18 +22,32 @@ pub fn caminho_banco(app: &tauri::AppHandle) -> Result<std::path::PathBuf, AppEr
 /// - Aplica migrações pendentes
 pub async fn inicializar(app: &tauri::AppHandle) -> Result<(), AppError> {
     let caminho = caminho_banco(app)?;
-    let conn = Connection::open(&caminho)?;
+    migrar(&caminho)?;
+    println!("[quibo] Banco iniciado em: {}", caminho.display());
+    Ok(())
+}
+
+/// Abre o banco no caminho indicado, ativa os PRAGMAs essenciais e aplica as
+/// migrações pendentes. Reutilizável fora do Tauri (ex.: binário `migrate`).
+pub fn migrar(caminho: &std::path::Path) -> Result<(), AppError> {
+    if let Some(dir) = caminho.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| {
+            AppError::Internal(format!("Não foi possível criar diretório de dados: {e}"))
+        })?;
+    }
+
+    let conn = Connection::open(caminho)?;
 
     // Configurações essenciais
-    conn.execute_batch("
+    conn.execute_batch(
+        "
         PRAGMA journal_mode = WAL;
         PRAGMA foreign_keys = ON;
         PRAGMA busy_timeout = 5000;
-    ")?;
+    ",
+    )?;
 
     aplicar_migracoes(&conn)?;
-
-    println!("[quibo] Banco iniciado em: {}", caminho.display());
     Ok(())
 }
 

@@ -1,11 +1,12 @@
 # ─── Quibo — Makefile ─────────────────────────────────────────────────────────
 # Comandos disponíveis:
 #   make dev      — inicia o app desktop com hot reload
+#   make migrate  — aplica migrações pendentes no banco (sem resetar dados)
 #   make refresh  — atualiza e reinstala todas as dependências (yarn + Cargo)
 #   make build    — builda o app para a plataforma atual (release)
 #   make clear    — remove dependências, artefatos de build e banco de dados local
 
-.PHONY: dev refresh build clear
+.PHONY: dev migrate refresh build clear
 
 # ─── Cores para output legível ────────────────────────────────────────────────
 RESET  := \033[0m
@@ -18,8 +19,9 @@ RED    := \033[31m
 # ─── Caminhos por SO ──────────────────────────────────────────────────────────
 UNAME := $(shell uname -s)
 
+# Espaços nos caminhos NÃO são escapados aqui — sempre use entre aspas ("$(DB_DIR)").
 ifeq ($(UNAME), Darwin)
-  DB_DIR      := $(HOME)/Library/Application\ Support/app.quibo
+  DB_DIR      := $(HOME)/Library/Application Support/app.quibo
   WEBKIT_DIR  := $(HOME)/Library/WebKit/quibo
 endif
 ifeq ($(UNAME), Linux)
@@ -31,11 +33,24 @@ ifeq ($(OS), Windows_NT)
   WEBKIT_DIR  :=
 endif
 
+# Arquivo do banco SQLite (usado pelo `make migrate`).
+DB_FILE := $(DB_DIR)/quibo.db
+
 # ─── dev ──────────────────────────────────────────────────────────────────────
 ## Inicia o app desktop com hot reload (Vite + Tauri)
 dev:
 	@echo "$(CYAN)$(BOLD)▶ Iniciando Quibo em modo desenvolvimento...$(RESET)"
 	@yarn tauri dev
+
+# ─── migrate ──────────────────────────────────────────────────────────────────
+## Aplica as migrações pendentes no banco local, SEM resetar/apagar dados.
+## Migrações já aplicadas são puladas (tabela schema_migrations), então é
+## seguro rodar quantas vezes precisar.
+migrate:
+	@echo "$(CYAN)$(BOLD)▶ Aplicando migrações pendentes...$(RESET)"
+	@echo "$(YELLOW)→ Banco: $(DB_FILE)$(RESET)"
+	@cd src-tauri && cargo run --quiet --bin migrate -- "$(DB_FILE)"
+	@echo "$(GREEN)$(BOLD)✓ Migrações aplicadas.$(RESET)"
 
 # ─── refresh ──────────────────────────────────────────────────────────────────
 ## Instala/sincroniza todas as dependências: yarn + Cargo
