@@ -14,6 +14,7 @@ import {
   type Conta,
   type TipoConta,
 } from "@/core/db/contas";
+import { listarPersonas, type PersonaComTotais } from "@/core/db/personas";
 
 // ─── Tipos de conta ───────────────────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ const CORES: { valor: string; tint: string; label: string }[] = [
 
 export function ContasScreen() {
   const [contas, setContas] = useState<Conta[]>([]);
+  const [personas, setPersonas] = useState<PersonaComTotais[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<Conta | null>(null);
@@ -64,6 +66,7 @@ export function ContasScreen() {
   const [banco, setBanco] = useState<string | null>(null);
   // Usuário escolheu o banco manualmente → para de auto-reconhecer pelo nome.
   const [bancoTocado, setBancoTocado] = useState(false);
+  const [personaId, setPersonaId] = useState<string | null>(null);
   const [isPrimary, setIsPrimary] = useState(false);
   // Saldo é preservado na edição, mas não é mais editável aqui (contas novas começam em 0).
   const [saldoCentavos, setSaldoCentavos] = useState(0);
@@ -82,8 +85,12 @@ export function ContasScreen() {
 
   const carregarContas = useCallback(async () => {
     try {
-      const lista = await listarContas();
+      const [lista, listaPersonas] = await Promise.all([
+        listarContas(),
+        listarPersonas(),
+      ]);
       setContas(lista);
+      setPersonas(listaPersonas.filter((p) => !p.archived));
     } catch (e) {
       tratarErro(e, {
         contexto: "carregar contas",
@@ -107,6 +114,7 @@ export function ContasScreen() {
     setCor(CORES[0].valor);
     setBanco(null);
     setBancoTocado(false);
+    setPersonaId(null);
     setIsPrimary(contas.length === 0); // sugere primária se for a primeira
     setSaldoCentavos(0);
     setConfirmandoExclusao(false);
@@ -121,6 +129,7 @@ export function ContasScreen() {
     setCor(conta.color);
     setBanco(bancoPorNome(conta.icon)?.name ?? null);
     setBancoTocado(true); // não auto-reconhece por cima de uma conta existente
+    setPersonaId(conta.personaId);
     setIsPrimary(conta.isPrimary);
     setSaldoCentavos(conta.balanceCents);
     setConfirmandoExclusao(false);
@@ -169,6 +178,7 @@ export function ContasScreen() {
         type: tipo,
         color: cor,
         icon: banco ?? "",
+        personaId,
         isPrimary,
         balanceCents: saldoCentavos,
       };
@@ -276,8 +286,24 @@ export function ContasScreen() {
                         </span>
                       )}
                     </div>
-                    <p className="text-[13px] font-medium text-[#5B616E] mt-0.5">
+                    <p className="text-[13px] font-medium text-[#5B616E] mt-0.5 flex items-center gap-1.5">
                       {tipoLabel(conta.type)}
+                      {(() => {
+                        const p = personas.find((x) => x.id === conta.personaId);
+                        if (!p) return null;
+                        return (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="text-[#C2C7D0]">·</span>
+                            <span
+                              className="w-[16px] h-[16px] rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                              style={{ background: `${p.color}1F`, color: p.color }}
+                            >
+                              {p.name.trim().charAt(0).toUpperCase() || "?"}
+                            </span>
+                            {p.name}
+                          </span>
+                        );
+                      })()}
                     </p>
                   </div>
                   <p className="text-[17px] font-semibold text-ink tabular-nums">
@@ -365,23 +391,26 @@ export function ContasScreen() {
                   </button>
                 </div>
 
-                {/* Nome */}
-                <div className="mb-4">
+                {/* Nome + banco (ícone ao lado) */}
+                <div className="mb-5">
                   <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
                     Como você chama ela?
                   </span>
-                  <span
-                    className="flex items-center h-[52px] px-4 bg-surface rounded-xl focus-within:border-brand transition-colors"
-                    style={{ border: "1px solid #D4D8E0" }}
-                  >
-                    <input
-                      value={nome}
-                      onChange={(e) => handleChangeNome(e.target.value)}
-                      placeholder="Ex: Nubank"
-                      autoFocus
-                      className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink placeholder:text-ink-placeholder font-sans"
-                    />
-                  </span>
+                  <div className="flex items-center gap-2.5">
+                    <SeletorBanco variant="icon" value={banco} onChange={escolherBanco} />
+                    <span
+                      className="flex-1 flex items-center h-[52px] px-4 bg-surface rounded-xl focus-within:border-brand transition-colors"
+                      style={{ border: "1px solid #D4D8E0" }}
+                    >
+                      <input
+                        value={nome}
+                        onChange={(e) => handleChangeNome(e.target.value)}
+                        placeholder="Ex: Nubank"
+                        autoFocus
+                        className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink placeholder:text-ink-placeholder font-sans"
+                      />
+                    </span>
+                  </div>
 
                   {/* Sugestões de banco reconhecido enquanto digita */}
                   {sugestoes.length > 0 && (
@@ -401,12 +430,6 @@ export function ContasScreen() {
                       ))}
                     </div>
                   )}
-                </div>
-
-                {/* Banco vinculado */}
-                <p className="text-[13px] font-semibold text-[#5B616E] mb-2">Banco</p>
-                <div className="mb-5">
-                  <SeletorBanco value={banco} onChange={escolherBanco} />
                 </div>
 
                 {/* Tipo */}
@@ -464,6 +487,54 @@ export function ContasScreen() {
                     );
                   })}
                 </div>
+
+                {/* Persona (opcional) */}
+                {personas.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between mt-1.5 mb-2.5">
+                      <p className="text-[13px] font-semibold text-[#5B616E]">
+                        De quem é essa conta?
+                      </p>
+                      <span className="text-[12px] font-medium text-ink-placeholder">opcional</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mb-5">
+                      <button
+                        onClick={() => setPersonaId(null)}
+                        className="h-9 px-3.5 rounded-full font-semibold text-[13.5px] cursor-pointer transition-colors"
+                        style={{
+                          border: personaId === null ? "1px solid #87BBF8" : "1px solid #E3E6EC",
+                          background: personaId === null ? "#EAF1FD" : "#fff",
+                          color: personaId === null ? "#2F63C9" : "#5B616E",
+                        }}
+                      >
+                        Nenhuma
+                      </button>
+                      {personas.map((p) => {
+                        const ativo = personaId === p.id;
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => setPersonaId(p.id)}
+                            className="inline-flex items-center gap-2 h-9 pl-1.5 pr-3.5 rounded-full font-semibold text-[13.5px] cursor-pointer transition-colors"
+                            style={{
+                              border: ativo ? `1px solid ${p.color}` : "1px solid #E3E6EC",
+                              background: ativo ? `${p.color}14` : "#fff",
+                              color: ativo ? p.color : "#0E1116",
+                            }}
+                          >
+                            <span
+                              className="w-[22px] h-[22px] rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                              style={{ background: `${p.color}1F`, color: p.color }}
+                            >
+                              {p.name.trim().charAt(0).toUpperCase() || "?"}
+                            </span>
+                            {p.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
 
                 {/* Conta principal */}
                 <div

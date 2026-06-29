@@ -10,6 +10,11 @@ interface SeletorBancoProps {
   /** Nome do banco vinculado ou null para genérico. */
   value: string | null;
   onChange: (nome: string | null) => void;
+  /**
+   * "field" (padrão): botão largo com logo + nome + "Trocar".
+   * "icon": botão compacto quadrado, só com o logo — para ficar ao lado de um input.
+   */
+  variant?: "field" | "icon";
 }
 
 function IconBusca() {
@@ -58,7 +63,7 @@ function Generico({ size = 40 }: { size?: number }) {
   );
 }
 
-export function SeletorBanco({ value, onChange }: SeletorBancoProps) {
+export function SeletorBanco({ value, onChange, variant = "field" }: SeletorBancoProps) {
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState("");
 
@@ -81,28 +86,47 @@ export function SeletorBanco({ value, onChange }: SeletorBancoProps) {
   }
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={abrir}
-        className="w-full flex items-center gap-3 h-[52px] px-3.5 bg-surface rounded-xl hover:border-brand transition-colors text-left"
-        style={{ border: "1px solid #D4D8E0" }}
-      >
-        {selecionado ? (
-          <LogoBanco src={selecionado.icon} alt={selecionado.name} size={34} />
-        ) : (
-          <Generico size={34} />
-        )}
-        <span className="flex-1 min-w-0">
-          <span className="block text-[15px] font-medium text-ink truncate">
-            {selecionado ? selecionado.name : "Sem banco"}
+    <div className={variant === "icon" ? "shrink-0" : undefined}>
+      {variant === "icon" ? (
+        <button
+          type="button"
+          onClick={abrir}
+          aria-label={selecionado ? `Banco: ${selecionado.name}` : "Escolher banco"}
+          title={selecionado ? selecionado.name : "Escolher banco"}
+          className="shrink-0 flex items-center justify-center bg-white rounded-xl hover:border-brand transition-colors"
+          style={{ width: 52, height: 52, border: "1px solid #D4D8E0", padding: 9 }}
+        >
+          {selecionado ? (
+            <img src={selecionado.icon} alt={selecionado.name} className="w-full h-full object-contain" />
+          ) : (
+            <span className="text-ink-muted">
+              <ContaIcon icon="bank" size={22} />
+            </span>
+          )}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={abrir}
+          className="w-full flex items-center gap-3 h-[52px] px-3.5 bg-surface rounded-xl hover:border-brand transition-colors text-left"
+          style={{ border: "1px solid #D4D8E0" }}
+        >
+          {selecionado ? (
+            <LogoBanco src={selecionado.icon} alt={selecionado.name} size={34} />
+          ) : (
+            <Generico size={34} />
+          )}
+          <span className="flex-1 min-w-0">
+            <span className="block text-[15px] font-medium text-ink truncate">
+              {selecionado ? selecionado.name : "Sem banco"}
+            </span>
+            <span className="block text-[12px] text-ink-muted">
+              {selecionado ? "logo reconhecido" : "usa um ícone genérico"}
+            </span>
           </span>
-          <span className="block text-[12px] text-ink-muted">
-            {selecionado ? "logo reconhecido" : "usa um ícone genérico"}
-          </span>
-        </span>
-        <span className="text-[13px] font-semibold text-brand shrink-0">Trocar</span>
-      </button>
+          <span className="text-[13px] font-semibold text-brand shrink-0">Trocar</span>
+        </button>
+      )}
 
       {aberto && (
         <div

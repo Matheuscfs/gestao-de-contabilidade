@@ -65,12 +65,15 @@ async function semearBaseSeVazio(
   const ts = agora();
   const personaId = uuidv4();
 
+  // Persona principal (o dono do app). É criada provisoriamente como "Você" e
+  // recebe nome/foto reais no onboarding (via sincronizarPersonaPrincipal).
   await db.insert(personas).values({
     id: personaId,
-    name: "Pessoal",
-    description: "Finanças pessoais",
+    name: "Você",
+    description: "você · suas finanças pessoais",
     color: "#4078E6",
     icon: "user",
+    isSelf: 1,
     archived: 0,
     createdAt: ts,
     updatedAt: ts,

@@ -19,7 +19,7 @@ export function AppShell() {
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header — fiel ao Shell.tsx do quibo-react */}
-        <header className="drag-region flex items-center justify-between px-10 pt-[30px] pb-[14px] shrink-0">
+        <header className="drag-region flex items-center justify-between px-10 pt-[10px] pb-[14px] shrink-0">
           {/* Esquerda: seletor de mês ou título da página */}
           <div className="no-drag flex items-center gap-1">
             {showMonth ? (
@@ -71,27 +71,29 @@ export function AppShell() {
             )}
           </div>
 
-          {/* Direita: avatar MR + Adicionar */}
+          {/* Direita: Adicionar (só quando a tela registra uma ação) */}
           <div className="no-drag flex items-center gap-4">
-            <button
-              onClick={() => onAdicionar?.()}
-              className="inline-flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-brand text-white font-semibold text-[15px] shadow-[0_6px_16px_-4px_rgba(64,120,230,.45)] hover:bg-brand-600 transition-colors"
-            >
-              <svg
-                width="19"
-                height="19"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {onAdicionar && (
+              <button
+                onClick={() => onAdicionar()}
+                className="inline-flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-brand text-white font-semibold text-[15px] shadow-[0_6px_16px_-4px_rgba(64,120,230,.45)] hover:bg-brand-600 transition-colors"
               >
-                <path d="M5 12h14" />
-                <path d="M12 5v14" />
-              </svg>
-              Adicionar
-            </button>
+                <svg
+                  width="19"
+                  height="19"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 12h14" />
+                  <path d="M12 5v14" />
+                </svg>
+                Adicionar
+              </button>
+            )}
           </div>
         </header>
 

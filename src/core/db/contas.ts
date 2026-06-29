@@ -11,6 +11,8 @@ export type Conta = {
   type: TipoConta;
   color: string;
   icon: string;
+  /** Persona vinculada (opcional) ou null. */
+  personaId: string | null;
   isPrimary: boolean;
   isActive: boolean;
   balanceCents: number;
@@ -23,6 +25,7 @@ export type NovaConta = {
   type: TipoConta;
   color: string;
   icon: string;
+  personaId: string | null;
   isPrimary: boolean;
   balanceCents: number;
 };
@@ -33,6 +36,7 @@ type ContaRow = {
   type: string;
   color: string;
   icon: string;
+  persona_id: string | null;
   is_primary: number;
   is_active: number;
   balance_cents: number;
@@ -47,6 +51,7 @@ function mapearLinha(r: ContaRow): Conta {
     type: r.type as TipoConta,
     color: r.color,
     icon: r.icon,
+    personaId: r.persona_id ?? null,
     isPrimary: r.is_primary === 1,
     isActive: r.is_active === 1,
     balanceCents: r.balance_cents,
@@ -60,7 +65,7 @@ function mapearLinha(r: ContaRow): Conta {
 export async function listarContas(): Promise<Conta[]> {
   const sqlite = await getSqlite();
   const rows = await sqlite.select<ContaRow[]>(
-    `SELECT id, name, type, color, icon, is_primary, is_active, balance_cents, source, created_at
+    `SELECT id, name, type, color, icon, persona_id, is_primary, is_active, balance_cents, source, created_at
      FROM accounts
      WHERE archived = 0
      ORDER BY is_primary DESC, created_at ASC`
@@ -99,9 +104,9 @@ export async function criarConta(dados: NovaConta): Promise<void> {
   }
   await sqlite.execute(
     `INSERT INTO accounts
-       (id, name, type, balance_cents, initial_balance_cents, color, icon,
+       (id, name, type, balance_cents, initial_balance_cents, color, icon, persona_id,
         is_active, is_primary, archived, source, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, 0, 'MANUAL', ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, 'MANUAL', ?, ?)`,
     [
       id,
       dados.name.trim(),
@@ -110,6 +115,7 @@ export async function criarConta(dados: NovaConta): Promise<void> {
       dados.balanceCents,
       dados.color,
       dados.icon,
+      dados.personaId,
       dados.isPrimary ? 1 : 0,
       ts,
       ts,
@@ -127,13 +133,14 @@ export async function editarConta(id: string, dados: NovaConta): Promise<void> {
   }
   await sqlite.execute(
     `UPDATE accounts
-     SET name = ?, type = ?, color = ?, icon = ?, is_primary = ?, balance_cents = ?, updated_at = ?
+     SET name = ?, type = ?, color = ?, icon = ?, persona_id = ?, is_primary = ?, balance_cents = ?, updated_at = ?
      WHERE id = ?`,
     [
       dados.name.trim(),
       dados.type,
       dados.color,
       dados.icon,
+      dados.personaId,
       dados.isPrimary ? 1 : 0,
       dados.balanceCents,
       agora(),

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { getSetting, setSetting, deleteSetting } from "@/core/db/settings";
+import { sincronizarPersonaPrincipal } from "@/core/db/personas";
 import type { Foco } from "@/store/onboarding";
 
 const CHAVE_NOME = "nome_usuario";
@@ -38,6 +39,8 @@ export const usePerfilStore = create<PerfilState>((set) => ({
     set({ nome, iniciais: calcularIniciais(nome) });
     await setSetting(CHAVE_NOME, nome);
     localStorage.setItem("quibo:nome_usuario", nome);
+    // Mantém a persona principal em sincronia (cria-a no onboarding).
+    await sincronizarPersonaPrincipal({ name: nome });
   },
 
   atualizarFoto: async (foto) => {
@@ -49,6 +52,8 @@ export const usePerfilStore = create<PerfilState>((set) => ({
       await deleteSetting(CHAVE_FOTO);
       localStorage.removeItem("quibo:foto_usuario");
     }
+    // Reflete a foto do perfil no avatar da persona principal.
+    await sincronizarPersonaPrincipal({ avatar: foto });
   },
 
   atualizarFocos: async (focos) => {
@@ -94,4 +99,10 @@ export async function inicializarPerfil(): Promise<void> {
 
   if (nome) localStorage.setItem("quibo:nome_usuario", nome);
   if (foto) localStorage.setItem("quibo:foto_usuario", foto);
+
+  // Garante a persona principal para quem já tinha concluído o onboarding antes
+  // dessa funcionalidade existir (cria se faltar, mantém em dia caso já exista).
+  if (nome) {
+    await sincronizarPersonaPrincipal({ name: nome, avatar: foto ?? null });
+  }
 }

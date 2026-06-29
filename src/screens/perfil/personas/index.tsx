@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useHeaderActionsStore } from "@/app/header-actions-store";
+import { usePerfilStore } from "@/app/perfil-store";
 import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
 import { formatarBRL } from "@/utils/money";
@@ -30,6 +31,42 @@ function tintDaCor(cor: string): string {
   return CORES.find((c) => c.valor === cor)?.tint ?? "#F0F2F6";
 }
 
+/** Redimensiona e converte a imagem escolhida em data URL base64 (mesmo fluxo do onboarding). */
+function redimensionarParaBase64(file: File, maxSize = 256): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      const ratio = Math.min(maxSize / img.width, maxSize / img.height, 1);
+      const w = Math.round(img.width * ratio);
+      const h = Math.round(img.height * ratio);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Canvas não disponível"));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(objectUrl);
+      resolve(canvas.toDataURL("image/jpeg", 0.88));
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Falha ao carregar imagem"));
+    };
+
+    img.src = objectUrl;
+  });
+}
+
 function inicial(nome: string): string {
   return nome.trim().charAt(0).toUpperCase() || "?";
 }
@@ -40,7 +77,6 @@ const RELACIONAMENTOS = [
   { label: "Parceiro(a)", descricao: "parceiro(a) · divide a casa" },
   { label: "Filho(a)", descricao: "filho(a)" },
   { label: "Pai ou mãe", descricao: "pai / mãe · você ajuda" },
-  { label: "Você", descricao: "você · suas finanças pessoais" },
   { label: "Outro", descricao: "" },
 ];
 
@@ -90,24 +126,110 @@ function CardPersona({
   const isEmpresa = persona.icon === "briefcase";
   const sumario = calcularSumario(persona);
 
+  const iconeProps = {
+    width: 13,
+    height: 13,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+  const vinculos = [
+    {
+      label: "contas",
+      count: persona.contasCount,
+      titulo: `${persona.contasCount} conta(s) vinculada(s)`,
+      icone: (
+        <svg {...iconeProps}>
+          <line x1="3" x2="21" y1="22" y2="22" />
+          <line x1="6" x2="6" y1="18" y2="11" />
+          <line x1="10" x2="10" y1="18" y2="11" />
+          <line x1="14" x2="14" y1="18" y2="11" />
+          <line x1="18" x2="18" y1="18" y2="11" />
+          <polygon points="12 2 20 7 4 7" />
+        </svg>
+      ),
+    },
+    {
+      label: "cartoes",
+      count: persona.cartoesCount,
+      titulo: `${persona.cartoesCount} cartão(ões) vinculado(s)`,
+      icone: (
+        <svg {...iconeProps}>
+          <rect width="20" height="14" x="2" y="5" rx="2" />
+          <path d="M2 10h20" />
+        </svg>
+      ),
+    },
+    {
+      label: "lancamentos",
+      count: persona.lancamentosCount,
+      titulo: `${persona.lancamentosCount} lançamento(s) vinculado(s)`,
+      icone: (
+        <svg {...iconeProps}>
+          <line x1="8" x2="21" y1="6" y2="6" />
+          <line x1="8" x2="21" y1="12" y2="12" />
+          <line x1="8" x2="21" y1="18" y2="18" />
+          <line x1="3" x2="3.01" y1="6" y2="6" />
+          <line x1="3" x2="3.01" y1="12" y2="12" />
+          <line x1="3" x2="3.01" y1="18" y2="18" />
+        </svg>
+      ),
+    },
+  ].filter((v) => v.count > 0);
+
   return (
-    <div
-      className="bg-surface border border-border rounded-2xl p-[18px] flex flex-col"
+    <button
+      onClick={onEditar}
+      aria-label={`Editar ${persona.name}`}
+      className="group relative bg-surface border border-border rounded-2xl p-5 pt-6 flex flex-col items-center text-center hover:border-brand/40 hover:shadow-[0_8px_24px_-12px_rgba(14,17,22,.22)] transition-all"
       style={{ borderColor: "#E3E6EC" }}
     >
-      {/* Cabeçalho do card */}
-      <div className="flex items-center gap-3">
-        {/* Avatar */}
-        <div
-          className={`w-14 h-14 flex items-center justify-center shrink-0 font-bold text-[19px] ${
-            isEmpresa ? "rounded-2xl" : "rounded-full"
-          }`}
-          style={{ background: tintDaCor(persona.color), color: persona.color }}
+      {/* Botão de opções (canto) */}
+      <span
+        aria-hidden
+        className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-transparent text-ink-muted group-hover:text-ink group-hover:bg-surface-subtle flex items-center justify-center transition-colors"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         >
-          {isEmpresa ? (
+          <circle cx="12" cy="12" r="1" />
+          <circle cx="19" cy="12" r="1" />
+          <circle cx="5" cy="12" r="1" />
+        </svg>
+      </span>
+
+      {/* Avatar grande + badge de cor */}
+      <div className="relative shrink-0">
+        <div
+          className={`w-[78px] h-[78px] flex items-center justify-center overflow-hidden font-bold text-[28px] ${
+            isEmpresa ? "rounded-[20px]" : "rounded-full"
+          }`}
+          style={
+            persona.avatar
+              ? undefined
+              : { background: tintDaCor(persona.color), color: persona.color }
+          }
+        >
+          {persona.avatar ? (
+            <img
+              src={persona.avatar}
+              alt={persona.name}
+              className="w-full h-full object-cover"
+            />
+          ) : isEmpresa ? (
             <svg
-              width="24"
-              height="24"
+              width="32"
+              height="32"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -122,47 +244,57 @@ function CardPersona({
             inicial(persona.name)
           )}
         </div>
+        {/* Badge de cor da persona */}
+        <span
+          aria-hidden
+          className="absolute right-0 bottom-0 w-[18px] h-[18px] rounded-full"
+          style={{ background: persona.color, border: "3px solid #fff" }}
+        />
+      </div>
 
-        {/* Nome + descrição */}
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-[16px] text-ink tracking-tight truncate">
-            {persona.name}
-          </p>
-          {persona.description && (
-            <p className="text-[13px] text-ink-secondary mt-0.5 truncate">
-              {persona.description}
-            </p>
-          )}
-        </div>
-
-        {/* Botão de opções */}
-        <button
-          onClick={onEditar}
-          aria-label="Editar persona"
-          className="w-8 h-8 rounded-full border-none bg-transparent text-ink-muted hover:text-ink hover:bg-surface-subtle flex items-center justify-center transition-colors shrink-0"
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+      {/* Nome + descrição */}
+      <div className="flex items-center justify-center gap-1.5 mt-3.5 w-full">
+        <p className="font-bold text-[16px] text-ink tracking-tight truncate">
+          {persona.name}
+        </p>
+        {persona.isSelf && (
+          <span
+            className="shrink-0 inline-flex items-center h-[18px] px-1.5 rounded-full text-[10.5px] font-bold"
+            style={{ background: "#EAF1FD", color: "#2F63C9" }}
           >
-            <circle cx="12" cy="12" r="1" />
-            <circle cx="19" cy="12" r="1" />
-            <circle cx="5" cy="12" r="1" />
-          </svg>
-        </button>
+            VOCÊ
+          </span>
+        )}
+      </div>
+      {persona.description && (
+        <p className="text-[13px] text-ink-secondary mt-0.5 w-full truncate">
+          {persona.description}
+        </p>
+      )}
+
+      {/* Contagem de registros vinculados */}
+      <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
+        {vinculos.length > 0 ? (
+          vinculos.map((v) => (
+            <span
+              key={v.label}
+              className="inline-flex items-center gap-1 h-[22px] pl-1.5 pr-2 rounded-full text-[11.5px] font-semibold bg-surface-subtle text-ink-secondary"
+              title={v.titulo}
+            >
+              {v.icone}
+              {v.count}
+            </span>
+          ))
+        ) : (
+          <span className="text-[12px] text-ink-muted">Sem registros ainda</span>
+        )}
       </div>
 
       {/* Sumário financeiro */}
       {sumario && (
         <>
-          <div className="h-px bg-border-subtle mx-0 mt-[15px]" />
-          <div className="flex items-center justify-between mt-[14px]">
+          <div className="h-px bg-border-subtle w-full mt-4" />
+          <div className="flex flex-col items-center gap-1.5 mt-3.5">
             <span
               className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[12px] font-semibold"
               style={{
@@ -177,7 +309,7 @@ function CardPersona({
               {sumario.chip.texto}
             </span>
             <span
-              className="font-bold text-[16px] tabular-nums tracking-tight"
+              className="font-bold text-[17px] tabular-nums tracking-tight"
               style={{
                 color: sumario.corValor,
                 fontFeatureSettings: "'tnum' 1,'lnum' 1",
@@ -188,7 +320,7 @@ function CardPersona({
           </div>
         </>
       )}
-    </div>
+    </button>
   );
 }
 
@@ -205,17 +337,35 @@ function ModalPersona({
 }) {
   type Tipo = "pessoa" | "empresa";
 
+  const isSelf = editando?.isSelf ?? false;
+  const { atualizarNome, atualizarFoto } = usePerfilStore();
+
   const [tipo, setTipo] = useState<Tipo>(
     editando?.icon === "briefcase" ? "empresa" : "pessoa"
   );
   const [nome, setNome] = useState(editando?.name ?? "");
   const [descricao, setDescricao] = useState(editando?.description ?? "");
   const [cor, setCor] = useState(editando?.color ?? CORES[0].valor);
+  const [avatar, setAvatar] = useState<string | null>(editando?.avatar ?? null);
 
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  const inputFotoRef = useRef<HTMLInputElement>(null);
+
+  async function selecionarFoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite re-selecionar o mesmo arquivo
+    if (!file) return;
+    try {
+      const base64 = await redimensionarParaBase64(file);
+      setAvatar(base64);
+    } catch {
+      // falha silenciosa — imagem é opcional
+    }
+  }
 
   async function salvar() {
     setErro(null);
@@ -229,11 +379,18 @@ function ModalPersona({
         name: nome.trim(),
         description: descricao.trim() || null,
         color: cor,
-        icon: tipo === "empresa" ? "briefcase" : "user",
+        // A persona principal é sempre uma pessoa.
+        icon: isSelf ? "user" : tipo === "empresa" ? "briefcase" : "user",
+        avatar,
       };
       if (editando) {
         await editarPersona(editando.id, dados);
-        toast.sucesso("Persona atualizada");
+        // Persona principal: nome e foto seguem o perfil (sincronia bidirecional).
+        if (isSelf) {
+          await atualizarNome(nome.trim());
+          await atualizarFoto(avatar);
+        }
+        toast.sucesso(isSelf ? "Perfil atualizado" : "Persona atualizada");
       } else {
         await criarPersona(dados);
         toast.sucesso("Persona adicionada");
@@ -275,10 +432,9 @@ function ModalPersona({
       onClick={() => !salvando && onFechar()}
     >
       <div
-        className="w-[480px] bg-surface rounded-3xl shadow-2xl overflow-y-auto animate-slide-up"
+        className="w-[480px] bg-surface rounded-3xl shadow-2xl animate-slide-up"
         style={{
-          padding: "26px 30px 24px",
-          maxHeight: "calc(100vh - 48px)",
+          padding: "24px 30px 22px",
           boxShadow: "0 24px 60px -20px rgba(14,17,22,.4)",
         }}
         onClick={(e) => e.stopPropagation()}
@@ -336,9 +492,19 @@ function ModalPersona({
           <>
             {/* Cabeçalho */}
             <div className="flex items-center justify-between mb-5">
-              <p className="text-[21px] font-bold text-ink tracking-tight">
-                {editando ? "Editar persona" : "Nova persona"}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-[21px] font-bold text-ink tracking-tight">
+                  {isSelf ? "Você" : editando ? "Editar persona" : "Nova persona"}
+                </p>
+                {isSelf && (
+                  <span
+                    className="inline-flex items-center h-[22px] px-2 rounded-full text-[11.5px] font-semibold"
+                    style={{ background: "#EAF1FD", color: "#2F63C9" }}
+                  >
+                    persona principal
+                  </span>
+                )}
+              </div>
               <button
                 onClick={onFechar}
                 disabled={salvando}
@@ -351,63 +517,115 @@ function ModalPersona({
               </button>
             </div>
 
-            {/* Tipo: Pessoa | Empresa */}
-            <div
-              className="flex gap-1.5 p-1 rounded-full mb-5"
-              style={{ background: "#F0F2F6" }}
-            >
-              {(["pessoa", "empresa"] as Tipo[]).map((t) => (
+            {/* Tipo: Pessoa | Empresa (a persona principal é sempre você) */}
+            {!isSelf && (
+              <div
+                className="flex gap-1.5 p-1 rounded-full mb-4"
+                style={{ background: "#F0F2F6" }}
+              >
+                {(["pessoa", "empresa"] as Tipo[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTipo(t)}
+                    className="flex-1 h-[38px] rounded-full font-semibold text-[14px] transition-all"
+                    style={
+                      tipo === t
+                        ? {
+                            background: "#fff",
+                            color: "#0E1116",
+                            boxShadow: "0 1px 2px rgba(14,17,22,.10)",
+                            border: "none",
+                          }
+                        : {
+                            background: "transparent",
+                            color: "#5B616E",
+                            border: "none",
+                          }
+                    }
+                  >
+                    {t === "pessoa" ? "Pessoa" : "Empresa / negócio"}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Avatar / imagem — clicável para anexar foto */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className="relative shrink-0">
                 <button
-                  key={t}
-                  onClick={() => setTipo(t)}
-                  className="flex-1 h-[38px] rounded-full font-semibold text-[14px] transition-all"
+                  type="button"
+                  onClick={() => inputFotoRef.current?.click()}
+                  aria-label={avatar ? "Trocar imagem" : "Adicionar imagem"}
+                  className={`w-[72px] h-[72px] flex items-center justify-center overflow-hidden font-bold text-[26px] transition-transform hover:opacity-90 ${
+                    tipo === "empresa" ? "rounded-2xl" : "rounded-full"
+                  }`}
                   style={
-                    tipo === t
-                      ? {
-                          background: "#fff",
-                          color: "#0E1116",
-                          boxShadow: "0 1px 2px rgba(14,17,22,.10)",
-                          border: "none",
-                        }
-                      : {
-                          background: "transparent",
-                          color: "#5B616E",
-                          border: "none",
-                        }
+                    avatar
+                      ? { border: "none", padding: 0 }
+                      : { background: tintDaCor(cor), color: cor, border: "none" }
                   }
                 >
-                  {t === "pessoa" ? "Pessoa" : "Empresa / negócio"}
+                  {avatar ? (
+                    <img
+                      src={avatar}
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : tipo === "empresa" ? (
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect width="20" height="14" x="2" y="7" rx="2" />
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                    </svg>
+                  ) : (
+                    inicial(nome || "?")
+                  )}
                 </button>
-              ))}
-            </div>
-
-            {/* Preview avatar */}
-            <div className="flex items-center gap-4 mb-5">
-              <div
-                className={`w-[72px] h-[72px] flex items-center justify-center shrink-0 font-bold text-[26px] ${
-                  tipo === "empresa" ? "rounded-2xl" : "rounded-full"
-                }`}
-                style={{ background: tintDaCor(cor), color: cor }}
-              >
-                {tipo === "empresa" ? (
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="20" height="14" x="2" y="7" rx="2" />
-                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                {/* Badge de câmera */}
+                <button
+                  type="button"
+                  onClick={() => inputFotoRef.current?.click()}
+                  aria-label="Adicionar imagem"
+                  className="absolute right-[-3px] bottom-[-3px] w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center"
+                  style={{ border: "2.5px solid #fff", boxShadow: "0 4px 10px -3px rgba(64,120,230,.5)" }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                    <circle cx="12" cy="13" r="3" />
                   </svg>
-                ) : (
-                  inicial(nome || "?")
-                )}
+                </button>
               </div>
+
               <div className="min-w-0">
-                <p className="text-[15px] font-semibold text-ink truncate">
-                  {nome || (tipo === "empresa" ? "Nome da empresa" : "Nome da persona")}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => inputFotoRef.current?.click()}
+                    className="font-semibold text-[13px] text-brand hover:underline"
+                  >
+                    {avatar ? "Trocar imagem" : "Adicionar imagem"}
+                  </button>
+                  {avatar && (
+                    <button
+                      type="button"
+                      onClick={() => setAvatar(null)}
+                      className="font-semibold text-[13px] text-ink-muted hover:text-ink"
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
+                <p className="text-[12px] text-ink-muted mt-1 leading-snug">
+                  Anexe uma foto — fica salva junto da persona.
                 </p>
-                {descricao && (
-                  <p className="text-[13px] text-ink-secondary mt-0.5 truncate">
-                    {descricao}
-                  </p>
-                )}
               </div>
+
+              <input
+                ref={inputFotoRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={selecionarFoto}
+              />
             </div>
 
             {/* Nome */}
@@ -434,10 +652,10 @@ function ModalPersona({
               </span>
             </label>
 
-            {/* Chips de relacionamento (só para Pessoa) */}
-            {tipo === "pessoa" && (
-              <div className="mb-5">
-                <p className="text-[13px] font-semibold text-ink-secondary mb-2.5">
+            {/* Chips de relacionamento (só para Pessoa, exceto você) */}
+            {tipo === "pessoa" && !isSelf && (
+              <div className="mb-4">
+                <p className="text-[13px] font-semibold text-ink-secondary mb-2">
                   Quem é pra você?
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -449,7 +667,7 @@ function ModalPersona({
                         onClick={() =>
                           setDescricao(ativo ? "" : r.descricao)
                         }
-                        className="h-[38px] px-4 rounded-full font-semibold text-[14px] transition-colors"
+                        className="h-[36px] px-3.5 rounded-full font-semibold text-[14px] transition-colors"
                         style={
                           ativo
                             ? {
@@ -473,7 +691,7 @@ function ModalPersona({
             )}
 
             {/* Descrição (editável diretamente para empresa ou personalizável para pessoa) */}
-            <label className="block mb-5">
+            <label className="block mb-4">
               <span className="block text-[13px] font-semibold text-ink-secondary mb-2">
                 Descrição{" "}
                 <span className="font-normal text-ink-muted">(opcional)</span>
@@ -499,7 +717,7 @@ function ModalPersona({
             <p className="text-[13px] font-semibold text-ink-secondary mb-2.5">
               Cor pra reconhecer
             </p>
-            <div className="flex flex-wrap gap-3 mb-6">
+            <div className="flex items-center justify-between mb-5">
               {CORES.map((c) => {
                 const ativo = cor === c.valor;
                 return (
@@ -507,7 +725,7 @@ function ModalPersona({
                     key={c.valor}
                     aria-label={c.label}
                     onClick={() => setCor(c.valor)}
-                    className="w-[34px] h-[34px] rounded-full transition-transform hover:scale-110 border-none flex items-center justify-center"
+                    className="w-[30px] h-[30px] rounded-full transition-transform hover:scale-110 border-none flex items-center justify-center shrink-0"
                     style={{
                       background: c.valor,
                       boxShadow: ativo
@@ -539,9 +757,17 @@ function ModalPersona({
               </div>
             )}
 
+            {/* Aviso: persona principal não pode ser excluída */}
+            {isSelf && (
+              <p className="text-[12px] text-ink-muted mb-3 -mt-1">
+                Essa é a sua persona — nome e foto acompanham o seu perfil e ela
+                não pode ser excluída.
+              </p>
+            )}
+
             {/* Ações */}
             <div className="flex gap-2.5">
-              {editando ? (
+              {editando && !isSelf ? (
                 <button
                   onClick={() => setConfirmandoExclusao(true)}
                   className="shrink-0 h-12 px-4 rounded-full font-semibold text-[15px] hover:opacity-80 transition-opacity"
@@ -596,7 +822,6 @@ function ModalPersona({
 export function PersonasScreen() {
   const [personas, setPersonas] = useState<PersonaComTotais[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [busca, setBusca] = useState("");
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<PersonaComTotais | null>(null);
 
@@ -648,12 +873,8 @@ export function PersonasScreen() {
 
   // ── Derivados ─────────────────────────────────────────────────────────────
 
-  const personasFiltradas = personas.filter((p) =>
-    busca.trim() ? p.name.toLowerCase().includes(busca.toLowerCase()) : true
-  );
-
-  const pessoas = personasFiltradas.filter((p) => p.icon !== "briefcase" && !p.archived);
-  const empresas = personasFiltradas.filter((p) => p.icon === "briefcase" && !p.archived);
+  const pessoas = personas.filter((p) => p.icon !== "briefcase" && !p.archived);
+  const empresas = personas.filter((p) => p.icon === "briefcase" && !p.archived);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -663,67 +884,27 @@ export function PersonasScreen() {
       style={{ maxWidth: "760px", margin: "0 auto", width: "100%", paddingTop: "6px" }}
     >
       {/* Header */}
-      <div className="flex items-end justify-between px-0.5 pb-0">
-        <div>
-          <h1
-            style={{
-              fontWeight: 700,
-              fontSize: "24px",
-              letterSpacing: "-0.02em",
-              color: "#0E1116",
-            }}
-          >
-            Quem entra nas suas contas
-          </h1>
-          <p
-            style={{
-              fontWeight: 500,
-              fontSize: "15px",
-              color: "#5B616E",
-              marginTop: "6px",
-            }}
-          >
-            Você no centro — e de quem é cada gasto. Pessoas e negócios, cada um com sua urgência.
-          </p>
-        </div>
-        <button
-          onClick={abrirModalNovo}
-          className="inline-flex items-center gap-2 h-[42px] px-[18px] rounded-full border border-border bg-surface text-ink font-semibold text-[14px] hover:bg-surface-subtle transition-colors shrink-0 ml-4"
+      <div className="px-0.5 pb-0">
+        <h1
+          style={{
+            fontWeight: 700,
+            fontSize: "24px",
+            letterSpacing: "-0.02em",
+            color: "#0E1116",
+          }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <line x1="19" x2="19" y1="8" y2="14" />
-            <line x1="22" x2="16" y1="11" y2="11" />
-          </svg>
-          Adicionar
-        </button>
-      </div>
-
-      {/* Busca */}
-      <div className="mt-5 mb-1">
-        <div className="flex items-center gap-2 w-60 h-10 px-3.5 bg-surface border border-border rounded-xl">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-ink-muted shrink-0"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar persona…"
-            className="flex-1 min-w-0 border-none outline-none bg-transparent text-sm text-ink placeholder:text-ink-placeholder"
-          />
-        </div>
+          Quem entra nas suas contas
+        </h1>
+        <p
+          style={{
+            fontWeight: 500,
+            fontSize: "15px",
+            color: "#5B616E",
+            marginTop: "6px",
+          }}
+        >
+          Você no centro — e de quem é cada gasto. Pessoas e negócios, cada um com sua urgência.
+        </p>
       </div>
 
       {/* Estado de carregamento */}
@@ -731,21 +912,17 @@ export function PersonasScreen() {
         <div className="flex items-center justify-center py-16 text-sm text-ink-muted">
           Carregando…
         </div>
-      ) : personasFiltradas.length === 0 ? (
+      ) : personas.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-2">
           <p className="text-sm font-medium text-ink-muted">
-            {busca
-              ? "Nenhuma persona encontrada."
-              : "Nenhuma persona cadastrada ainda."}
+            Nenhuma persona cadastrada ainda.
           </p>
-          {!busca && (
-            <button
-              onClick={abrirModalNovo}
-              className="mt-1 text-sm font-semibold text-brand hover:underline"
-            >
-              Adicionar a primeira
-            </button>
-          )}
+          <button
+            onClick={abrirModalNovo}
+            className="mt-1 text-sm font-semibold text-brand hover:underline"
+          >
+            Adicionar a primeira
+          </button>
         </div>
       ) : (
         <>
@@ -759,7 +936,7 @@ export function PersonasScreen() {
                 </div>
               )}
               {!empresas.length && <div className="mt-5" />}
-              <div className="grid grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-3 gap-3.5">
                 {pessoas.map((p) => (
                   <CardPersona
                     key={p.id}
@@ -778,7 +955,7 @@ export function PersonasScreen() {
                 <span className="text-[13px] font-semibold text-ink-muted">Negócios</span>
                 <span className="flex-1 h-px bg-border-subtle" />
               </div>
-              <div className="grid grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-3 gap-3.5">
                 {empresas.map((p) => (
                   <CardPersona
                     key={p.id}

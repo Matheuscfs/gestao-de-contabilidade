@@ -14,6 +14,10 @@ export const personas = sqliteTable("personas", {
   description: text("description"),
   color: text("color").notNull().default("#4078E6"),
   icon: text("icon").notNull().default("user"),
+  /** Imagem (data URL base64) opcional — avatar da persona. */
+  avatar: text("avatar"),
+  /** 1 = persona principal (o dono do app); sincroniza com o perfil e não pode ser excluída. */
+  isSelf: integer("is_self").notNull().default(0),
   archived: integer("archived").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),

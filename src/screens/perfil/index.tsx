@@ -15,6 +15,7 @@ import {
   appSettings,
 } from "@/core/db/schema";
 import { semearSeNecessario } from "@/core/db/seed";
+import { sincronizarPersonaPrincipal } from "@/core/db/personas";
 
 // ─── Chaves de configuração de contexto de vida ───────────────────────────────
 
@@ -291,8 +292,13 @@ function ModalAreaDePerigo({ onFechar }: { onFechar: () => void }) {
         deleteSetting(CHAVE_INVESTIMENTOS),
       ]);
 
-      // Repopula dados base (persona padrão, conta e categorias)
+      // Repopula dados base (persona principal, conta e categorias)
       await semearSeNecessario();
+
+      // O nome/foto do perfil são preservados — reaplica-os na persona principal
+      // recém-recriada (o seed a cria provisoriamente como "Você").
+      const { nome, foto } = usePerfilStore.getState();
+      if (nome) await sincronizarPersonaPrincipal({ name: nome, avatar: foto });
 
       onFechar();
       navigate("/");
