@@ -1,7 +1,7 @@
+import { usePerfilStore } from "@/app/perfil-store";
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useOnboardingStore } from "./onboarding-store";
-import { usePerfilStore } from "@/app/perfil-store";
+import { useOnboardingStore } from "../../store/onboarding";
 import { StepDots } from "./step-dots";
 
 function redimensionarParaBase64(file: File, maxSize = 256): Promise<string> {
@@ -90,8 +90,7 @@ export function OnboardingNomeScreen() {
 
         <p className="font-medium text-[15px] text-[#5B616E] mt-[10px] leading-relaxed">
           Só o primeiro nome já tá ótimo.
-          <br />
-          A foto é totalmente opcional.
+          <br />A foto é totalmente opcional.
         </p>
 
         {/* Avatar clicável */}
@@ -172,7 +171,9 @@ export function OnboardingNomeScreen() {
               placeholder="Seu nome"
               autoFocus
               className="flex-1 min-w-0 border-none outline-none bg-transparent font-semibold text-[20px] text-ink text-center font-sans"
-              onKeyDown={(e) => e.key === "Enter" && valor.trim() && !salvando && avancar()}
+              onKeyDown={(e) =>
+                e.key === "Enter" && valor.trim() && !salvando && avancar()
+              }
             />
           </span>
         </div>

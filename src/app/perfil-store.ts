@@ -1,16 +1,23 @@
 import { create } from "zustand";
 import { getSetting, setSetting, deleteSetting } from "@/core/db/settings";
+import type { Foco } from "@/store/onboarding";
 
 const CHAVE_NOME = "nome_usuario";
 const CHAVE_FOTO = "foto_usuario";
+const CHAVE_FOCOS = "focos_usuario";
+const CHAVE_FOCO_FRASE = "foco_frase_usuario";
 
 interface PerfilState {
   nome: string;
   foto: string | null;
   iniciais: string;
+  focos: Foco[];
+  focoFrase: string;
 
   atualizarNome: (nome: string) => Promise<void>;
   atualizarFoto: (foto: string | null) => Promise<void>;
+  atualizarFocos: (focos: Foco[]) => Promise<void>;
+  atualizarFocoFrase: (frase: string) => Promise<void>;
 }
 
 function calcularIniciais(nome: string): string {
@@ -24,6 +31,8 @@ export const usePerfilStore = create<PerfilState>((set) => ({
   nome: "",
   foto: null,
   iniciais: "",
+  focos: [],
+  focoFrase: "",
 
   atualizarNome: async (nome) => {
     set({ nome, iniciais: calcularIniciais(nome) });
@@ -41,20 +50,46 @@ export const usePerfilStore = create<PerfilState>((set) => ({
       localStorage.removeItem("quibo:foto_usuario");
     }
   },
+
+  atualizarFocos: async (focos) => {
+    set({ focos });
+    if (focos.length > 0) {
+      await setSetting(CHAVE_FOCOS, JSON.stringify(focos));
+    } else {
+      await deleteSetting(CHAVE_FOCOS);
+    }
+  },
+
+  atualizarFocoFrase: async (frase) => {
+    set({ focoFrase: frase });
+    if (frase.trim()) {
+      await setSetting(CHAVE_FOCO_FRASE, frase.trim());
+    } else {
+      await deleteSetting(CHAVE_FOCO_FRASE);
+    }
+  },
 }));
 
 /**
- * Lê nome e foto do banco e popula o store.
+ * Lê todos os dados de perfil do banco e popula o store.
  * Chamada uma vez na inicialização do app, antes de renderizar.
  */
 export async function inicializarPerfil(): Promise<void> {
-  const nome = (await getSetting(CHAVE_NOME)) ?? "";
-  const foto = (await getSetting(CHAVE_FOTO)) ?? null;
+  const [nome, foto, focosRaw, focoFrase] = await Promise.all([
+    getSetting(CHAVE_NOME),
+    getSetting(CHAVE_FOTO),
+    getSetting(CHAVE_FOCOS),
+    getSetting(CHAVE_FOCO_FRASE),
+  ]);
+
+  const focos: Foco[] = focosRaw ? (JSON.parse(focosRaw) as Foco[]) : [];
 
   usePerfilStore.setState({
-    nome,
-    foto,
-    iniciais: calcularIniciais(nome),
+    nome: nome ?? "",
+    foto: foto ?? null,
+    iniciais: calcularIniciais(nome ?? ""),
+    focos,
+    focoFrase: focoFrase ?? "",
   });
 
   if (nome) localStorage.setItem("quibo:nome_usuario", nome);

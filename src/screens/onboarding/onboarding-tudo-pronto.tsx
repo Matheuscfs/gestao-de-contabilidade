@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useOnboardingStore } from "./onboarding-store";
+import { useOnboardingStore } from "../../store/onboarding";
 
 export function OnboardingTudoProntoScreen() {
   const navigate = useNavigate();
@@ -16,7 +16,16 @@ export function OnboardingTudoProntoScreen() {
     <div className="min-h-screen bg-surface-subtle flex items-center justify-center px-4">
       <div className="w-full max-w-[420px] flex flex-col items-center text-center">
         <div className="w-[92px] h-[92px] rounded-full bg-positive-50 text-positive flex items-center justify-center">
-          <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="46"
+            height="46"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <circle cx="12" cy="12" r="10" />
             <path d="m9 12 2 2 4-4" />
           </svg>

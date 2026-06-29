@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useOnboardingStore, type TomIA } from "./onboarding-store";
+import { useOnboardingStore, type TomIA } from "../../store/onboarding";
 import { StepDots } from "./step-dots";
 
 interface ToggleSwitchProps {
@@ -42,10 +42,14 @@ const toms: { id: TomIA; label: string }[] = [
 export function OnboardingTomDaIAScreen() {
   const navigate = useNavigate();
   const {
-    tomIA, setTomIA,
-    puxarOrelha, setPuxarOrelha,
-    comemorarVitorias, setComemorarVitorias,
-    contextoIA, setContextoIA,
+    tomIA,
+    setTomIA,
+    puxarOrelha,
+    setPuxarOrelha,
+    comemorarVitorias,
+    setComemorarVitorias,
+    contextoIA,
+    setContextoIA,
   } = useOnboardingStore();
 
   const [contexto, setContexto] = useState(contextoIA);

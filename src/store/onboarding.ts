@@ -4,7 +4,7 @@ import { usePerfilStore, inicializarPerfil } from "@/app/perfil-store";
 
 export type ProvedorIA = "openai" | "anthropic" | "gemini" | "openrouter" | null;
 export type TomIA = "direto" | "gentil" | "didatico";
-export type Foco = "reserva" | "dividas" | "objetivo" | "consciencia" | null;
+export type Foco = "reserva" | "dividas" | "objetivo";
 
 const CHAVE_ONBOARDING = "onboarding_done";
 
@@ -12,7 +12,7 @@ interface OnboardingState {
   nome: string;
   foto: string | null;
   provedorIA: ProvedorIA;
-  foco: Foco;
+  focos: Foco[];
   focoFrase: string;
   tomIA: TomIA;
   puxarOrelha: boolean;
@@ -22,7 +22,7 @@ interface OnboardingState {
   setNome: (nome: string) => void;
   setFoto: (foto: string | null) => void;
   setProvedorIA: (provedor: ProvedorIA) => void;
-  setFoco: (foco: Foco) => void;
+  setFocos: (focos: Foco[]) => void;
   setFocoFrase: (frase: string) => void;
   setTomIA: (tom: TomIA) => void;
   setPuxarOrelha: (value: boolean) => void;
@@ -36,7 +36,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   nome: "",
   foto: null,
   provedorIA: null,
-  foco: null,
+  focos: [],
   focoFrase: "",
   tomIA: "direto",
   puxarOrelha: true,
@@ -46,7 +46,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   setNome: (nome) => set({ nome }),
   setFoto: (foto) => set({ foto }),
   setProvedorIA: (provedorIA) => set({ provedorIA }),
-  setFoco: (foco) => set({ foco }),
+  setFocos: (focos) => set({ focos }),
   setFocoFrase: (focoFrase) => set({ focoFrase }),
   setTomIA: (tomIA) => set({ tomIA }),
   setPuxarOrelha: (puxarOrelha) => set({ puxarOrelha }),
