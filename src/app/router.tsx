@@ -1,6 +1,6 @@
 import { AppShell } from "@/app/app-shell";
 import { AnaliseScreen } from "@/screens/analise/analise-screen";
-import { CartoesCreditoScreen } from "@/screens/cartoes/cartoes-credito-screen";
+import { CartoesCreditoScreen } from "@/screens/cartoes";
 import { CategoriasScreen } from "@/screens/categorias/categorias-screen";
 import { CustoDeVidaScreen } from "@/screens/custo-de-vida";
 import { DividasScreen } from "@/screens/dividas/dividas-screen";
