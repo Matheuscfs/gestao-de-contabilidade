@@ -68,6 +68,27 @@ export async function listarContas(): Promise<Conta[]> {
   return rows.map(mapearLinha);
 }
 
+/**
+ * Conta quantos registros de uma origem (`type` + `is_template` de
+ * `transactions`) já estão vinculados a cada conta. Retorna `{ [accountId]: n }`.
+ */
+export async function contarPorConta(
+  origemType: string,
+  isTemplate: boolean
+): Promise<Record<string, number>> {
+  const sqlite = await getSqlite();
+  const rows = await sqlite.select<{ account_id: string; n: number }[]>(
+    `SELECT account_id, COUNT(*) AS n
+       FROM transactions
+      WHERE type = ? AND is_template = ? AND account_id IS NOT NULL
+      GROUP BY account_id`,
+    [origemType, isTemplate ? 1 : 0]
+  );
+  const mapa: Record<string, number> = {};
+  for (const r of rows) mapa[r.account_id] = r.n;
+  return mapa;
+}
+
 export async function criarConta(dados: NovaConta): Promise<void> {
   const sqlite = await getSqlite();
   const id = crypto.randomUUID();

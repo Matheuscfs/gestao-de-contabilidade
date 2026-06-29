@@ -4,6 +4,7 @@ import { MoneyInput } from "@/components/money-input";
 import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
 import { formatarBRL } from "@/utils/money";
+import { ContaIcon, ICONES_CONTA, type IconeConta } from "@/components/conta-icon";
 import {
   listarContas,
   criarConta,
@@ -13,21 +14,9 @@ import {
   type TipoConta,
 } from "@/core/db/contas";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-
-type IconeId =
-  | "bank"
-  | "coins"
-  | "wallet"
-  | "briefcase"
-  | "trending"
-  | "card"
-  | "building"
-  | "star";
-
 // ─── Tipos de conta ───────────────────────────────────────────────────────────
 
-const TIPOS: { id: TipoConta; label: string; icone: IconeId }[] = [
+const TIPOS: { id: TipoConta; label: string; icone: IconeConta }[] = [
   { id: "CHECKING", label: "Corrente", icone: "bank" },
   { id: "SAVINGS", label: "Poupança", icone: "coins" },
   { id: "INVESTMENT", label: "Investimentos", icone: "trending" },
@@ -59,110 +48,6 @@ function tintDaCor(cor: string): string {
   return CORES.find((c) => c.valor === cor)?.tint ?? "#F0F2F6";
 }
 
-// ─── Ícones disponíveis ───────────────────────────────────────────────────────
-
-function SvgIcone({ id, size = 20 }: { id: string; size?: number }) {
-  const props = {
-    width: size,
-    height: size,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 2,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-  };
-
-  if (id === "coins") {
-    return (
-      <svg {...props}>
-        <circle cx="8" cy="8" r="6" />
-        <path d="M18.09 10.37A6 6 0 1 1 10.34 18" />
-        <path d="M7 6h1v4" />
-        <path d="m16.71 13.88.7.71-2.82 2.82" />
-      </svg>
-    );
-  }
-  if (id === "wallet") {
-    return (
-      <svg {...props}>
-        <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-3" />
-        <path d="M3 5a2 2 0 0 0 2 2h15a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4a2 2 0 0 1 0-4" />
-      </svg>
-    );
-  }
-  if (id === "briefcase") {
-    return (
-      <svg {...props}>
-        <rect width="20" height="14" x="2" y="7" rx="2" />
-        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-      </svg>
-    );
-  }
-  if (id === "trending") {
-    return (
-      <svg {...props}>
-        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-        <polyline points="16 7 22 7 22 13" />
-      </svg>
-    );
-  }
-  if (id === "card") {
-    return (
-      <svg {...props}>
-        <rect width="20" height="14" x="2" y="5" rx="2" />
-        <line x1="2" x2="22" y1="10" y2="10" />
-      </svg>
-    );
-  }
-  if (id === "building") {
-    return (
-      <svg {...props}>
-        <rect width="16" height="20" x="4" y="2" rx="2" ry="2" />
-        <path d="M9 22v-4h6v4" />
-        <path d="M8 6h.01" />
-        <path d="M16 6h.01" />
-        <path d="M12 6h.01" />
-        <path d="M12 10h.01" />
-        <path d="M12 14h.01" />
-        <path d="M16 10h.01" />
-        <path d="M16 14h.01" />
-        <path d="M8 10h.01" />
-        <path d="M8 14h.01" />
-      </svg>
-    );
-  }
-  if (id === "star") {
-    return (
-      <svg {...props}>
-        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-      </svg>
-    );
-  }
-  // bank (padrão)
-  return (
-    <svg {...props}>
-      <line x1="3" x2="21" y1="22" y2="22" />
-      <line x1="6" x2="6" y1="18" y2="11" />
-      <line x1="10" x2="10" y1="18" y2="11" />
-      <line x1="14" x2="14" y1="18" y2="11" />
-      <line x1="18" x2="18" y1="18" y2="11" />
-      <polygon points="12 2 20 7 4 7" />
-    </svg>
-  );
-}
-
-const ICONES: IconeId[] = [
-  "bank",
-  "coins",
-  "wallet",
-  "briefcase",
-  "trending",
-  "card",
-  "building",
-  "star",
-];
-
 // ─── Componente de ícone na lista ─────────────────────────────────────────────
 
 function BadgeConta({ cor, icone }: { cor: string; icone: string }) {
@@ -171,7 +56,7 @@ function BadgeConta({ cor, icone }: { cor: string; icone: string }) {
       className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
       style={{ background: tintDaCor(cor), color: cor }}
     >
-      <SvgIcone id={icone} size={20} />
+      <ContaIcon icon={icone} size={20} />
     </div>
   );
 }
@@ -192,7 +77,7 @@ export function ContasScreen() {
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState<TipoConta>("CHECKING");
   const [cor, setCor] = useState(CORES[0].valor);
-  const [icone, setIcone] = useState<IconeId>("bank");
+  const [icone, setIcone] = useState<IconeConta>("bank");
   const [isPrimary, setIsPrimary] = useState(false);
   const [saldoCentavos, setSaldoCentavos] = useState(0);
 
@@ -240,7 +125,7 @@ export function ContasScreen() {
     setNome(conta.name);
     setTipo(conta.type);
     setCor(conta.color);
-    setIcone(conta.icon as IconeId);
+    setIcone(conta.icon as IconeConta);
     setIsPrimary(conta.isPrimary);
     setSaldoCentavos(conta.balanceCents);
     setConfirmandoExclusao(false);
@@ -546,7 +431,7 @@ export function ContasScreen() {
                 {/* Ícone */}
                 <p className="text-[13px] font-semibold text-[#5B616E] mb-2.5">Ícone</p>
                 <div className="flex items-center justify-between mb-5">
-                  {ICONES.map((id) => {
+                  {ICONES_CONTA.map((id) => {
                     const ativo = icone === id;
                     return (
                       <button
@@ -559,7 +444,7 @@ export function ContasScreen() {
                           border: ativo ? `1.5px solid ${cor}` : "1.5px solid transparent",
                         }}
                       >
-                        <SvgIcone id={id} size={20} />
+                        <ContaIcon icon={id} size={20} />
                       </button>
                     );
                   })}

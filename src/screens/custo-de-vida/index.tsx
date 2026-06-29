@@ -5,6 +5,8 @@ import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
 import { formatarBRL } from "@/utils/money";
 import { SeletorCategoria } from "@/components/seletor-categoria";
+import { SeletorConta } from "@/components/seletor-conta";
+import { SeletorPersona } from "@/components/seletor-persona";
 import { getDb, getSqlite } from "@/core/db/client";
 import { categories } from "@/core/db/schema";
 import type { Category } from "@/core/db/schema";
@@ -16,17 +18,27 @@ interface CustoDeVida {
   id: string;
   descricao: string;
   amountCents: number;
-  isFixo: boolean;
   lcDayOfMonth: number | null;
   categoryId: string | null;
+  personaId: string | null;
+  accountId: string | null;
 }
 
-type FiltroTipo = "TODOS" | "FIXO" | "VARIAVEL";
 type OrdenacaoTipo = "MAIOR" | "MENOR" | "AZ" | "ZA";
 
-// ─── DB helpers ───────────────────────────────────────────────────────────────
+interface DadosCusto {
+  descricao: string;
+  amountCents: number;
+  lcDayOfMonth: number | null;
+  categoryId: string | null;
+  personaId: string | null;
+  accountId: string | null;
+}
 
-// SELECT via Drizzle (funciona bem com o proxy para leituras)
+// ─── DB helpers ───────────────────────────────────────────────────────────────
+//
+// Custo de vida é sempre um gasto fixo mensal → is_recurring = 1.
+
 async function dbListarCustos(): Promise<CustoDeVida[]> {
   const sqlite = await getSqlite();
   const rows = await sqlite.select<
@@ -34,12 +46,13 @@ async function dbListarCustos(): Promise<CustoDeVida[]> {
       id: string;
       description: string;
       amount_cents: number | null;
-      is_recurring: number;
       lc_day_of_month: number | null;
       category_id: string | null;
+      persona_id: string | null;
+      account_id: string | null;
     }[]
   >(
-    `SELECT id, description, amount_cents, is_recurring, lc_day_of_month, category_id
+    `SELECT id, description, amount_cents, lc_day_of_month, category_id, persona_id, account_id
      FROM transactions
      WHERE type = 'LIVING_COST' AND is_template = 1
      ORDER BY created_at DESC`
@@ -49,63 +62,50 @@ async function dbListarCustos(): Promise<CustoDeVida[]> {
     id: r.id,
     descricao: r.description,
     amountCents: r.amount_cents ?? 0,
-    isFixo: r.is_recurring === 1,
     lcDayOfMonth: r.lc_day_of_month ?? null,
     categoryId: r.category_id ?? null,
+    personaId: r.persona_id ?? null,
+    accountId: r.account_id ?? null,
   }));
 }
 
-// Mutações via SQL direto para evitar instabilidades do ORM no Tauri
-async function dbCriarCusto(dados: {
-  descricao: string;
-  amountCents: number;
-  isFixo: boolean;
-  lcDayOfMonth: number | null;
-  categoryId: string | null;
-}): Promise<void> {
+async function dbCriarCusto(dados: DadosCusto): Promise<void> {
   const sqlite = await getSqlite();
   const id = `lc_${crypto.randomUUID()}`;
   const agora = new Date().toISOString();
   await sqlite.execute(
     `INSERT INTO transactions
       (id, type, status, description, amount_cents, is_template, is_recurring,
-       lc_day_of_month, category_id, source, created_at, updated_at)
-     VALUES (?, 'LIVING_COST', 'ATIVO', ?, ?, 1, ?, ?, ?, 'MANUAL', ?, ?)`,
+       lc_day_of_month, category_id, persona_id, account_id, source, created_at, updated_at)
+     VALUES (?, 'LIVING_COST', 'ATIVO', ?, ?, 1, 1, ?, ?, ?, ?, 'MANUAL', ?, ?)`,
     [
       id,
       dados.descricao,
       dados.amountCents,
-      dados.isFixo ? 1 : 0,
       dados.lcDayOfMonth,
       dados.categoryId,
+      dados.personaId,
+      dados.accountId,
       agora,
       agora,
     ]
   );
 }
 
-async function dbEditarCusto(
-  id: string,
-  dados: {
-    descricao: string;
-    amountCents: number;
-    isFixo: boolean;
-    lcDayOfMonth: number | null;
-    categoryId: string | null;
-  }
-): Promise<void> {
+async function dbEditarCusto(id: string, dados: DadosCusto): Promise<void> {
   const sqlite = await getSqlite();
   await sqlite.execute(
     `UPDATE transactions
-     SET description = ?, amount_cents = ?, is_recurring = ?,
-         lc_day_of_month = ?, category_id = ?, updated_at = ?
+     SET description = ?, amount_cents = ?, lc_day_of_month = ?,
+         category_id = ?, persona_id = ?, account_id = ?, updated_at = ?
      WHERE id = ?`,
     [
       dados.descricao,
       dados.amountCents,
-      dados.isFixo ? 1 : 0,
       dados.lcDayOfMonth,
       dados.categoryId,
+      dados.personaId,
+      dados.accountId,
       new Date().toISOString(),
       id,
     ]
@@ -154,7 +154,6 @@ export function CustoDeVidaScreen() {
 
   // ── Filtros e ordenação ───────────────────────────────────────────────────
   const [busca, setBusca] = useState("");
-  const [filtro, setFiltro] = useState<FiltroTipo>("TODOS");
   const [ordenacao, setOrdenacao] = useState<OrdenacaoTipo>("MAIOR");
   const [menuOrdemAberto, setMenuOrdemAberto] = useState(false);
   const menuOrdemRef = useRef<HTMLDivElement>(null);
@@ -168,9 +167,10 @@ export function CustoDeVidaScreen() {
   // Campos do modal
   const [descricao, setDescricao] = useState("");
   const [amountCents, setAmountCents] = useState(0);
-  const [isFixo, setIsFixo] = useState(true);
   const [lcDayOfMonth, setLcDayOfMonth] = useState<number | "">("");
   const [categoryId, setCategoryId] = useState<string>("");
+  const [personaId, setPersonaId] = useState<string | null>(null);
+  const [accountId, setAccountId] = useState<string | null>(null);
 
   // ── Confirmação de exclusão ────────────────────────────────────────────────
   const [confirmarDeletarId, setConfirmarDeletarId] = useState<string | null>(null);
@@ -212,9 +212,10 @@ export function CustoDeVidaScreen() {
     setEditandoId(null);
     setDescricao("");
     setAmountCents(0);
-    setIsFixo(true);
     setLcDayOfMonth("");
     setCategoryId("");
+    setPersonaId(null);
+    setAccountId(null);
     setErroModal(null);
     setModalAberto(true);
   }
@@ -223,9 +224,10 @@ export function CustoDeVidaScreen() {
     setEditandoId(custo.id);
     setDescricao(custo.descricao);
     setAmountCents(custo.amountCents);
-    setIsFixo(custo.isFixo);
     setLcDayOfMonth(custo.lcDayOfMonth ?? "");
     setCategoryId(custo.categoryId ?? "");
+    setPersonaId(custo.personaId);
+    setAccountId(custo.accountId);
     setErroModal(null);
     setModalAberto(true);
   }
@@ -242,12 +244,13 @@ export function CustoDeVidaScreen() {
     setSalvando(true);
     setErroModal(null);
     try {
-      const dados = {
+      const dados: DadosCusto = {
         descricao: descricao.trim(),
         amountCents,
-        isFixo,
         lcDayOfMonth: lcDayOfMonth === "" ? null : Number(lcDayOfMonth),
         categoryId: categoryId || null,
+        personaId,
+        accountId,
       };
       if (editandoId) {
         await dbEditarCusto(editandoId, dados);
@@ -320,18 +323,10 @@ export function CustoDeVidaScreen() {
 
   // ── Dados computados ──────────────────────────────────────────────────────
 
-  const totalFixo = custos
-    .filter((c) => c.isFixo)
-    .reduce((soma, c) => soma + c.amountCents, 0);
-
-  const totalVariavel = custos
-    .filter((c) => !c.isFixo)
-    .reduce((soma, c) => soma + c.amountCents, 0);
+  const totalMensal = custos.reduce((soma, c) => soma + c.amountCents, 0);
 
   const custosExibidos = custos
     .filter((c) => {
-      if (filtro === "FIXO" && !c.isFixo) return false;
-      if (filtro === "VARIAVEL" && c.isFixo) return false;
       if (busca.trim()) {
         const termo = busca.toLowerCase();
         const bateDescricao = c.descricao.toLowerCase().includes(termo);
@@ -360,6 +355,8 @@ export function CustoDeVidaScreen() {
 
   const custoPorId = Object.fromEntries(custos.map((c) => [c.id, c]));
 
+  const GRID = "minmax(0,1fr) 160px 150px 150px 44px";
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -374,75 +371,40 @@ export function CustoDeVidaScreen() {
             {carregando ? "—" : custos.length}
           </p>
         </div>
-        <div className="flex-1 px-[22px] py-4 border-r border-border-subtle">
-          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
-            fixos todo mês
-          </p>
-          <p className="text-[22px] font-bold text-ink tabular-nums mt-1">
-            {carregando || !custos.some((c) => c.isFixo)
-              ? "R$ —"
-              : formatarBRL(totalFixo)}
-          </p>
-        </div>
         <div className="flex-1 px-[22px] py-4">
           <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
-            variáveis
+            total todo mês
           </p>
           <p className="text-[22px] font-bold text-ink tabular-nums mt-1">
-            {carregando || !custos.some((c) => !c.isFixo)
-              ? "R$ —"
-              : formatarBRL(totalVariavel)}
+            {carregando || custos.length === 0 ? "R$ —" : formatarBRL(totalMensal)}
           </p>
         </div>
       </div>
 
       {/* Filtros */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          {/* Campo de busca */}
-          <div className="flex items-center gap-2 w-60 h-10 px-3.5 bg-surface border border-border rounded-xl">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-ink-muted shrink-0"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-            <input
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar gasto…"
-              className="flex-1 min-w-0 border-none outline-none bg-transparent text-sm text-ink placeholder:text-ink-placeholder"
-            />
-          </div>
-
-          {/* Pills de filtro */}
-          {(["TODOS", "FIXO", "VARIAVEL"] as FiltroTipo[]).map((f) => {
-            const ativo = filtro === f;
-            const label =
-              f === "TODOS" ? "Todos" : f === "FIXO" ? "Fixos" : "Variáveis";
-            return (
-              <button
-                key={f}
-                onClick={() => setFiltro(f)}
-                className="h-9 px-4 rounded-full text-sm font-semibold transition-colors"
-                style={{
-                  border: ativo ? "1px solid #87BBF8" : "1px solid #E3E6EC",
-                  background: ativo ? "#EAF1FD" : "#fff",
-                  color: ativo ? "#2F63C9" : "#5B616E",
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
+        {/* Campo de busca */}
+        <div className="flex items-center gap-2 w-60 h-10 px-3.5 bg-surface border border-border rounded-xl">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-ink-muted shrink-0"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar gasto…"
+            className="flex-1 min-w-0 border-none outline-none bg-transparent text-sm text-ink placeholder:text-ink-placeholder"
+          />
         </div>
 
         {/* Menu de ordenação */}
@@ -489,13 +451,10 @@ export function CustoDeVidaScreen() {
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <div
           className="grid px-5 h-[42px] bg-surface-subtle border-b border-border items-center"
-          style={{
-            gridTemplateColumns: "minmax(0,1fr) 150px 150px 130px 140px 44px",
-          }}
+          style={{ gridTemplateColumns: GRID }}
         >
           <span className="text-xs font-semibold text-ink-muted">Gasto</span>
           <span className="text-xs font-semibold text-ink-muted">Categoria</span>
-          <span className="text-xs font-semibold text-ink-muted">Recorrência</span>
           <span className="text-xs font-semibold text-ink-muted">Vencimento</span>
           <span className="text-xs font-semibold text-ink-muted text-right">Valor</span>
           <span />
@@ -507,7 +466,7 @@ export function CustoDeVidaScreen() {
           </div>
         ) : custosExibidos.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-sm text-ink-muted">
-            {busca || filtro !== "TODOS"
+            {busca
               ? "Nenhum resultado encontrado."
               : "Nenhuma despesa de custo de vida cadastrada ainda."}
           </div>
@@ -520,10 +479,7 @@ export function CustoDeVidaScreen() {
               <div key={custo.id}>
                 <div
                   className="grid px-5 items-center"
-                  style={{
-                    gridTemplateColumns: "minmax(0,1fr) 150px 150px 130px 140px 44px",
-                    height: "58px",
-                  }}
+                  style={{ gridTemplateColumns: GRID, height: "58px" }}
                 >
                   {/* Nome com ícone */}
                   <div className="flex items-center gap-3 min-w-0">
@@ -533,8 +489,8 @@ export function CustoDeVidaScreen() {
                         width: 34,
                         height: 34,
                         borderRadius: 9,
-                        background: "#F0F2F6",
-                        color: "#5B616E",
+                        background: cat ? `${cat.color}1A` : "#F0F2F6",
+                        color: cat ? cat.color : "#5B616E",
                       }}
                     >
                       <IconeGasto />
@@ -547,43 +503,21 @@ export function CustoDeVidaScreen() {
                   {/* Categoria */}
                   <div>
                     {cat ? (
-                      <span
-                        className="text-[14px] font-medium block truncate"
-                        style={{ color: "#5B616E" }}
-                      >
-                        {cat.name}
+                      <span className="inline-flex items-center gap-1.5 min-w-0">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ background: cat.color }}
+                        />
+                        <span
+                          className="text-[14px] font-medium truncate"
+                          style={{ color: "#5B616E" }}
+                        >
+                          {cat.name}
+                        </span>
                       </span>
                     ) : (
                       <span className="text-[14px] font-medium" style={{ color: "#A6ACB8" }}>
                         —
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Recorrência */}
-                  <div>
-                    {custo.isFixo ? (
-                      <div className="flex items-center gap-[7px]" style={{ color: "#5B616E" }}>
-                        <svg
-                          width="15"
-                          height="15"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="m17 2 4 4-4 4" />
-                          <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
-                          <path d="m7 22-4-4 4-4" />
-                          <path d="M21 13v1a4 4 0 0 1-4 4H3" />
-                        </svg>
-                        <span className="text-[13px] font-medium">todo mês</span>
-                      </div>
-                    ) : (
-                      <span className="text-[13px] font-medium" style={{ color: "#A6ACB8" }}>
-                        pontual
                       </span>
                     )}
                   </div>
@@ -714,7 +648,7 @@ export function CustoDeVidaScreen() {
               </span>
             </label>
 
-            {/* Preço + Dia da despesa */}
+            {/* Valor + Dia */}
             <div className="flex gap-3 mb-4">
               <label className="flex-1 block">
                 <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
@@ -729,7 +663,7 @@ export function CustoDeVidaScreen() {
 
               <label className="flex-1 block">
                 <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
-                  Dia da despesa{" "}
+                  Dia{" "}
                   <span className="font-normal text-ink-muted">(opcional)</span>
                 </span>
                 <span
@@ -755,12 +689,13 @@ export function CustoDeVidaScreen() {
                     placeholder="Ex: 5, 15…"
                     className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink placeholder:text-ink-placeholder font-sans"
                   />
+                  <span className="text-[13px] text-ink-muted font-medium shrink-0">/ 31</span>
                 </span>
               </label>
             </div>
 
-            {/* Categoria — seletor padrão (linha clicável + modal) */}
-            <div className="mb-6">
+            {/* Categoria */}
+            <div className="mb-4">
               <SeletorCategoria
                 label="Categoria (opcional)"
                 value={categoryId || null}
@@ -768,6 +703,26 @@ export function CustoDeVidaScreen() {
                 tipo="EXPENSE"
                 origem={{ type: "LIVING_COST", isTemplate: true }}
               />
+            </div>
+
+            {/* Persona + Conta */}
+            <div className="flex gap-3 mb-6">
+              <div className="flex-1 min-w-0">
+                <SeletorPersona
+                  label="Persona (opcional)"
+                  value={personaId}
+                  onChange={setPersonaId}
+                  origem={{ type: "LIVING_COST", isTemplate: true }}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <SeletorConta
+                  label="Conta (opcional)"
+                  value={accountId}
+                  onChange={setAccountId}
+                  origem={{ type: "LIVING_COST", isTemplate: true }}
+                />
+              </div>
             </div>
 
             {/* Erro */}
@@ -779,39 +734,6 @@ export function CustoDeVidaScreen() {
                 {erroModal}
               </div>
             )}
-
-            {/* Recorrência */}
-            <div className="mb-4">
-              <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
-                Como acontece esse gasto?
-              </span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsFixo(true)}
-                  className="flex-1 h-[52px] rounded-xl font-semibold text-[14px] transition-colors"
-                  style={{
-                    border: isFixo ? "1.5px solid #4078E6" : "1px solid #D4D8E0",
-                    background: isFixo ? "#EAF1FD" : "#fff",
-                    color: isFixo ? "#2F63C9" : "#5B616E",
-                  }}
-                >
-                  Todo mês (fixo)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsFixo(false)}
-                  className="flex-1 h-[52px] rounded-xl font-semibold text-[14px] transition-colors"
-                  style={{
-                    border: !isFixo ? "1.5px solid #4078E6" : "1px solid #D4D8E0",
-                    background: !isFixo ? "#EAF1FD" : "#fff",
-                    color: !isFixo ? "#2F63C9" : "#5B616E",
-                  }}
-                >
-                  Pontual (variável)
-                </button>
-              </div>
-            </div>
 
             {/* Ações */}
             <div className="flex gap-2.5">

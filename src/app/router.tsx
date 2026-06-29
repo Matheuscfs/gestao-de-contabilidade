@@ -17,6 +17,7 @@ import { OnboardingTudoProntoScreen } from "@/screens/onboarding/onboarding-tudo
 import { PerfilScreen } from "@/screens/perfil";
 import { ConfiguracoesScreen } from "@/screens/perfil/configuracoes";
 import { ContasScreen } from "@/screens/perfil/contas";
+import { IaIntegracaoScreen } from "@/screens/perfil/integracoes/ia-screen";
 import { PluggyIntegracaoScreen } from "@/screens/perfil/integracoes/pluggy-screen";
 import { PersonasScreen } from "@/screens/perfil/personas";
 import { ReceitasScreen } from "@/screens/receitas/receitas-screen";
@@ -50,6 +51,7 @@ export const router = createBrowserRouter([
       { path: "perfil", element: <PerfilScreen /> },
       { path: "investimentos", element: <InvestimentosScreen /> },
       { path: "configuracoes", element: <ConfiguracoesScreen /> },
+      { path: "integracoes/ia", element: <IaIntegracaoScreen /> },
       { path: "integracoes/pluggy", element: <PluggyIntegracaoScreen /> },
     ],
   },

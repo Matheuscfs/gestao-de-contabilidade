@@ -90,6 +90,58 @@ export interface Banco {
   icon: string;
 }
 
+// ─── Reconhecimento por nome ──────────────────────────────────────────────────
+//
+// Normaliza (minúsculas, sem acento, só alfanumérico) e pontua o quão bem um
+// termo digitado casa com cada banco. Usado para auto-reconhecer o banco
+// enquanto o usuário digita o nome da conta e para a busca manual.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function normalizar(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function pontuar(termo: string, banco: Banco): number {
+  const t = normalizar(termo);
+  const n = normalizar(banco.name);
+  if (!t || !n) return -1;
+  if (n === t) return 1000;
+  if (n.startsWith(t)) return 800 - n.length; // "nu" → Nubank
+  if (t.startsWith(n)) return 700 - n.length; // "nubank conta" → Nubank
+  if (n.length >= 3 && t.includes(n)) return 500 - n.length; // "minha conta inter"
+  if (n.length >= 3 && n.includes(t) && t.length >= 3) return 300 - n.length;
+  return -1;
+}
+
+/** Lista de bancos que casam com o termo, ranqueada (melhor primeiro). */
+export function buscarBancos(termo: string, limite = 6): Banco[] {
+  return BANCOS.map((banco) => ({ banco, score: pontuar(termo, banco) }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limite)
+    .map((x) => x.banco);
+}
+
+/** Melhor banco para auto-reconhecer a partir do nome digitado (só matches fortes). */
+export function reconhecerBanco(termo: string): Banco | null {
+  if (normalizar(termo).length < 2) return null;
+  const [melhor] = BANCOS.map((banco) => ({ banco, score: pontuar(termo, banco) }))
+    .filter((x) => x.score >= 300)
+    .sort((a, b) => b.score - a.score);
+  return melhor?.banco ?? null;
+}
+
+/** Busca exata (case/acento-insensível) por nome — usado para resolver o ícone. */
+export function bancoPorNome(name: string | null | undefined): Banco | null {
+  if (!name) return null;
+  const alvo = normalizar(name);
+  return BANCOS.find((b) => normalizar(b.name) === alvo) ?? null;
+}
+
 export const BANCOS: Banco[] = [
   { name: "ABC Brasil", icon: abcBrasilIcon },
   { name: "Ailos", icon: ailosIcon },

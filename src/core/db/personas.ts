@@ -73,6 +73,27 @@ export async function listarPersonas(): Promise<PersonaComTotais[]> {
   }));
 }
 
+/**
+ * Conta quantos registros de uma origem (`type` + `is_template` de
+ * `transactions`) já estão vinculados a cada persona. Retorna `{ [personaId]: n }`.
+ */
+export async function contarPorPersona(
+  origemType: string,
+  isTemplate: boolean
+): Promise<Record<string, number>> {
+  const sqlite = await getSqlite();
+  const rows = await sqlite.select<{ persona_id: string; n: number }[]>(
+    `SELECT persona_id, COUNT(*) AS n
+       FROM transactions
+      WHERE type = ? AND is_template = ? AND persona_id IS NOT NULL
+      GROUP BY persona_id`,
+    [origemType, isTemplate ? 1 : 0]
+  );
+  const mapa: Record<string, number> = {};
+  for (const r of rows) mapa[r.persona_id] = r.n;
+  return mapa;
+}
+
 export async function criarPersona(dados: NovaPersona): Promise<void> {
   const sqlite = await getSqlite();
   const id = crypto.randomUUID();

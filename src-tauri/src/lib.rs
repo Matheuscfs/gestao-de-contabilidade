@@ -50,6 +50,12 @@ pub fn run() {
             commands::pluggy::pluggy_sincronizar_todos,
             // Pluggy — intelligence
             commands::pluggy::pluggy_recorrentes,
+            // IA — integração BYOK
+            commands::ai::ai_verificar_chave,
+            commands::ai::ai_obter_integracao,
+            commands::ai::ai_salvar_integracao,
+            commands::ai::ai_atualizar_modelo,
+            commands::ai::ai_remover_integracao,
         ])
         .run(tauri::generate_context!())
         .expect("Erro ao iniciar o Quibo");

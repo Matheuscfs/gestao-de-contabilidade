@@ -1,14 +1,16 @@
-/// Módulo IA — provedores BYOK (OpenAI, Anthropic, Ollama).
+/// Módulo IA — provedores BYOK (Anthropic, OpenAI, Google, OpenRouter).
 ///
 /// Princípio P8: a IA é a voz, não a calculadora.
 /// Ela narra fatos já calculados localmente — nunca produz números.
 ///
-/// A API key fica no banco local (app_settings). O Rust faz a chamada ao provedor.
-/// A UI recebe apenas o texto gerado.
+/// A chave de API fica no banco local (coluna ai_key_ref da tabela integrations).
+/// O Rust faz a verificação e a listagem de modelos junto ao provedor.
+/// A UI recebe apenas o status e a lista de modelos disponíveis.
 ///
-/// Comandos IPC (a implementar em commands/ai.rs):
-///   - ai_complete
-///   - ai_test_key
-///   - ai_list_providers
+/// Comandos IPC (commands/ai.rs):
+///   - ai_verificar_chave   → valida a chave e devolve os modelos disponíveis
+///   - ai_obter_integracao  → estado atual (provedor, modelo, modelos salvos)
+///   - ai_salvar_integracao → grava provedor + chave + modelo escolhido
+///   - ai_remover_integracao
 
 pub mod providers;

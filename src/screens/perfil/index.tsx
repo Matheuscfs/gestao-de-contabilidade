@@ -622,18 +622,18 @@ export function PerfilScreen() {
           <Divider />
 
           <button
-            onClick={() => navigate("/ia")}
+            onClick={() => navigate("/integracoes/ia")}
             className="w-full flex items-center gap-3.5 px-5 py-4 hover:bg-surface-subtle transition-colors"
           >
-            <div className="w-[38px] h-[38px] rounded-[11px] bg-[#EEE8FB] text-[#7C3AED] flex items-center justify-center shrink-0">
+            <ItemIcon>
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a5 5 0 0 1 5 5v6a5 5 0 0 1-10 0V7a5 5 0 0 1 5-5Z" />
-                <path d="M8 21h8" />
-                <path d="M12 17v4" />
-                <path d="M9 9h.01" />
-                <path d="M15 9h.01" />
+                <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                <path d="M20 3v4" />
+                <path d="M22 5h-4" />
+                <path d="M4 17v2" />
+                <path d="M5 18H3" />
               </svg>
-            </div>
+            </ItemIcon>
             <div className="flex-1 min-w-0 text-left">
               <p className="text-[15px] font-semibold text-ink">Integração com IA</p>
               <p className="text-[13px] text-ink-secondary mt-0.5">configure o conselheiro financeiro</p>
@@ -647,7 +647,7 @@ export function PerfilScreen() {
             onClick={() => navigate("/integracoes/pluggy")}
             className="w-full flex items-center gap-3.5 px-5 py-4 hover:bg-surface-subtle transition-colors"
           >
-            <div className="w-[38px] h-[38px] rounded-[11px] bg-[#FDE9ED] text-[#EF294B] flex items-center justify-center shrink-0">
+            <ItemIcon>
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="3" x2="21" y1="22" y2="22" />
                 <line x1="6" x2="6" y1="18" y2="11" />
@@ -656,7 +656,7 @@ export function PerfilScreen() {
                 <line x1="18" x2="18" y1="18" y2="11" />
                 <polygon points="12 2 20 7 4 7" />
               </svg>
-            </div>
+            </ItemIcon>
             <div className="flex-1 min-w-0 text-left">
               <p className="text-[15px] font-semibold text-ink">Open Finance by Pluggy</p>
               <p className="text-[13px] text-ink-secondary mt-0.5">importar lançamentos reais dos seus bancos</p>
