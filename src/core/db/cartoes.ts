@@ -1,39 +1,141 @@
-import { eq, desc } from "drizzle-orm";
-import { getDb } from "./client";
-import { creditCards, type CreditCard, type NewCreditCard } from "./schema";
+import Database from "@tauri-apps/plugin-sql";
+import type { CreditCard } from "./schema";
 
-export async function listarCartoes(): Promise<CreditCard[]> {
-  const db = await getDb();
-  return db.select().from(creditCards).orderBy(desc(creditCards.createdAt));
+async function db() {
+  return Database.load("sqlite:quibo.db");
 }
 
-export async function criarCartao(
-  dados: Omit<NewCreditCard, "id" | "createdAt" | "updatedAt">
-): Promise<CreditCard> {
-  const db = await getDb();
-  const agora = new Date().toISOString();
+// ─── Linha raw do banco (snake_case) ─────────────────────────────────────────
+
+type CartaoRow = {
+  id: string;
+  name: string;
+  brand: string;
+  limit_cents: number;
+  closing_day: number;
+  due_day: number;
+  color: string;
+  is_active: number;
+  persona_id: string | null;
+  source: string;
+  pluggy_id: string | null;
+  pluggy_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+function mapearLinha(r: CartaoRow): CreditCard {
+  return {
+    id: r.id,
+    name: r.name,
+    brand: r.brand,
+    limitCents: r.limit_cents,
+    closingDay: r.closing_day,
+    dueDay: r.due_day,
+    color: r.color,
+    isActive: r.is_active,
+    personaId: r.persona_id ?? null,
+    source: r.source,
+    pluggyId: r.pluggy_id ?? null,
+    pluggySyncedAt: r.pluggy_synced_at ?? null,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+// ─── Queries ──────────────────────────────────────────────────────────────────
+
+export async function listarCartoes(): Promise<CreditCard[]> {
+  const conn = await db();
+  const rows = await conn.select<CartaoRow[]>(
+    "SELECT * FROM credit_cards ORDER BY created_at DESC"
+  );
+  return rows.map(mapearLinha);
+}
+
+export async function criarCartao(dados: {
+  name: string;
+  brand: string;
+  limitCents: number;
+  closingDay: number;
+  dueDay: number;
+  color: string;
+  isActive: number;
+  source: string;
+}): Promise<void> {
+  const conn = await db();
   const id = crypto.randomUUID();
-  await db.insert(creditCards).values({ ...dados, id, createdAt: agora, updatedAt: agora });
-  const [cartao] = await db
-    .select()
-    .from(creditCards)
-    .where(eq(creditCards.id, id))
-    .limit(1);
-  return cartao;
+  const agora = new Date().toISOString();
+  await conn.execute(
+    `INSERT INTO credit_cards
+       (id, name, brand, limit_cents, closing_day, due_day, color, is_active, source, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    [
+      id,
+      dados.name,
+      dados.brand,
+      dados.limitCents,
+      dados.closingDay,
+      dados.dueDay,
+      dados.color,
+      dados.isActive,
+      dados.source,
+      agora,
+      agora,
+    ]
+  );
 }
 
 export async function atualizarCartao(
   id: string,
-  dados: Partial<Omit<NewCreditCard, "id" | "createdAt">>
+  dados: Partial<{
+    name: string;
+    brand: string;
+    limitCents: number;
+    closingDay: number;
+    dueDay: number;
+    color: string;
+    isActive: number;
+    source: string;
+  }>
 ): Promise<void> {
-  const db = await getDb();
-  await db
-    .update(creditCards)
-    .set({ ...dados, updatedAt: new Date().toISOString() })
-    .where(eq(creditCards.id, id));
+  const conn = await db();
+  const agora = new Date().toISOString();
+
+  const colMap: Record<string, string> = {
+    name: "name",
+    brand: "brand",
+    limitCents: "limit_cents",
+    closingDay: "closing_day",
+    dueDay: "due_day",
+    color: "color",
+    isActive: "is_active",
+    source: "source",
+  };
+
+  const sets: string[] = [];
+  const params: unknown[] = [];
+
+  for (const [campo, coluna] of Object.entries(colMap)) {
+    if (campo in dados) {
+      params.push((dados as Record<string, unknown>)[campo]);
+      sets.push(`${coluna} = $${params.length}`);
+    }
+  }
+
+  if (sets.length === 0) return;
+
+  params.push(agora);
+  sets.push(`updated_at = $${params.length}`);
+
+  params.push(id);
+  await conn.execute(
+    `UPDATE credit_cards SET ${sets.join(", ")} WHERE id = $${params.length}`,
+    params
+  );
 }
 
 export async function deletarCartao(id: string): Promise<void> {
-  const db = await getDb();
-  await db.delete(creditCards).where(eq(creditCards.id, id));
+  const conn = await db();
+  await conn.execute("DELETE FROM credit_cards WHERE id = $1", [id]);
 }

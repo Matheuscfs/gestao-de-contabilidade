@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { MoneyInput } from "@/components/money-input";
 import { formatarBRL } from "@/utils/money";
-import { getDb } from "@/core/db/client";
-import { transactions, categories } from "@/core/db/schema";
+import { getDb, getSqlite } from "@/core/db/client";
+import { categories } from "@/core/db/schema";
 import type { Category } from "@/core/db/schema";
 import { eq, and } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -24,32 +23,36 @@ type OrdenacaoTipo = "MAIOR" | "MENOR" | "AZ" | "ZA";
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
 
+// SELECT via Drizzle (funciona bem com o proxy para leituras)
 async function dbListarCustos(): Promise<CustoDeVida[]> {
-  const db = await getDb();
-  const rows = await db
-    .select({
-      id: transactions.id,
-      description: transactions.description,
-      amountCents: transactions.amountCents,
-      isRecurring: transactions.isRecurring,
-      lcDayOfMonth: transactions.lcDayOfMonth,
-      categoryId: transactions.categoryId,
-    })
-    .from(transactions)
-    .where(
-      and(eq(transactions.type, "LIVING_COST"), eq(transactions.isTemplate, 1))
-    );
+  const sqlite = await getSqlite();
+  const rows = await sqlite.select<
+    {
+      id: string;
+      description: string;
+      amount_cents: number | null;
+      is_recurring: number;
+      lc_day_of_month: number | null;
+      category_id: string | null;
+    }[]
+  >(
+    `SELECT id, description, amount_cents, is_recurring, lc_day_of_month, category_id
+     FROM transactions
+     WHERE type = 'LIVING_COST' AND is_template = 1
+     ORDER BY created_at DESC`
+  );
 
   return rows.map((r) => ({
     id: r.id,
     descricao: r.description,
-    amountCents: r.amountCents ?? 0,
-    isFixo: r.isRecurring === 1,
-    lcDayOfMonth: r.lcDayOfMonth ?? null,
-    categoryId: r.categoryId ?? null,
+    amountCents: r.amount_cents ?? 0,
+    isFixo: r.is_recurring === 1,
+    lcDayOfMonth: r.lc_day_of_month ?? null,
+    categoryId: r.category_id ?? null,
   }));
 }
 
+// Mutações via SQL direto para evitar instabilidades do ORM no Tauri
 async function dbCriarCusto(dados: {
   descricao: string;
   amountCents: number;
@@ -57,21 +60,25 @@ async function dbCriarCusto(dados: {
   lcDayOfMonth: number | null;
   categoryId: string | null;
 }): Promise<void> {
-  const db = await getDb();
+  const sqlite = await getSqlite();
+  const id = `lc_${crypto.randomUUID()}`;
   const agora = new Date().toISOString();
-  await db.insert(transactions).values({
-    id: `lc_${uuidv4()}`,
-    type: "LIVING_COST",
-    status: "ATIVO",
-    description: dados.descricao,
-    amountCents: dados.amountCents,
-    isTemplate: 1,
-    isRecurring: dados.isFixo ? 1 : 0,
-    lcDayOfMonth: dados.lcDayOfMonth,
-    categoryId: dados.categoryId,
-    createdAt: agora,
-    updatedAt: agora,
-  });
+  await sqlite.execute(
+    `INSERT INTO transactions
+      (id, type, status, description, amount_cents, is_template, is_recurring,
+       lc_day_of_month, category_id, source, created_at, updated_at)
+     VALUES (?, 'LIVING_COST', 'ATIVO', ?, ?, 1, ?, ?, ?, 'MANUAL', ?, ?)`,
+    [
+      id,
+      dados.descricao,
+      dados.amountCents,
+      dados.isFixo ? 1 : 0,
+      dados.lcDayOfMonth,
+      dados.categoryId,
+      agora,
+      agora,
+    ]
+  );
 }
 
 async function dbEditarCusto(
@@ -84,23 +91,27 @@ async function dbEditarCusto(
     categoryId: string | null;
   }
 ): Promise<void> {
-  const db = await getDb();
-  await db
-    .update(transactions)
-    .set({
-      description: dados.descricao,
-      amountCents: dados.amountCents,
-      isRecurring: dados.isFixo ? 1 : 0,
-      lcDayOfMonth: dados.lcDayOfMonth,
-      categoryId: dados.categoryId,
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(transactions.id, id));
+  const sqlite = await getSqlite();
+  await sqlite.execute(
+    `UPDATE transactions
+     SET description = ?, amount_cents = ?, is_recurring = ?,
+         lc_day_of_month = ?, category_id = ?, updated_at = ?
+     WHERE id = ?`,
+    [
+      dados.descricao,
+      dados.amountCents,
+      dados.isFixo ? 1 : 0,
+      dados.lcDayOfMonth,
+      dados.categoryId,
+      new Date().toISOString(),
+      id,
+    ]
+  );
 }
 
 async function dbDeletarCusto(id: string): Promise<void> {
-  const db = await getDb();
-  await db.delete(transactions).where(eq(transactions.id, id));
+  const sqlite = await getSqlite();
+  await sqlite.execute(`DELETE FROM transactions WHERE id = ?`, [id]);
 }
 
 async function dbListarCategorias(): Promise<Category[]> {
@@ -163,6 +174,7 @@ export function CustoDeVidaScreen() {
   const [modalAberto, setModalAberto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [erroModal, setErroModal] = useState<string | null>(null);
 
   // Campos do modal
   const [descricao, setDescricao] = useState("");
@@ -211,6 +223,7 @@ export function CustoDeVidaScreen() {
     setIsFixo(true);
     setLcDayOfMonth("");
     setCategoryId("");
+    setErroModal(null);
     setModalAberto(true);
   }
 
@@ -222,6 +235,7 @@ export function CustoDeVidaScreen() {
     setIsFixo(custo.isFixo);
     setLcDayOfMonth(custo.lcDayOfMonth ?? "");
     setCategoryId(custo.categoryId ?? "");
+    setErroModal(null);
     setModalAberto(true);
   }
 
@@ -229,11 +243,13 @@ export function CustoDeVidaScreen() {
     if (salvando) return;
     setModalAberto(false);
     setEditandoId(null);
+    setErroModal(null);
   }
 
   async function salvar() {
     if (!descricao.trim()) return;
     setSalvando(true);
+    setErroModal(null);
     try {
       const dados = {
         descricao: descricao.trim(),
@@ -248,9 +264,13 @@ export function CustoDeVidaScreen() {
         await dbCriarCusto(dados);
       }
       await carregarDados();
-      fecharModal();
+      setModalAberto(false);
+      setEditandoId(null);
+      setErroModal(null);
     } catch (err) {
-      console.error("Erro ao salvar custo de vida:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Erro ao salvar custo de vida:", msg);
+      setErroModal(msg);
     } finally {
       setSalvando(false);
     }
@@ -796,10 +816,20 @@ export function CustoDeVidaScreen() {
               </label>
             )}
 
+            {/* Erro */}
+            {erroModal && (
+              <div
+                className="rounded-xl px-4 py-3 mb-4 text-[13px] font-medium"
+                style={{ background: "#FBE9E7", color: "#9B1C1C", border: "1px solid #FCA5A5" }}
+              >
+                {erroModal}
+              </div>
+            )}
+
             {/* Ações */}
             <div
               className="flex gap-2.5"
-              style={{ marginTop: categoriasDB.length === 0 ? "8px" : "0" }}
+              style={{ marginTop: categoriasDB.length === 0 && !erroModal ? "8px" : "0" }}
             >
               <button
                 onClick={fecharModal}

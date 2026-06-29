@@ -13,16 +13,17 @@ import {
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
 type Filtro = "todas" | "aberto" | "quitadas";
-type SubTipo = "EMPRESTIMO" | "FINANCIAMENTO" | "CARTAO" | "PARCELAMENTO" | "OUTRO";
+// Valores devem corresponder ao CHECK constraint da migração:
+// CHECK(dbt_sub_type IN ('INSTALLMENT','LOAN','PENDING','FLEXIBLE'))
+type SubTipo = "LOAN" | "INSTALLMENT" | "PENDING" | "FLEXIBLE";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const SUBTIPOS: { id: SubTipo; label: string }[] = [
-  { id: "EMPRESTIMO", label: "Empréstimo" },
-  { id: "FINANCIAMENTO", label: "Financiamento" },
-  { id: "CARTAO", label: "Cartão" },
-  { id: "PARCELAMENTO", label: "Parcelamento" },
-  { id: "OUTRO", label: "Outro" },
+  { id: "LOAN", label: "Empréstimo" },
+  { id: "INSTALLMENT", label: "Parcelamento" },
+  { id: "PENDING", label: "Em aberto" },
+  { id: "FLEXIBLE", label: "Outro" },
 ];
 
 function labelSubtipo(sub: string | null): string {
@@ -88,10 +89,11 @@ export function DividasScreen() {
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [erroModal, setErroModal] = useState<string | null>(null);
 
   // Campos do formulário
   const [descricao, setDescricao] = useState("");
-  const [subtipo, setSubtipo] = useState<SubTipo>("EMPRESTIMO");
+  const [subtipo, setSubtipo] = useState<SubTipo>("LOAN");
   const [parcelaCentavos, setParcelaCentavos] = useState(0);
   const [totalParcelas, setTotalParcelas] = useState(12);
   const [parcelasPagas, setParcelasPagas] = useState(0);
@@ -124,7 +126,7 @@ export function DividasScreen() {
   const abrirModalCriar = useCallback(() => {
     setEditando(null);
     setDescricao("");
-    setSubtipo("EMPRESTIMO");
+    setSubtipo("LOAN");
     setParcelaCentavos(0);
     setTotalParcelas(12);
     setParcelasPagas(0);
@@ -132,6 +134,7 @@ export function DividasScreen() {
     setTaxaJuros("");
     setStatusEdicao("ATIVO");
     setConfirmandoExclusao(false);
+    setErroModal(null);
     setModalAberto(true);
   }, []);
 
@@ -153,6 +156,7 @@ export function DividasScreen() {
     setTaxaJuros(d.dbtInterestRate ? String(d.dbtInterestRate) : "");
     setStatusEdicao((d.status as "ATIVO" | "PAGO") === "PAGO" ? "PAGO" : "ATIVO");
     setConfirmandoExclusao(false);
+    setErroModal(null);
     setModalAberto(true);
   }
 
@@ -160,6 +164,7 @@ export function DividasScreen() {
     setModalAberto(false);
     setEditando(null);
     setConfirmandoExclusao(false);
+    setErroModal(null);
   }
 
   // ─── Salvar / Excluir ──────────────────────────────────────────────────────
@@ -199,6 +204,7 @@ export function DividasScreen() {
       fecharModal();
     } catch (e) {
       console.error("Erro ao salvar dívida:", e);
+      setErroModal("Não foi possível salvar. Tente novamente.");
     } finally {
       setSalvando(false);
     }
@@ -427,6 +433,7 @@ export function DividasScreen() {
                 setStatusEdicao={setStatusEdicao}
                 podeSalvar={podeSalvar}
                 salvando={salvando}
+                erro={erroModal}
                 onFechar={fecharModal}
                 onSalvar={handleSalvar}
                 onExcluir={() => setConfirmandoExclusao(true)}
@@ -461,6 +468,7 @@ interface FormularioDividaProps {
   setStatusEdicao: (v: "ATIVO" | "PAGO") => void;
   podeSalvar: boolean;
   salvando: boolean;
+  erro: string | null;
   onFechar: () => void;
   onSalvar: () => void;
   onExcluir: () => void;
@@ -486,6 +494,7 @@ function FormularioDivida({
   setStatusEdicao,
   podeSalvar,
   salvando,
+  erro,
   onFechar,
   onSalvar,
   onExcluir,
@@ -686,6 +695,16 @@ function FormularioDivida({
               {formatarBRL(totalDivida)}
             </span>
           </div>
+        </div>
+      )}
+
+      {/* Erro */}
+      {erro && (
+        <div
+          className="rounded-xl px-4 py-3 mb-4 text-[13px] font-medium"
+          style={{ background: "#FFF8F8", border: "1px solid #FECACA", color: "#991B1B" }}
+        >
+          {erro}
         </div>
       )}
 

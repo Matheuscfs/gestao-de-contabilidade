@@ -177,6 +177,7 @@ export function CartoesCreditoScreen() {
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [erroModal, setErroModal] = useState<string | null>(null);
 
   // Modal
   const [modalAberto, setModalAberto] = useState(false);
@@ -222,6 +223,7 @@ export function CartoesCreditoScreen() {
     setDiaVencimento(v.diaVencimento);
     setCor(v.cor);
     setConfirmandoExclusao(false);
+    setErroModal(null);
     setModalAberto(true);
   }
 
@@ -234,12 +236,14 @@ export function CartoesCreditoScreen() {
     setDiaVencimento(cartao.dueDay);
     setCor(cartao.color);
     setConfirmandoExclusao(false);
+    setErroModal(null);
     setModalAberto(true);
   }
 
   function fecharModal() {
     setModalAberto(false);
     setConfirmandoExclusao(false);
+    setErroModal(null);
   }
 
   useEffect(() => {
@@ -250,7 +254,15 @@ export function CartoesCreditoScreen() {
   // ── CRUD ──────────────────────────────────────────────────────────────────────
 
   async function salvar() {
-    if (!nome.trim() || limiteCentavos <= 0) return;
+    setErroModal(null);
+    if (!nome.trim()) {
+      setErroModal("Informe o nome do cartão.");
+      return;
+    }
+    if (limiteCentavos <= 0) {
+      setErroModal("Informe o limite do cartão.");
+      return;
+    }
     setSalvando(true);
     try {
       const dados = {
@@ -261,7 +273,7 @@ export function CartoesCreditoScreen() {
         dueDay: diaVencimento,
         color: cor,
         isActive: 1,
-        source: "MANUAL" as const,
+        source: "MANUAL",
       };
       if (cartaoEditando) {
         await atualizarCartao(cartaoEditando.id, dados);
@@ -271,7 +283,9 @@ export function CartoesCreditoScreen() {
       await carregarCartoes();
       fecharModal();
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
       console.error("Erro ao salvar cartão:", e);
+      setErroModal(msg);
     } finally {
       setSalvando(false);
     }
@@ -314,7 +328,7 @@ export function CartoesCreditoScreen() {
   const cartoesAtivos = cartoes.filter((c) => c.isActive === 1);
   const limiteTotal = cartoesAtivos.reduce((soma, c) => soma + c.limitCents, 0);
 
-  const podeSalvar = nome.trim().length > 0 && limiteCentavos > 0 && !salvando;
+  const podeSalvar = nome.trim().length > 0 && !salvando;
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -666,6 +680,19 @@ export function CartoesCreditoScreen() {
                 </p>
               )}
             </div>
+
+            {/* Erro de validação / banco */}
+            {erroModal && (
+              <div
+                className="flex items-center gap-2 rounded-xl px-4 py-3 mb-4 text-[13px] font-medium"
+                style={{ background: "#FEF2F2", color: "#D74A45", border: "1px solid #F5C5C3" }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" />
+                </svg>
+                {erroModal}
+              </div>
+            )}
 
             {/* Ações */}
             {confirmandoExclusao ? (
