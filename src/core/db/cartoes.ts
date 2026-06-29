@@ -141,3 +141,23 @@ export async function deletarCartao(id: string): Promise<void> {
   const conn = await db();
   await conn.execute("DELETE FROM credit_cards WHERE id = $1", [id]);
 }
+
+/**
+ * Soma, em centavos, o total lançado nos cartões de crédito na competência
+ * informada — a "fatura deste mês". Considera despesas (`EXPENSE`), faturas
+ * (`INVOICE`) e parcelas de dívida (`DEBT_INSTALLMENT`) vinculadas a algum
+ * cartão. Retorna 0 quando ainda não há lançamentos.
+ */
+export async function faturaDoMes(mes: number, ano: number): Promise<number> {
+  const conn = await db();
+  const rows = await conn.select<{ total: number | null }[]>(
+    `SELECT COALESCE(SUM(amount_cents), 0) AS total
+       FROM transactions
+      WHERE credit_card_id IS NOT NULL
+        AND type IN ('EXPENSE', 'INVOICE', 'DEBT_INSTALLMENT')
+        AND month = $1
+        AND year = $2`,
+    [mes, ano]
+  );
+  return rows[0]?.total ?? 0;
+}

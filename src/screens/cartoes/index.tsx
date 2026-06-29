@@ -9,6 +9,7 @@ import {
   criarCartao,
   atualizarCartao,
   deletarCartao,
+  faturaDoMes,
 } from "@/core/db/cartoes";
 import type { CreditCard } from "@/core/db/schema";
 
@@ -176,6 +177,7 @@ function estadoVazio() {
 
 export function CartoesCreditoScreen() {
   const [cartoes, setCartoes] = useState<CreditCard[]>([]);
+  const [faturaMesCents, setFaturaMesCents] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -200,8 +202,13 @@ export function CartoesCreditoScreen() {
 
   const carregarCartoes = useCallback(async () => {
     try {
-      const lista = await listarCartoes();
+      const agora = new Date();
+      const [lista, fatura] = await Promise.all([
+        listarCartoes(),
+        faturaDoMes(agora.getMonth() + 1, agora.getFullYear()),
+      ]);
       setCartoes(lista);
+      setFaturaMesCents(fatura);
     } catch (e) {
       tratarErro(e, {
         contexto: "carregar cartões",
@@ -364,7 +371,9 @@ export function CartoesCreditoScreen() {
           <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
             fatura deste mês
           </p>
-          <p className="text-[22px] font-bold text-ink tabular-nums mt-1">R$ —</p>
+          <p className="text-[22px] font-bold text-ink tabular-nums mt-1">
+            {carregando || faturaMesCents <= 0 ? "R$ —" : formatarBRL(faturaMesCents)}
+          </p>
         </div>
         <div className="flex-1 px-5 py-4">
           <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">

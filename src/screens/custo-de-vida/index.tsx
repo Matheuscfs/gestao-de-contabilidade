@@ -124,21 +124,13 @@ async function dbListarCategorias(): Promise<Category[]> {
     .where(and(eq(categories.type, "EXPENSE"), eq(categories.archived, 0)));
 }
 
-// ─── Helpers de exibição ──────────────────────────────────────────────────────
+// ─── Ícone de gasto (placeholder decorativo nas linhas) ───────────────────────
 
-function etiquetaFrequencia(custo: CustoDeVida): string {
-  if (!custo.isFixo) return "Variável";
-  if (custo.lcDayOfMonth) return `Fixo · todo dia ${custo.lcDayOfMonth}`;
-  return "Fixo";
-}
-
-// ─── Ícone de três pontos ─────────────────────────────────────────────────────
-
-function IconeMenu() {
+function IconeGasto() {
   return (
     <svg
-      width="16"
-      height="16"
+      width="18"
+      height="18"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -146,9 +138,7 @@ function IconeMenu() {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <circle cx="12" cy="5" r="1" />
-      <circle cx="12" cy="12" r="1" />
-      <circle cx="12" cy="19" r="1" />
+      <path d="M16 2H8a2 2 0 0 0-2 2v18l6-3 6 3V4a2 2 0 0 0-2-2z" />
     </svg>
   );
 }
@@ -227,10 +217,6 @@ export function CustoDeVidaScreen() {
   const [menuOrdemAberto, setMenuOrdemAberto] = useState(false);
   const menuOrdemRef = useRef<HTMLDivElement>(null);
 
-  // ── Menu de linha ──────────────────────────────────────────────────────────
-  const [menuLinhaId, setMenuLinhaId] = useState<string | null>(null);
-  const menuLinhaRef = useRef<HTMLDivElement>(null);
-
   // ── Modal ──────────────────────────────────────────────────────────────────
   const [modalAberto, setModalAberto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -292,11 +278,10 @@ export function CustoDeVidaScreen() {
   }
 
   function abrirModalEditar(custo: CustoDeVida) {
-    setMenuLinhaId(null);
     setEditandoId(custo.id);
     setDescricao(custo.descricao);
     setAmountCents(custo.amountCents);
-    setIsFixo(true); // custo de vida é sempre fixo
+    setIsFixo(custo.isFixo);
     setLcDayOfMonth(custo.lcDayOfMonth ?? "");
     setCategoryId(custo.categoryId ?? "");
     setErroModal(null);
@@ -347,7 +332,6 @@ export function CustoDeVidaScreen() {
   // ── Exclusão ──────────────────────────────────────────────────────────────
 
   function pedirConfirmacaoDeletar(id: string) {
-    setMenuLinhaId(null);
     setConfirmarDeletarId(id);
   }
 
@@ -378,12 +362,6 @@ export function CustoDeVidaScreen() {
         !menuOrdemRef.current.contains(e.target as Node)
       ) {
         setMenuOrdemAberto(false);
-      }
-      if (
-        menuLinhaRef.current &&
-        !menuLinhaRef.current.contains(e.target as Node)
-      ) {
-        setMenuLinhaId(null);
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -468,27 +446,27 @@ export function CustoDeVidaScreen() {
     <div className="animate-fade-in">
       {/* Stats */}
       <div className="flex border border-border rounded-xl overflow-hidden mb-5 bg-surface">
-        <div className="flex-1 px-5 py-4 border-r border-border-subtle">
+        <div className="flex-1 px-[22px] py-4 border-r border-border-subtle">
           <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
-            itens cadastrados
+            gastos cadastrados
           </p>
           <p className="text-[22px] font-bold text-ink tabular-nums mt-1">
             {carregando ? "—" : custos.length}
           </p>
         </div>
-        <div className="flex-1 px-5 py-4 border-r border-border-subtle">
+        <div className="flex-1 px-[22px] py-4 border-r border-border-subtle">
           <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
-            custo fixo
+            fixos todo mês
           </p>
-          <p className="text-[22px] font-bold text-negative tabular-nums mt-1">
+          <p className="text-[22px] font-bold text-ink tabular-nums mt-1">
             {carregando || !custos.some((c) => c.isFixo)
               ? "R$ —"
               : formatarBRL(totalFixo)}
           </p>
         </div>
-        <div className="flex-1 px-5 py-4">
+        <div className="flex-1 px-[22px] py-4">
           <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
-            custo variável
+            variáveis
           </p>
           <p className="text-[22px] font-bold text-ink tabular-nums mt-1">
             {carregando || !custos.some((c) => !c.isFixo)
@@ -520,7 +498,7 @@ export function CustoDeVidaScreen() {
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar despesa…"
+              placeholder="Buscar gasto…"
               className="flex-1 min-w-0 border-none outline-none bg-transparent text-sm text-ink placeholder:text-ink-placeholder"
             />
           </div>
@@ -590,17 +568,16 @@ export function CustoDeVidaScreen() {
       {/* Tabela */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <div
-          className="grid px-5 h-10 bg-surface-subtle border-b border-border items-center"
+          className="grid px-5 h-[42px] bg-surface-subtle border-b border-border items-center"
           style={{
-            gridTemplateColumns: "minmax(0,1fr) 160px 210px 150px 44px",
+            gridTemplateColumns: "minmax(0,1fr) 150px 150px 130px 140px 44px",
           }}
         >
-          <span className="text-xs font-semibold text-ink-muted">Despesa</span>
+          <span className="text-xs font-semibold text-ink-muted">Gasto</span>
           <span className="text-xs font-semibold text-ink-muted">Categoria</span>
-          <span className="text-xs font-semibold text-ink-muted">Frequência</span>
-          <span className="text-xs font-semibold text-ink-muted text-right">
-            Valor
-          </span>
+          <span className="text-xs font-semibold text-ink-muted">Recorrência</span>
+          <span className="text-xs font-semibold text-ink-muted">Vencimento</span>
+          <span className="text-xs font-semibold text-ink-muted text-right">Valor</span>
           <span />
         </div>
 
@@ -624,92 +601,132 @@ export function CustoDeVidaScreen() {
                 <div
                   className="grid px-5 items-center"
                   style={{
-                    gridTemplateColumns:
-                      "minmax(0,1fr) 160px 210px 150px 44px",
-                    minHeight: "56px",
+                    gridTemplateColumns: "minmax(0,1fr) 150px 150px 130px 140px 44px",
+                    height: "58px",
                   }}
                 >
-                  {/* Nome da despesa */}
-                  <div className="py-3.5 pr-4">
-                    <p className="text-[14px] font-semibold text-ink leading-snug truncate">
+                  {/* Nome com ícone */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="shrink-0 flex items-center justify-center"
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 9,
+                        background: "#F0F2F6",
+                        color: "#5B616E",
+                      }}
+                    >
+                      <IconeGasto />
+                    </div>
+                    <p className="text-[15px] font-semibold text-ink truncate">
                       {custo.descricao}
                     </p>
                   </div>
 
                   {/* Categoria */}
-                  <div className="py-3.5 pr-4">
+                  <div>
                     {cat ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <span
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ background: cat.color }}
-                        />
-                        <span className="text-[13px] font-medium text-ink-secondary truncate">
-                          {cat.name}
-                        </span>
+                      <span
+                        className="text-[14px] font-medium block truncate"
+                        style={{ color: "#5B616E" }}
+                      >
+                        {cat.name}
                       </span>
                     ) : (
-                      <span className="text-[13px] text-ink-muted">—</span>
+                      <span className="text-[14px] font-medium" style={{ color: "#A6ACB8" }}>
+                        —
+                      </span>
                     )}
                   </div>
 
-                  {/* Frequência */}
-                  <div className="py-3.5 pr-4">
-                    <span
-                      className="inline-flex items-center h-[22px] px-2.5 rounded-full text-[12px] font-semibold"
-                      style={{
-                        background: custo.isFixo ? "#E2F4EC" : "#F0F2F6",
-                        color: custo.isFixo ? "#0B6E4A" : "#5B616E",
-                      }}
-                    >
-                      {etiquetaFrequencia(custo)}
-                    </span>
+                  {/* Recorrência */}
+                  <div>
+                    {custo.isFixo ? (
+                      <div className="flex items-center gap-[7px]" style={{ color: "#5B616E" }}>
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="m17 2 4 4-4 4" />
+                          <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+                          <path d="m7 22-4-4 4-4" />
+                          <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+                        </svg>
+                        <span className="text-[13px] font-medium">todo mês</span>
+                      </div>
+                    ) : (
+                      <span className="text-[13px] font-medium" style={{ color: "#A6ACB8" }}>
+                        pontual
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Vencimento */}
+                  <div>
+                    {custo.lcDayOfMonth ? (
+                      <span className="text-[14px] font-medium" style={{ color: "#5B616E" }}>
+                        todo dia {custo.lcDayOfMonth}
+                      </span>
+                    ) : (
+                      <span className="text-[14px] font-medium" style={{ color: "#A6ACB8" }}>
+                        —
+                      </span>
+                    )}
                   </div>
 
                   {/* Valor */}
-                  <div className="py-3.5 text-right">
-                    <p className="text-[14px] font-semibold text-ink tabular-nums">
-                      {custo.amountCents > 0
-                        ? formatarBRL(custo.amountCents)
-                        : "—"}
+                  <div className="text-right">
+                    <p
+                      className="text-[16px] font-semibold tabular-nums"
+                      style={{ color: "#0E1116", fontFeatureSettings: "'tnum' 1,'lnum' 1" }}
+                    >
+                      {custo.amountCents > 0 ? formatarBRL(custo.amountCents) : "—"}
                     </p>
                   </div>
 
-                  {/* Menu de ações */}
-                  <div
-                    className="relative flex items-center justify-center"
-                    ref={menuLinhaId === custo.id ? menuLinhaRef : undefined}
-                  >
+                  {/* Ação: editar */}
+                  <div className="flex justify-end">
                     <button
-                      onClick={() =>
-                        setMenuLinhaId((prev) =>
-                          prev === custo.id ? null : custo.id
-                        )
-                      }
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-ink-muted hover:bg-surface-subtle transition-colors"
+                      onClick={() => abrirModalEditar(custo)}
+                      aria-label="Editar"
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 8,
+                        border: "none",
+                        background: "transparent",
+                        color: "#A6ACB8",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
                     >
-                      <IconeMenu />
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
                     </button>
-                    {menuLinhaId === custo.id && (
-                      <div className="absolute right-0 top-[calc(100%+2px)] z-50 bg-surface border border-border rounded-xl shadow-lg py-1 w-32 overflow-hidden">
-                        <button
-                          onClick={() => abrirModalEditar(custo)}
-                          className="w-full text-left px-4 py-2 text-sm font-medium text-ink hover:bg-surface-subtle transition-colors"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => pedirConfirmacaoDeletar(custo.id)}
-                          className="w-full text-left px-4 py-2 text-sm font-medium text-negative hover:bg-surface-subtle transition-colors"
-                        >
-                          Excluir
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
                 {i < custosExibidos.length - 1 && (
-                  <div className="h-px bg-border-subtle mx-5" />
+                  <div className="h-px mx-5" style={{ background: "#EEF0F4" }} />
                 )}
               </div>
             );
@@ -870,8 +887,59 @@ export function CustoDeVidaScreen() {
               </div>
             )}
 
+            {/* Recorrência */}
+            <div className="mb-4">
+              <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
+                Como acontece esse gasto?
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsFixo(true)}
+                  className="flex-1 h-[52px] rounded-xl font-semibold text-[14px] transition-colors"
+                  style={{
+                    border: isFixo ? "1.5px solid #4078E6" : "1px solid #D4D8E0",
+                    background: isFixo ? "#EAF1FD" : "#fff",
+                    color: isFixo ? "#2F63C9" : "#5B616E",
+                  }}
+                >
+                  Todo mês (fixo)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsFixo(false)}
+                  className="flex-1 h-[52px] rounded-xl font-semibold text-[14px] transition-colors"
+                  style={{
+                    border: !isFixo ? "1.5px solid #4078E6" : "1px solid #D4D8E0",
+                    background: !isFixo ? "#EAF1FD" : "#fff",
+                    color: !isFixo ? "#2F63C9" : "#5B616E",
+                  }}
+                >
+                  Pontual (variável)
+                </button>
+              </div>
+            </div>
+
             {/* Ações */}
             <div className="flex gap-2.5">
+              {editandoId && (
+                <button
+                  onClick={() => {
+                    const id = editandoId;
+                    fecharModal();
+                    pedirConfirmacaoDeletar(id);
+                  }}
+                  disabled={salvando}
+                  className="shrink-0 h-12 px-[22px] rounded-full font-semibold text-[15px] cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    border: "1px solid #FCA5A5",
+                    background: "#fff",
+                    color: "#D74A45",
+                  }}
+                >
+                  Excluir
+                </button>
+              )}
               <button
                 onClick={fecharModal}
                 disabled={salvando}
