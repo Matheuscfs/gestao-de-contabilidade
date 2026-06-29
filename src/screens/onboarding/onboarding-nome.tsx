@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboardingStore } from "./onboarding-store";
+import { usePerfilStore } from "@/app/perfil-store";
 import { StepDots } from "./step-dots";
 
 function redimensionarParaBase64(file: File, maxSize = 256): Promise<string> {
@@ -41,7 +42,9 @@ function redimensionarParaBase64(file: File, maxSize = 256): Promise<string> {
 export function OnboardingNomeScreen() {
   const navigate = useNavigate();
   const { nome, setNome, foto, setFoto } = useOnboardingStore();
+  const { atualizarNome, atualizarFoto } = usePerfilStore();
   const [valor, setValor] = useState(nome);
+  const [salvando, setSalvando] = useState(false);
   const inputFotoRef = useRef<HTMLInputElement>(null);
 
   const inicial = valor.trim().charAt(0).toUpperCase() || "?";
@@ -57,8 +60,18 @@ export function OnboardingNomeScreen() {
     }
   }
 
-  function avancar() {
-    setNome(valor.trim());
+  async function avancar() {
+    const nomeTrimado = valor.trim();
+    setNome(nomeTrimado);
+    setSalvando(true);
+    try {
+      await atualizarNome(nomeTrimado);
+      if (foto) await atualizarFoto(foto);
+    } catch (e) {
+      console.error("[quibo] Erro ao salvar nome/foto:", e);
+    } finally {
+      setSalvando(false);
+    }
     navigate("/onboarding/ia");
   }
 
@@ -159,18 +172,18 @@ export function OnboardingNomeScreen() {
               placeholder="Seu nome"
               autoFocus
               className="flex-1 min-w-0 border-none outline-none bg-transparent font-semibold text-[20px] text-ink text-center font-sans"
-              onKeyDown={(e) => e.key === "Enter" && valor.trim() && avancar()}
+              onKeyDown={(e) => e.key === "Enter" && valor.trim() && !salvando && avancar()}
             />
           </span>
         </div>
 
         <button
           onClick={avancar}
-          disabled={!valor.trim()}
+          disabled={!valor.trim() || salvando}
           className="w-full h-[52px] rounded-full bg-brand text-white font-semibold text-base mt-[26px] cursor-pointer transition-colors hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ boxShadow: "0 6px 16px -4px rgba(64,120,230,.45)" }}
         >
-          Continuar
+          {salvando ? "Salvando…" : "Continuar"}
         </button>
       </div>
     </div>
