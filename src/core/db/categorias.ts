@@ -77,6 +77,55 @@ export async function listarCategorias(
   }));
 }
 
+/**
+ * Lista categorias não-arquivadas de um tipo (INCOME/EXPENSE), sem agregações
+ * — versão enxuta para popular seletores.
+ */
+export async function listarCategoriasPorTipo(
+  tipo: TipoCategoria
+): Promise<Categoria[]> {
+  const sqlite = await getSqlite();
+  const rows = await sqlite.select<CategoriaRow[]>(
+    `SELECT id, name, type, color, icon, archived, created_at, 0 AS lancamentos, 0 AS usados_mes
+       FROM categories
+      WHERE archived = 0 AND type = ?
+      ORDER BY name ASC`,
+    [tipo]
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    type: (r.type === "INCOME" ? "INCOME" : "EXPENSE") as TipoCategoria,
+    color: r.color,
+    icon: r.icon,
+    archived: r.archived === 1,
+    createdAt: r.created_at,
+  }));
+}
+
+/**
+ * Conta quantos registros de uma origem específica já usam cada categoria.
+ * A origem é a combinação `type` + `is_template` da tabela `transactions`
+ * (ex.: `LIVING_COST`/template para o Custo de Vida, `INCOME`/template para
+ * Receitas). Retorna um mapa `{ [categoryId]: quantidade }`.
+ */
+export async function contarPorCategoria(
+  origemType: string,
+  isTemplate: boolean
+): Promise<Record<string, number>> {
+  const sqlite = await getSqlite();
+  const rows = await sqlite.select<{ category_id: string; n: number }[]>(
+    `SELECT category_id, COUNT(*) AS n
+       FROM transactions
+      WHERE type = ? AND is_template = ? AND category_id IS NOT NULL
+      GROUP BY category_id`,
+    [origemType, isTemplate ? 1 : 0]
+  );
+  const mapa: Record<string, number> = {};
+  for (const r of rows) mapa[r.category_id] = r.n;
+  return mapa;
+}
+
 export async function criarCategoria(dados: NovaCategoria): Promise<void> {
   const sqlite = await getSqlite();
   const id = crypto.randomUUID();

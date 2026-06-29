@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { MoneyInput } from "@/components/money-input";
+import { SeletorCategoria } from "@/components/seletor-categoria";
 import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
 import { formatarBRL } from "@/utils/money";
@@ -580,45 +581,16 @@ export function ReceitasScreen() {
                   })}
                 </div>
 
-                {/* Categoria */}
-                {categoriasDB.length > 0 && (
-                  <div className="mb-6">
-                    <span className="block text-[13px] font-semibold text-[#5B616E] mb-2.5">
-                      Categoria <span className="font-normal text-ink-muted">(opcional)</span>
-                    </span>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => setCategoryId("")}
-                        className="h-9 px-4 rounded-full font-semibold text-[13px] transition-colors"
-                        style={{
-                          border: categoryId === "" ? "1px solid #87BBF8" : "1px solid #E3E6EC",
-                          background: categoryId === "" ? "#EAF1FD" : "#fff",
-                          color: categoryId === "" ? "#2F63C9" : "#5B616E",
-                        }}
-                      >
-                        Sem categoria
-                      </button>
-                      {categoriasDB.map((cat) => {
-                        const ativo = categoryId === cat.id;
-                        return (
-                          <button
-                            key={cat.id}
-                            onClick={() => setCategoryId(ativo ? "" : cat.id)}
-                            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full font-semibold text-[13px] transition-colors"
-                            style={{
-                              border: ativo ? `1px solid ${cat.color}` : "1px solid #E3E6EC",
-                              background: ativo ? `${cat.color}18` : "#fff",
-                              color: ativo ? cat.color : "#5B616E",
-                            }}
-                          >
-                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cat.color }} />
-                            {cat.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                {/* Categoria — seletor padrão (linha clicável + modal) */}
+                <div className="mb-6">
+                  <SeletorCategoria
+                    label="Categoria (opcional)"
+                    value={categoryId || null}
+                    onChange={(id) => setCategoryId(id ?? "")}
+                    tipo="INCOME"
+                    origem={{ type: "INCOME", isTemplate: true }}
+                  />
+                </div>
 
                 {/* Erro */}
                 {erroModal && (

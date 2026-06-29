@@ -3,7 +3,8 @@ import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { MoneyInput } from "@/components/money-input";
 import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
-import { formatarBRL, formatarBRLCompacto } from "@/utils/money";
+import { formatarBRL } from "@/utils/money";
+import { SeletorCategoria } from "@/components/seletor-categoria";
 import { getDb, getSqlite } from "@/core/db/client";
 import { categories } from "@/core/db/schema";
 import type { Category } from "@/core/db/schema";
@@ -140,65 +141,6 @@ function IconeGasto() {
     >
       <path d="M16 2H8a2 2 0 0 0-2 2v18l6-3 6 3V4a2 2 0 0 0-2-2z" />
     </svg>
-  );
-}
-
-// ─── Bolha de categoria (seletor "molecular") ─────────────────────────────────
-
-function CategoriaBolha({
-  nome,
-  cor,
-  valor,
-  size,
-  selecionado,
-  onClick,
-}: {
-  nome: string;
-  cor: string;
-  valor: number | null;
-  size: number;
-  selecionado: boolean;
-  onClick: () => void;
-}) {
-  const temValor = valor !== null && valor > 0;
-  const grande = size >= 78;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={nome}
-      className="rounded-full flex flex-col items-center justify-center text-center transition-all shrink-0 outline-none"
-      style={{
-        width: size,
-        height: size,
-        padding: 5,
-        background: selecionado ? cor : `${cor}1A`,
-        border: `2px solid ${selecionado ? cor : "transparent"}`,
-        boxShadow: selecionado ? `0 0 0 4px ${cor}33` : "none",
-      }}
-    >
-      <span
-        className="font-bold leading-[1.05] line-clamp-2"
-        style={{
-          color: selecionado ? "#fff" : cor,
-          fontSize: grande ? 11 : 9.5,
-        }}
-      >
-        {nome}
-      </span>
-      {temValor && (
-        <span
-          className="tabular-nums font-semibold leading-tight mt-0.5 whitespace-nowrap"
-          style={{
-            color: selecionado ? "rgba(255,255,255,.88)" : "#4A5264",
-            fontSize: grande ? 10 : 8.5,
-          }}
-        >
-          {formatarBRLCompacto(valor)}
-        </span>
-      )}
-    </button>
   );
 }
 
@@ -417,28 +359,6 @@ export function CustoDeVidaScreen() {
   };
 
   const custoPorId = Object.fromEntries(custos.map((c) => [c.id, c]));
-
-  // Total já cadastrado por categoria (exibido em cada bolha do seletor)
-  const totalPorCategoria = custos.reduce<Record<string, number>>((acc, c) => {
-    if (c.categoryId) {
-      acc[c.categoryId] = (acc[c.categoryId] ?? 0) + c.amountCents;
-    }
-    return acc;
-  }, {});
-
-  // Tamanho de cada bolha proporcional ao valor (área ∝ √valor) — categorias
-  // com mais gasto ficam maiores. Vazias ficam no tamanho base.
-  const maxValorCategoria = Math.max(
-    1,
-    ...categoriasDB.map((c) => totalPorCategoria[c.id] ?? 0)
-  );
-  const TAM_BASE = 58;
-  const TAM_MAX = 96;
-  const tamanhoBolha = (valor: number) =>
-    valor <= 0
-      ? TAM_BASE
-      : TAM_BASE +
-        Math.round(Math.sqrt(valor / maxValorCategoria) * (TAM_MAX - TAM_BASE));
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -839,43 +759,16 @@ export function CustoDeVidaScreen() {
               </label>
             </div>
 
-            {/* Categoria — cluster "molecular" de bolhas clicáveis */}
-            {categoriasDB.length > 0 && (
-              <div className="mb-6">
-                <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
-                  Categoria{" "}
-                  <span className="font-normal text-ink-muted">(opcional)</span>
-                </span>
-                <div className="border border-border rounded-2xl bg-surface-subtle px-4 py-5">
-                  <div className="flex flex-wrap justify-center items-center gap-2.5">
-                    <CategoriaBolha
-                      nome="Sem categoria"
-                      cor="#8C95A6"
-                      valor={null}
-                      size={TAM_BASE}
-                      selecionado={categoryId === ""}
-                      onClick={() => setCategoryId("")}
-                    />
-                    {categoriasDB.map((cat) => {
-                      const v = totalPorCategoria[cat.id] ?? 0;
-                      return (
-                        <CategoriaBolha
-                          key={cat.id}
-                          nome={cat.name}
-                          cor={cat.color}
-                          valor={v}
-                          size={tamanhoBolha(v)}
-                          selecionado={categoryId === cat.id}
-                          onClick={() =>
-                            setCategoryId(categoryId === cat.id ? "" : cat.id)
-                          }
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Categoria — seletor padrão (linha clicável + modal) */}
+            <div className="mb-6">
+              <SeletorCategoria
+                label="Categoria (opcional)"
+                value={categoryId || null}
+                onChange={(id) => setCategoryId(id ?? "")}
+                tipo="EXPENSE"
+                origem={{ type: "LIVING_COST", isTemplate: true }}
+              />
+            </div>
 
             {/* Erro */}
             {erroModal && (
