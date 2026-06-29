@@ -56,15 +56,18 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   concluirOnboarding: async () => {
     const { nome, foto } = get();
 
-    await setSetting(CHAVE_ONBOARDING, "true");
+    // Garante o flag imediatamente — mesmo se o banco falhar,
+    // o usuário não volta ao onboarding na mesma sessão.
     localStorage.setItem("quibo:onboarding_done", "true");
 
-    const perfil = usePerfilStore.getState();
-    if (nome.trim()) {
-      await perfil.atualizarNome(nome.trim());
-    }
-    if (foto) {
-      await perfil.atualizarFoto(foto);
+    try {
+      await setSetting(CHAVE_ONBOARDING, "true");
+
+      const perfil = usePerfilStore.getState();
+      if (nome.trim()) await perfil.atualizarNome(nome.trim());
+      if (foto) await perfil.atualizarFoto(foto);
+    } catch (e) {
+      console.error("[quibo] Erro ao persistir conclusão do onboarding:", e);
     }
   },
 }));

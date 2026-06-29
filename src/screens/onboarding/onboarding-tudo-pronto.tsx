@@ -1,14 +1,23 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboardingStore } from "../../store/onboarding";
+import { usePerfilStore } from "@/app/perfil-store";
 
 export function OnboardingTudoProntoScreen() {
   const navigate = useNavigate();
-  const { nome, concluirOnboarding } = useOnboardingStore();
+  const { concluirOnboarding } = useOnboardingStore();
+  const { nome } = usePerfilStore();
+  const [carregando, setCarregando] = useState(false);
 
   const primeiroNome = nome.trim().split(" ")[0] || "você";
 
   async function verMeuMes() {
-    await concluirOnboarding();
+    setCarregando(true);
+    try {
+      await concluirOnboarding();
+    } catch (e) {
+      console.error("[quibo] Erro ao concluir onboarding:", e);
+    }
     navigate("/mes", { replace: true });
   }
 
@@ -43,10 +52,11 @@ export function OnboardingTudoProntoScreen() {
 
         <button
           onClick={verMeuMes}
-          className="w-full h-[52px] rounded-full bg-brand text-white font-semibold text-base mt-[30px] cursor-pointer transition-colors hover:bg-brand-600"
+          disabled={carregando}
+          className="w-full h-[52px] rounded-full bg-brand text-white font-semibold text-base mt-[30px] cursor-pointer transition-colors hover:bg-brand-600 disabled:opacity-70 disabled:cursor-not-allowed"
           style={{ boxShadow: "0 6px 16px -4px rgba(64,120,230,.45)" }}
         >
-          Ver meu mês
+          {carregando ? "Entrando…" : "Ver meu mês"}
         </button>
 
         <p className="font-medium text-[13px] text-ink-muted mt-4">
