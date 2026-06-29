@@ -50,6 +50,21 @@ fn erro_status(status: reqwest::StatusCode, corpo: &str) -> AppError {
     }
 }
 
+/// Heurística por nome: identifica modelos que NÃO servem para insights de texto
+/// (geração de imagem/vídeo/áudio, TTS, embeddings, transcrição, etc.).
+/// O Quibo só precisa de modelos de chat/raciocínio que produzem texto.
+/// Observação: "vision" NÃO é filtrado — entrada de imagem ajuda na análise.
+fn parece_nao_textual(nome: &str) -> bool {
+    let n = nome.to_lowercase();
+    const TOKENS: &[&str] = &[
+        "imagen", "image-gen", "-image", "image-generation", "dall-e", "dalle",
+        "stable-diffusion", "flux", "midjourney", "sora", "veo", "video",
+        "tts", "text-to-speech", "speech", "whisper", "transcribe", "audio",
+        "embedding", "embed", "moderation", "rerank", "guard",
+    ];
+    TOKENS.iter().any(|t| n.contains(t))
+}
+
 /// Verifica a chave chamando o endpoint de modelos e retorna a lista disponível.
 /// Um 200 confirma que a chave é válida; qualquer outro status vira erro amigável.
 pub async fn listar_modelos(
@@ -104,6 +119,7 @@ async fn listar_anthropic(api_key: &str) -> Result<Vec<ModeloDisponivel>, AppErr
     Ok(parsed
         .data
         .into_iter()
+        .filter(|m| !parece_nao_textual(&m.id))
         .map(|m| ModeloDisponivel {
             label: m.display_name.unwrap_or_else(|| m.id.clone()),
             id: m.id,
@@ -152,12 +168,8 @@ async fn listar_openai(api_key: &str) -> Result<Vec<ModeloDisponivel>, AppError>
                 || id.starts_with("o3")
                 || id.starts_with("o4")
                 || id.starts_with("chatgpt"))
-                && !id.contains("audio")
                 && !id.contains("realtime")
-                && !id.contains("transcribe")
-                && !id.contains("tts")
-                && !id.contains("image")
-                && !id.contains("embedding")
+                && !parece_nao_textual(&id)
         })
         .map(|m| ModeloDisponivel {
             label: m.id.clone(),
@@ -208,9 +220,12 @@ async fn listar_google(api_key: &str) -> Result<Vec<ModeloDisponivel>, AppError>
         .models
         .into_iter()
         .filter(|m| {
+            // precisa gerar conteúdo de texto…
             m.supported_generation_methods
                 .iter()
                 .any(|met| met == "generateContent")
+                // …e não ser um modelo de mídia/áudio (ex.: *-image, *-tts).
+                && !parece_nao_textual(&m.name)
         })
         .map(|m| {
             let id = m.name.strip_prefix("models/").unwrap_or(&m.name).to_string();
@@ -233,6 +248,12 @@ async fn listar_openrouter(api_key: &str) -> Result<Vec<ModeloDisponivel>, AppEr
     struct Modelo {
         id: String,
         name: Option<String>,
+        architecture: Option<Arch>,
+    }
+    #[derive(Deserialize)]
+    struct Arch {
+        #[serde(default)]
+        output_modalities: Vec<String>,
     }
 
     let resp = http()
@@ -256,6 +277,17 @@ async fn listar_openrouter(api_key: &str) -> Result<Vec<ModeloDisponivel>, AppEr
     let mut modelos: Vec<ModeloDisponivel> = parsed
         .data
         .into_iter()
+        .filter(|m| {
+            // Prioriza a modalidade declarada pela API: a saída precisa ser texto
+            // e não pode incluir imagem. Sem essa info, cai na heurística por nome.
+            match &m.architecture {
+                Some(a) if !a.output_modalities.is_empty() => {
+                    a.output_modalities.iter().any(|o| o == "text")
+                        && !a.output_modalities.iter().any(|o| o == "image")
+                }
+                _ => !parece_nao_textual(&m.id),
+            }
+        })
         .map(|m| ModeloDisponivel {
             label: m.name.unwrap_or_else(|| m.id.clone()),
             id: m.id,

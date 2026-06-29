@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useHeaderActionsStore } from "@/app/header-actions-store";
-import { MoneyInput } from "@/components/money-input";
 import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
 import { formatarBRL } from "@/utils/money";
-import { ContaIcon, ICONES_CONTA, type IconeConta } from "@/components/conta-icon";
+import { ContaAvatar } from "@/components/conta-avatar";
+import { SeletorBanco } from "@/components/seletor-banco";
+import { reconhecerBanco, buscarBancos, bancoPorNome } from "@/consts/banks";
 import {
   listarContas,
   criarConta,
@@ -16,12 +17,11 @@ import {
 
 // ─── Tipos de conta ───────────────────────────────────────────────────────────
 
-const TIPOS: { id: TipoConta; label: string; icone: IconeConta }[] = [
-  { id: "CHECKING", label: "Corrente", icone: "bank" },
-  { id: "SAVINGS", label: "Poupança", icone: "coins" },
-  { id: "INVESTMENT", label: "Investimentos", icone: "trending" },
-  { id: "CASH", label: "Dinheiro", icone: "wallet" },
-  { id: "OTHER", label: "Outros", icone: "briefcase" },
+const TIPOS: { id: TipoConta; label: string }[] = [
+  { id: "CHECKING", label: "Corrente" },
+  { id: "SAVINGS", label: "Poupança" },
+  { id: "INVESTMENT", label: "Investimentos" },
+  { id: "OTHER", label: "Outros" },
 ];
 
 function tipoLabel(tipo: TipoConta): string {
@@ -44,23 +44,6 @@ const CORES: { valor: string; tint: string; label: string }[] = [
   { valor: "#5B616E", tint: "#F0F2F6", label: "Cinza" },
 ];
 
-function tintDaCor(cor: string): string {
-  return CORES.find((c) => c.valor === cor)?.tint ?? "#F0F2F6";
-}
-
-// ─── Componente de ícone na lista ─────────────────────────────────────────────
-
-function BadgeConta({ cor, icone }: { cor: string; icone: string }) {
-  return (
-    <div
-      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-      style={{ background: tintDaCor(cor), color: cor }}
-    >
-      <ContaIcon icon={icone} size={20} />
-    </div>
-  );
-}
-
 // ─── Tela ─────────────────────────────────────────────────────────────────────
 
 export function ContasScreen() {
@@ -77,9 +60,19 @@ export function ContasScreen() {
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState<TipoConta>("CHECKING");
   const [cor, setCor] = useState(CORES[0].valor);
-  const [icone, setIcone] = useState<IconeConta>("bank");
+  // Banco vinculado (nome em consts/banks) ou null = ícone genérico.
+  const [banco, setBanco] = useState<string | null>(null);
+  // Usuário escolheu o banco manualmente → para de auto-reconhecer pelo nome.
+  const [bancoTocado, setBancoTocado] = useState(false);
   const [isPrimary, setIsPrimary] = useState(false);
+  // Saldo é preservado na edição, mas não é mais editável aqui (contas novas começam em 0).
   const [saldoCentavos, setSaldoCentavos] = useState(0);
+
+  // Bancos alternativos enquanto digita (exclui o que já foi auto-reconhecido).
+  const sugestoes = useMemo(() => {
+    if (bancoTocado) return [];
+    return buscarBancos(nome, 5).filter((b) => b.name !== banco).slice(0, 4);
+  }, [nome, banco, bancoTocado]);
 
   const { setOnAdicionar } = useHeaderActionsStore();
 
@@ -112,7 +105,8 @@ export function ContasScreen() {
     setNome("");
     setTipo("CHECKING");
     setCor(CORES[0].valor);
-    setIcone("bank");
+    setBanco(null);
+    setBancoTocado(false);
     setIsPrimary(contas.length === 0); // sugere primária se for a primeira
     setSaldoCentavos(0);
     setConfirmandoExclusao(false);
@@ -125,12 +119,26 @@ export function ContasScreen() {
     setNome(conta.name);
     setTipo(conta.type);
     setCor(conta.color);
-    setIcone(conta.icon as IconeConta);
+    setBanco(bancoPorNome(conta.icon)?.name ?? null);
+    setBancoTocado(true); // não auto-reconhece por cima de uma conta existente
     setIsPrimary(conta.isPrimary);
     setSaldoCentavos(conta.balanceCents);
     setConfirmandoExclusao(false);
     setErroModal(null);
     setModalAberto(true);
+  }
+
+  // Auto-reconhece o banco enquanto o usuário digita (até escolher manualmente).
+  function handleChangeNome(valor: string) {
+    setNome(valor);
+    if (!bancoTocado) {
+      setBanco(reconhecerBanco(valor)?.name ?? null);
+    }
+  }
+
+  function escolherBanco(nomeBanco: string | null) {
+    setBanco(nomeBanco);
+    setBancoTocado(true);
   }
 
   useEffect(() => {
@@ -144,13 +152,6 @@ export function ContasScreen() {
     setEditando(null);
     setConfirmandoExclusao(false);
     setErroModal(null);
-  }
-
-  function handleChangeTipo(t: TipoConta) {
-    const padraoAnterior = TIPOS.find((x) => x.id === tipo)?.icone;
-    setTipo(t);
-    const novoPadrao = TIPOS.find((x) => x.id === t)?.icone ?? "bank";
-    if (icone === padraoAnterior) setIcone(novoPadrao);
   }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
@@ -167,7 +168,7 @@ export function ContasScreen() {
         name: nome.trim(),
         type: tipo,
         color: cor,
-        icon: icone,
+        icon: banco ?? "",
         isPrimary,
         balanceCents: saldoCentavos,
       };
@@ -259,13 +260,19 @@ export function ContasScreen() {
                   onClick={() => abrirModalEditar(conta)}
                   className="w-full flex items-center gap-[14px] px-5 py-[18px] text-left hover:bg-surface-subtle transition-colors"
                 >
-                  <BadgeConta cor={conta.color} icone={conta.icon} />
+                  <ContaAvatar icon={conta.icon} cor={conta.color} size={40} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-[15px] font-semibold text-ink">{conta.name}</p>
                       {conta.isPrimary && (
-                        <span className="inline-flex items-center h-[18px] px-2 rounded-full bg-brand-50 text-brand text-[11px] font-semibold">
-                          principal
+                        <span
+                          aria-label="Conta principal"
+                          title="Conta principal"
+                          className="inline-flex items-center text-[#E8A020] shrink-0"
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+                            <path d="M12 2.5l2.9 5.88 6.49.94-4.7 4.58 1.11 6.46L12 17.77l-5.8 3.07 1.1-6.46-4.69-4.58 6.49-.94z" />
+                          </svg>
                         </span>
                       )}
                     </div>
@@ -359,7 +366,7 @@ export function ContasScreen() {
                 </div>
 
                 {/* Nome */}
-                <label className="block mb-4">
+                <div className="mb-4">
                   <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
                     Como você chama ela?
                   </span>
@@ -369,13 +376,38 @@ export function ContasScreen() {
                   >
                     <input
                       value={nome}
-                      onChange={(e) => setNome(e.target.value)}
+                      onChange={(e) => handleChangeNome(e.target.value)}
                       placeholder="Ex: Nubank"
                       autoFocus
                       className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink placeholder:text-ink-placeholder font-sans"
                     />
                   </span>
-                </label>
+
+                  {/* Sugestões de banco reconhecido enquanto digita */}
+                  {sugestoes.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {sugestoes.map((b) => (
+                        <button
+                          key={b.name}
+                          onClick={() => escolherBanco(b.name)}
+                          className="inline-flex items-center gap-1.5 h-8 pl-1.5 pr-3 rounded-full bg-surface-subtle hover:bg-border-subtle transition-colors"
+                          style={{ border: "1px solid #E3E6EC" }}
+                        >
+                          <span className="w-[22px] h-[22px] rounded-full bg-white flex items-center justify-center overflow-hidden p-0.5" style={{ border: "1px solid #E3E6EC" }}>
+                            <img src={b.icon} alt={b.name} className="w-full h-full object-contain" />
+                          </span>
+                          <span className="text-[13px] font-semibold text-ink">{b.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Banco vinculado */}
+                <p className="text-[13px] font-semibold text-[#5B616E] mb-2">Banco</p>
+                <div className="mb-5">
+                  <SeletorBanco value={banco} onChange={escolherBanco} />
+                </div>
 
                 {/* Tipo */}
                 <p className="text-[13px] font-semibold text-[#5B616E] mt-1.5 mb-2.5">
@@ -387,7 +419,7 @@ export function ContasScreen() {
                     return (
                       <button
                         key={t.id}
-                        onClick={() => handleChangeTipo(t.id)}
+                        onClick={() => setTipo(t.id)}
                         className="flex-1 h-9 rounded-full font-semibold text-[14px] cursor-pointer transition-colors"
                         style={{
                           border: ativo ? "1px solid #87BBF8" : "1px solid #E3E6EC",
@@ -402,7 +434,12 @@ export function ContasScreen() {
                 </div>
 
                 {/* Cor */}
-                <p className="text-[13px] font-semibold text-[#5B616E] mb-2.5">Cor</p>
+                <div className="flex items-center justify-between mb-2.5">
+                  <p className="text-[13px] font-semibold text-[#5B616E]">
+                    Cor {banco ? "(bandeira)" : ""}
+                  </p>
+                  <ContaAvatar icon={banco ?? ""} cor={cor} size={28} />
+                </div>
                 <div className="flex items-center justify-between mb-5">
                   {CORES.map((c) => {
                     const ativo = cor === c.valor;
@@ -423,28 +460,6 @@ export function ContasScreen() {
                             <path d="m5 12 5 5L20 7" />
                           </svg>
                         )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Ícone */}
-                <p className="text-[13px] font-semibold text-[#5B616E] mb-2.5">Ícone</p>
-                <div className="flex items-center justify-between mb-5">
-                  {ICONES_CONTA.map((id) => {
-                    const ativo = icone === id;
-                    return (
-                      <button
-                        key={id}
-                        onClick={() => setIcone(id)}
-                        className="w-11 h-11 rounded-xl flex items-center justify-center cursor-pointer transition-all"
-                        style={{
-                          background: ativo ? tintDaCor(cor) : "#F0F2F6",
-                          color: ativo ? cor : "#5B616E",
-                          border: ativo ? `1.5px solid ${cor}` : "1.5px solid transparent",
-                        }}
-                      >
-                        <ContaIcon icon={id} size={20} />
                       </button>
                     );
                   })}
@@ -478,13 +493,7 @@ export function ContasScreen() {
                   </button>
                 </div>
 
-                {/* Saldo */}
-                <label className="block mb-6">
-                  <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
-                    {editando ? "Saldo atual" : "Quanto tem agora?"}
-                  </span>
-                  <MoneyInput centavos={saldoCentavos} onChange={setSaldoCentavos} />
-                </label>
+                <div className="mb-6" />
 
                 {/* Erro */}
                 {erroModal && (

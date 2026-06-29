@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { ContaIcon } from "@/components/conta-icon";
+import { ContaAvatar } from "@/components/conta-avatar";
 import { tratarErro } from "@/core/errors";
 import { formatarBRL } from "@/utils/money";
 import { listarContas, contarPorConta, type Conta } from "@/core/db/contas";
@@ -54,19 +55,6 @@ function IconCheck() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 6 9 17l-5-5" />
     </svg>
-  );
-}
-
-// ─── Avatar de conta ──────────────────────────────────────────────────────────
-
-function AvatarConta({ cor, icon, size = 40 }: { cor: string; icon: string; size?: number }) {
-  return (
-    <span
-      className="rounded-xl flex items-center justify-center shrink-0"
-      style={{ width: size, height: size, background: `${cor}1A`, color: cor }}
-    >
-      <ContaIcon icon={icon} size={Math.round(size * 0.5)} />
-    </span>
   );
 }
 
@@ -149,7 +137,7 @@ export function SeletorConta({
         style={{ border: "1px solid #D4D8E0" }}
       >
         {selecionada ? (
-          <AvatarConta cor={selecionada.color} icon={selecionada.icon} size={32} />
+          <ContaAvatar cor={selecionada.color} icon={selecionada.icon} size={32} />
         ) : (
           <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#F0F2F6", color: "#8C95A6" }}>
             <ContaIcon icon="bank" size={16} />
@@ -280,7 +268,7 @@ export function SeletorConta({
                       onMouseEnter={(e) => { if (!ativo) e.currentTarget.style.background = "#F7F8FA"; }}
                       onMouseLeave={(e) => { if (!ativo) e.currentTarget.style.background = ""; }}
                     >
-                      <AvatarConta cor={c.color} icon={c.icon} size={40} />
+                      <ContaAvatar cor={c.color} icon={c.icon} size={40} />
                       <span className="flex-1 min-w-0">
                         <span className="flex items-center gap-1.5">
                           <span className="text-[14.5px] font-semibold text-ink truncate">{c.name}</span>

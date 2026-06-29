@@ -69,6 +69,16 @@ function IcoFechar() {
   );
 }
 
+function IcoLinkExterno() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 3h6v6" />
+      <path d="M10 14 21 3" />
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    </svg>
+  );
+}
+
 function IcoRefresh({ spin }: { spin?: boolean }) {
   return (
     <svg
@@ -564,18 +574,21 @@ function CardBanco({
       {acao ? (
         <button
           onClick={() => open("https://meu.pluggy.ai")}
-          style={{ height: "36px", padding: "0 14px", borderRadius: "99px", border: "none", background: badge.bg, color: badge.cor, fontWeight: 600, fontSize: "13px", cursor: "pointer" }}
+          aria-label="Abrir MeuPluggy"
+          title="Abrir MeuPluggy"
+          style={{ width: "36px", height: "36px", borderRadius: "10px", border: "none", background: badge.bg, color: badge.cor, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}
         >
-          Abrir MeuPluggy
+          <IcoLinkExterno />
         </button>
       ) : (
         <button
           onClick={onAtualizar}
           disabled={sincronizando}
-          style={{ height: "36px", padding: "0 14px", borderRadius: "99px", border: "1px solid #D4D8E0", background: "#fff", color: "#0E1116", fontWeight: 600, fontSize: "13px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", opacity: sincronizando ? 0.6 : 1 }}
+          aria-label={sincronizando ? "Atualizando…" : "Atualizar"}
+          title={sincronizando ? "Atualizando…" : "Atualizar"}
+          style={{ width: "36px", height: "36px", borderRadius: "10px", border: "1px solid #D4D8E0", background: "#fff", color: "#0E1116", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none", opacity: sincronizando ? 0.6 : 1 }}
         >
-          {sincronizando && <IcoRefresh spin />}
-          {sincronizando ? "Atualizando…" : "Atualizar"}
+          <IcoRefresh spin={sincronizando} />
         </button>
       )}
     </div>
