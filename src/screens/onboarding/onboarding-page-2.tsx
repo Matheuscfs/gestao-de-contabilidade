@@ -73,10 +73,10 @@ export function OnboardingIAScreen() {
   return (
     <div className="min-h-screen bg-surface-subtle flex items-center justify-center px-4">
       <div className="w-full max-w-[440px] flex flex-col items-center text-center">
-        <StepDots total={5} current={2} concluidos={1} />
+        <StepDots total={4} current={2} concluidos={1} />
 
         <p className="font-semibold text-[13px] text-[#5B616E] mt-[18px]">
-          passo 2 de 5 · opcional
+          passo 2 de 4 · opcional
         </p>
 
         <h1 className="font-bold text-[28px] leading-tight tracking-[-0.02em] text-ink mt-[10px]">

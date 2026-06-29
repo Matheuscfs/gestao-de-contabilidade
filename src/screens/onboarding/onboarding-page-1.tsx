@@ -78,10 +78,10 @@ export function OnboardingNomeScreen() {
   return (
     <div className="min-h-screen bg-surface-subtle flex items-center justify-center px-4">
       <div className="w-full max-w-[400px] flex flex-col items-center text-center">
-        <StepDots total={5} current={1} concluidos={0} />
+        <StepDots total={4} current={1} concluidos={0} />
 
         <p className="font-semibold text-[13px] text-[#5B616E] mt-[18px]">
-          passo 1 de 5
+          passo 1 de 4
         </p>
 
         <h1 className="font-bold text-[30px] leading-tight tracking-[-0.02em] text-ink mt-[10px]">

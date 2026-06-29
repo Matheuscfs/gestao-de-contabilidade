@@ -151,16 +151,16 @@ export function OnboardingMetaScreen() {
     } finally {
       setSalvando(false);
     }
-    navigate("/onboarding/tom-da-ia");
+    navigate("/onboarding/tudo-pronto");
   }
 
   return (
     <div className="min-h-screen bg-surface-subtle flex items-center justify-center px-4">
       <div className="w-full max-w-[430px] flex flex-col items-center text-center">
-        <StepDots total={5} current={4} concluidos={3} />
+        <StepDots total={4} current={4} concluidos={3} />
 
         <p className="font-semibold text-[13px] text-[#5B616E] mt-[18px]">
-          passo 4 de 5
+          passo 4 de 4
         </p>
 
         <h1 className="font-bold text-[30px] leading-tight tracking-[-0.02em] text-ink mt-[10px]">

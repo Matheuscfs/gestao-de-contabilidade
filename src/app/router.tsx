@@ -8,12 +8,11 @@ import { IaScreen } from "@/screens/ia/ia-screen";
 import { InvestimentosScreen } from "@/screens/investimentos/investimentos-screen";
 import { LancamentosScreen } from "@/screens/lancamentos/lancamentos-screen";
 import { MesScreen } from "@/screens/mes/mes-screen";
-import { OnboardingMetaScreen } from "@/screens/onboarding/onboarding-meta";
 import { OnboardingBoasVindasScreen } from "@/screens/onboarding/onboarding-page-0";
 import { OnboardingNomeScreen } from "@/screens/onboarding/onboarding-page-1";
 import { OnboardingIAScreen } from "@/screens/onboarding/onboarding-page-2";
 import { OnboardingBancoScreen } from "@/screens/onboarding/onboarding-page-3";
-import { OnboardingTomDaIAScreen } from "@/screens/onboarding/onboarding-tom-da-ia";
+import { OnboardingMetaScreen } from "@/screens/onboarding/onboarding-page-4";
 import { OnboardingTudoProntoScreen } from "@/screens/onboarding/onboarding-tudo-pronto";
 import { PerfilScreen } from "@/screens/perfil";
 import { ConfiguracoesScreen } from "@/screens/perfil/configuracoes";
@@ -62,7 +61,6 @@ export const router = createBrowserRouter([
       { path: "ia", element: <OnboardingIAScreen /> },
       { path: "banco", element: <OnboardingBancoScreen /> },
       { path: "meta", element: <OnboardingMetaScreen /> },
-      { path: "tom-da-ia", element: <OnboardingTomDaIAScreen /> },
       { path: "tudo-pronto", element: <OnboardingTudoProntoScreen /> },
     ],
   },
