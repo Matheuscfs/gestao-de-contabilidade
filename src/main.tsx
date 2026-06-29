@@ -1,5 +1,6 @@
 import { router } from "@/app/router";
 import { Toaster } from "@/components/toast";
+import { semearSeNecessario } from "@/core/db/seed";
 import { tratarErro } from "@/core/errors";
 import { inicializarOnboarding } from "@/store/onboarding";
 import "@/styles/globals.css";
@@ -20,6 +21,18 @@ const queryClient = new QueryClient({
 });
 
 async function iniciar() {
+  // Semeia persona/conta/categorias se o banco estiver vazio (primeiro boot).
+  // Precisa rodar antes de renderizar para que telas como Custo de Vida já
+  // encontrem as categorias disponíveis.
+  try {
+    await semearSeNecessario();
+  } catch (e) {
+    tratarErro(e, {
+      contexto: "semear dados iniciais",
+      notificar: false,
+    });
+  }
+
   try {
     await inicializarOnboarding();
   } catch (e) {

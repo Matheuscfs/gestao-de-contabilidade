@@ -717,7 +717,11 @@ export function CustoDeVidaScreen() {
                 return (
                   <button
                     key={String(op.valor)}
-                    onClick={() => setIsFixo(op.valor)}
+                    onClick={() => {
+                      setIsFixo(op.valor);
+                      // "Variável" não tem dia fixo — limpa o campo escondido.
+                      if (!op.valor) setLcDayOfMonth("");
+                    }}
                     className="flex-1 py-3 px-4 rounded-xl text-left cursor-pointer transition-all"
                     style={{
                       border: ativo
