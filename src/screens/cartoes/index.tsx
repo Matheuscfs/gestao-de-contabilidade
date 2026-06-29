@@ -1,32 +1,40 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { MoneyInput } from "@/components/money-input";
 import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
 import { formatarBRL } from "@/utils/money";
+import { mesAnoAtual, formatarMesAno } from "@/utils/dates";
 import {
   listarCartoes,
   criarCartao,
   atualizarCartao,
   deletarCartao,
   faturaDoMes,
+  faturaDoCartao,
+  salvarFaturaCartao,
+  excluirFaturaCartao,
+  statusFaturasCartao,
+  marcarFaturaPaga,
+  type FaturaCartao,
+  type EstadoFatura,
 } from "@/core/db/cartoes";
 import type { CreditCard } from "@/core/db/schema";
+import cardVisa from "@/assets/cards/card-visa.svg";
+import cardMastercard from "@/assets/cards/card-mastercard.svg";
+import cardElo from "@/assets/cards/card-elo.svg";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-type Brand = "VISA" | "MASTERCARD" | "ELO" | "AMEX" | "HIPERCARD" | "DINERS" | "OTHER";
+type Brand = "VISA" | "MASTERCARD" | "ELO" | "OTHER";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const BANDEIRAS: { id: Brand; label: string; cor: string; tint: string }[] = [
-  { id: "VISA", label: "Visa", cor: "#1A1F71", tint: "#E8E9F5" },
-  { id: "MASTERCARD", label: "Mastercard", cor: "#C0392B", tint: "#FDECEA" },
-  { id: "ELO", label: "Elo", cor: "#C9A00C", tint: "#FEF9C3" },
-  { id: "AMEX", label: "Amex", cor: "#006FCF", tint: "#E0F0FD" },
-  { id: "HIPERCARD", label: "Hipercard", cor: "#882D1C", tint: "#FCE8E5" },
-  { id: "DINERS", label: "Diners", cor: "#004A97", tint: "#E0EBF8" },
-  { id: "OTHER", label: "Outros", cor: "#5B616E", tint: "#F0F2F6" },
+const BANDEIRAS: { id: Brand; label: string; cor: string; tint: string; logo: string | null }[] = [
+  { id: "VISA", label: "Visa", cor: "#1A1F71", tint: "#E8E9F5", logo: cardVisa },
+  { id: "MASTERCARD", label: "Mastercard", cor: "#C0392B", tint: "#FDECEA", logo: cardMastercard },
+  { id: "ELO", label: "Elo", cor: "#C9A00C", tint: "#FEF9C3", logo: cardElo },
+  { id: "OTHER", label: "Outros", cor: "#5B616E", tint: "#F0F2F6", logo: null },
 ];
 
 const CORES: { valor: string; tint: string; label: string }[] = [
@@ -59,32 +67,38 @@ function labelDia(dia: number): string {
 
 // ─── Subcomponentes ───────────────────────────────────────────────────────────
 
+/** Logo da bandeira em formato de cartão. Quando não há ícone (Outros), desenha
+ * um cartão genérico na cor escolhida. */
+function LogoBandeira({
+  brand,
+  cor,
+  className,
+}: {
+  brand: string;
+  cor?: string;
+  className?: string;
+}) {
+  const b = infoBandeira(brand);
+  if (b.logo) {
+    return <img src={b.logo} alt={b.label} className={className} draggable={false} />;
+  }
+  const tint = cor ?? b.cor;
+  return (
+    <svg viewBox="0 0 70 47" fill="none" className={className} aria-label={b.label}>
+      <rect x="0.5" y="0.5" width="69" height="46" rx="5.5" fill="#fff" stroke="#D9D9D9" />
+      <rect x="10" y="15" width="50" height="6" rx="3" fill={tint} opacity="0.85" />
+      <rect x="10" y="28" width="28" height="5" rx="2.5" fill={tint} opacity="0.35" />
+    </svg>
+  );
+}
+
 function AvatarCartao({ cor, brand }: { cor: string; brand: string }) {
-  const bandeira = infoBandeira(brand);
   return (
     <div
-      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
       style={{ background: tintDaCor(cor) }}
     >
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke={cor}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <rect width="20" height="14" x="2" y="5" rx="2" />
-        <line x1="2" x2="22" y1="10" y2="10" />
-      </svg>
-      {/* mini brand dot */}
-      <span
-        className="sr-only"
-        aria-label={bandeira.label}
-      />
+      <LogoBandeira brand={brand} cor={cor} className="w-7 h-auto" />
     </div>
   );
 }
@@ -93,9 +107,12 @@ function ChipBandeira({ brand }: { brand: string }) {
   const b = infoBandeira(brand);
   return (
     <span
-      className="inline-flex items-center h-[22px] px-2.5 rounded-full text-[11px] font-semibold"
+      className="inline-flex items-center gap-1.5 h-[24px] pl-1 pr-2.5 rounded-full text-[11px] font-semibold"
       style={{ background: b.tint, color: b.cor }}
     >
+      <span className="w-6 h-[18px] rounded-[3px] bg-white flex items-center justify-center overflow-hidden shrink-0">
+        <LogoBandeira brand={brand} cor={b.cor} className="w-5 h-auto" />
+      </span>
       {b.label}
     </span>
   );
@@ -160,6 +177,371 @@ function InputDia({
   );
 }
 
+// ─── Modal de faturas ──────────────────────────────────────────────────────────
+
+const MESES_ABREV = [
+  "jan", "fev", "mar", "abr", "mai", "jun",
+  "jul", "ago", "set", "out", "nov", "dez",
+];
+
+function ModalFaturas({
+  cartao,
+  onClose,
+  onChange,
+}: {
+  cartao: CreditCard;
+  onClose: () => void;
+  onChange: () => void;
+}) {
+  // Mês selecionado (começa no mês atual) — pode avançar/voltar sem limite.
+  const [sel, setSel] = useState(() => mesAnoAtual());
+
+  // Janela de 7 meses centrada no mês selecionado (selecionado ± 3).
+  const meses = useMemo(() => {
+    const lista: { mes: number; ano: number }[] = [];
+    for (let d = -3; d <= 3; d++) {
+      const data = new Date(sel.ano, sel.mes - 1 + d, 1);
+      lista.push({ mes: data.getMonth() + 1, ano: data.getFullYear() });
+    }
+    return lista;
+  }, [sel.mes, sel.ano]);
+
+  function mover(delta: number) {
+    const data = new Date(sel.ano, sel.mes - 1 + delta, 1);
+    setSel({ mes: data.getMonth() + 1, ano: data.getFullYear() });
+  }
+
+  const [fatura, setFatura] = useState<FaturaCartao | null>(null);
+  const [statusMap, setStatusMap] = useState<Record<string, EstadoFatura>>({});
+  const [carregando, setCarregando] = useState(true);
+  const [editando, setEditando] = useState(false);
+  const [valor, setValor] = useState(0);
+  const [salvando, setSalvando] = useState(false);
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    try {
+      const [f, mapa] = await Promise.all([
+        faturaDoCartao(cartao.id, sel.mes, sel.ano),
+        statusFaturasCartao(cartao.id),
+      ]);
+      setFatura(f);
+      setStatusMap(mapa);
+      setValor(f?.amountCents ?? 0);
+      setEditando(false);
+      setConfirmandoExclusao(false);
+    } catch (e) {
+      tratarErro(e, {
+        contexto: "carregar fatura",
+        mensagemUsuario: "Não foi possível carregar a fatura.",
+      });
+    } finally {
+      setCarregando(false);
+    }
+  }, [cartao.id, sel.mes, sel.ano]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  async function salvar() {
+    if (valor <= 0) return;
+    setSalvando(true);
+    try {
+      await salvarFaturaCartao(cartao.id, sel.mes, sel.ano, valor);
+      await carregar();
+      onChange();
+      toast.sucesso(fatura ? "Fatura atualizada" : "Fatura adicionada");
+    } catch (e) {
+      tratarErro(e, {
+        contexto: "salvar fatura",
+        mensagemUsuario: "Não foi possível salvar a fatura.",
+      });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function excluir() {
+    setSalvando(true);
+    try {
+      await excluirFaturaCartao(cartao.id, sel.mes, sel.ano);
+      await carregar();
+      onChange();
+      toast.sucesso("Fatura excluída");
+    } catch (e) {
+      tratarErro(e, {
+        contexto: "excluir fatura",
+        mensagemUsuario: "Não foi possível excluir a fatura.",
+      });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function alternarPaga() {
+    if (!fatura) return;
+    setSalvando(true);
+    try {
+      await marcarFaturaPaga(cartao.id, sel.mes, sel.ano, !fatura.paga);
+      await carregar();
+      onChange();
+      toast.sucesso(fatura.paga ? "Fatura reaberta" : "Fatura paga");
+    } catch (e) {
+      tratarErro(e, {
+        contexto: "atualizar pagamento da fatura",
+        mensagemUsuario: "Não foi possível atualizar o pagamento.",
+      });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  // Cores do chip por estado da fatura: paga (verde), aberta (laranja), vazia (branco).
+  function coresMes(m: { mes: number; ano: number }, ativo: boolean) {
+    const estado = statusMap[`${m.ano}-${m.mes}`];
+    let bg = "#fff";
+    let borda = "#E3E6EC";
+    let fg = "#5B616E";
+    let acento = cartao.color;
+    if (estado?.paga) {
+      bg = "#E2F4EC";
+      borda = "#9BD9BE";
+      fg = "#0B6E4A";
+      acento = "#12A06B";
+    } else if (estado) {
+      bg = "#FEF3E2";
+      borda = "#F2C879";
+      fg = "#B4690E";
+      acento = "#E8A020";
+    }
+    return {
+      background: bg,
+      border: ativo ? `1.5px solid ${acento}` : `1px solid ${borda}`,
+      color: ativo ? acento : fg,
+      boxShadow: ativo ? `0 4px 12px -6px ${acento}88` : "none",
+    };
+  }
+
+  return (
+    <div
+      className="fixed inset-0 flex items-center justify-center z-[90]"
+      style={{ background: "rgba(14,17,22,.42)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-[640px] bg-surface rounded-3xl shadow-lg animate-slide-up overflow-y-auto"
+        style={{ padding: "30px 30px 26px", maxHeight: "calc(100vh - 48px)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
+              style={{ background: tintDaCor(cartao.color) }}
+            >
+              <LogoBandeira brand={cartao.brand} cor={cartao.color} className="w-8 h-auto" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[20px] font-bold text-ink tracking-tight truncate">
+                Faturas
+              </p>
+              <p className="text-[13px] font-medium text-ink-muted truncate">{cartao.name}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="w-[34px] h-[34px] rounded-full border-none cursor-pointer flex items-center justify-center hover:opacity-80 transition-opacity shrink-0"
+            style={{ background: "#F0F2F6", color: "#5B616E" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Switch de meses */}
+        <div className="flex items-center gap-2 mb-5">
+          <button
+            onClick={() => mover(-1)}
+            aria-label="Mês anterior"
+            className="w-9 h-9 shrink-0 rounded-lg border border-border bg-surface flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-subtle transition-colors cursor-pointer"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+
+          <div className="flex-1 grid grid-cols-7 gap-1.5">
+            {meses.map((m) => {
+              const ativo = m.mes === sel.mes && m.ano === sel.ano;
+              return (
+                <button
+                  key={`${m.ano}-${m.mes}`}
+                  onClick={() => setSel(m)}
+                  className="flex flex-col items-center justify-center h-12 rounded-xl cursor-pointer transition-colors"
+                  style={coresMes(m, ativo)}
+                >
+                  <span className="text-[12px] font-bold uppercase leading-none">
+                    {MESES_ABREV[m.mes - 1]}
+                  </span>
+                  <span className="text-[10px] font-medium opacity-70 mt-0.5 leading-none">
+                    {m.ano}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() => mover(1)}
+            aria-label="Próximo mês"
+            className="w-9 h-9 shrink-0 rounded-lg border border-border bg-surface flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-subtle transition-colors cursor-pointer"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Fatura do mês selecionado */}
+        <div className="rounded-2xl border border-border p-5 min-h-[180px] flex flex-col">
+          <p className="text-[13px] font-semibold text-ink-muted capitalize mb-3">
+            {formatarMesAno(sel.mes, sel.ano)}
+          </p>
+
+          {carregando ? (
+            <div className="flex-1 flex items-center justify-center text-sm text-ink-muted">
+              Carregando…
+            </div>
+          ) : editando ? (
+            <div className="flex-1 flex flex-col">
+              <span className="block text-[13px] font-semibold text-[#5B616E] mb-2">
+                Valor da fatura
+              </span>
+              <MoneyInput centavos={valor} onChange={setValor} />
+              <div className="flex gap-2.5 mt-auto pt-5">
+                <button
+                  onClick={() => {
+                    setEditando(false);
+                    setValor(fatura?.amountCents ?? 0);
+                  }}
+                  className="flex-1 h-12 rounded-full font-semibold text-[15px] cursor-pointer hover:opacity-80 transition-opacity"
+                  style={{ border: "1px solid #D4D8E0", background: "#fff", color: "#0E1116" }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={salvar}
+                  disabled={valor <= 0 || salvando}
+                  className="flex-1 h-12 rounded-full border-none text-white font-semibold text-[15px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                  style={{ background: "#4078E6", boxShadow: "0 6px 16px -4px rgba(64,120,230,.45)" }}
+                >
+                  {salvando ? "Salvando…" : "Salvar fatura"}
+                </button>
+              </div>
+            </div>
+          ) : fatura ? (
+            <div className="flex-1 flex flex-col">
+              <div className="flex items-center gap-2.5">
+                <p className="text-[32px] font-bold text-ink tabular-nums leading-none">
+                  {formatarBRL(fatura.amountCents)}
+                </p>
+                <span
+                  className="inline-flex items-center h-[22px] px-2.5 rounded-full text-[11px] font-semibold"
+                  style={
+                    fatura.paga
+                      ? { background: "#E2F4EC", color: "#0B6E4A" }
+                      : { background: "#FEF3E2", color: "#B4690E" }
+                  }
+                >
+                  {fatura.paga ? "Paga" : "Em aberto"}
+                </span>
+              </div>
+              {confirmandoExclusao ? (
+                <div className="mt-auto pt-5">
+                  <p className="text-[13px] font-medium text-ink-muted mb-3">
+                    Remover a fatura deste mês?
+                  </p>
+                  <div className="flex gap-2.5">
+                    <button
+                      onClick={() => setConfirmandoExclusao(false)}
+                      className="flex-1 h-12 rounded-full font-semibold text-[15px] cursor-pointer hover:opacity-80 transition-opacity"
+                      style={{ border: "1px solid #D4D8E0", background: "#fff", color: "#0E1116" }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={excluir}
+                      disabled={salvando}
+                      className="flex-1 h-12 rounded-full border-none text-white font-semibold text-[15px] cursor-pointer disabled:opacity-50 transition-opacity"
+                      style={{ background: "#D74A45" }}
+                    >
+                      {salvando ? "Excluindo…" : "Excluir"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2.5 mt-auto pt-5">
+                  <button
+                    onClick={alternarPaga}
+                    disabled={salvando}
+                    className="flex-1 h-12 rounded-full border-none text-white font-semibold text-[15px] cursor-pointer disabled:opacity-50 transition-opacity"
+                    style={
+                      fatura.paga
+                        ? { background: "#5B616E" }
+                        : { background: "#12A06B", boxShadow: "0 6px 16px -4px rgba(18,160,107,.45)" }
+                    }
+                  >
+                    {salvando
+                      ? "Salvando…"
+                      : fatura.paga
+                        ? "Reabrir fatura"
+                        : "Marcar como paga"}
+                  </button>
+                  <button
+                    onClick={() => setEditando(true)}
+                    className="shrink-0 h-12 px-5 rounded-full font-semibold text-[15px] cursor-pointer hover:opacity-80 transition-opacity"
+                    style={{ border: "1px solid #D4D8E0", background: "#fff", color: "#0E1116" }}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => setConfirmandoExclusao(true)}
+                    className="shrink-0 h-12 px-5 rounded-full font-semibold text-[15px] cursor-pointer hover:opacity-80 transition-opacity"
+                    style={{ border: "1px solid #F5C5C3", background: "#FEF2F2", color: "#D74A45" }}
+                  >
+                    Excluir
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 py-2">
+              <p className="text-sm font-medium text-ink-muted">
+                Nenhuma fatura registrada neste mês.
+              </p>
+              <button
+                onClick={() => {
+                  setValor(0);
+                  setEditando(true);
+                }}
+                className="h-11 px-6 rounded-full border-none text-white font-semibold text-[14px] cursor-pointer hover:opacity-90 transition-opacity"
+                style={{ background: "#4078E6", boxShadow: "0 6px 16px -4px rgba(64,120,230,.45)" }}
+              >
+                Adicionar fatura
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Estado inicial do formulário ─────────────────────────────────────────────
 
 function estadoVazio() {
@@ -170,6 +552,7 @@ function estadoVazio() {
     diaFechamento: 1,
     diaVencimento: 10,
     cor: CORES[0].valor,
+    ativo: true,
   };
 }
 
@@ -188,6 +571,9 @@ export function CartoesCreditoScreen() {
   const [cartaoEditando, setCartaoEditando] = useState<CreditCard | null>(null);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
 
+  // Modal de faturas
+  const [cartaoFaturas, setCartaoFaturas] = useState<CreditCard | null>(null);
+
   // Campos do formulário
   const [nome, setNome] = useState("");
   const [brand, setBrand] = useState<Brand>("VISA");
@@ -195,6 +581,7 @@ export function CartoesCreditoScreen() {
   const [diaFechamento, setDiaFechamento] = useState(1);
   const [diaVencimento, setDiaVencimento] = useState(10);
   const [cor, setCor] = useState(CORES[0].valor);
+  const [ativo, setAtivo] = useState(true);
 
   const { setOnAdicionar } = useHeaderActionsStore();
 
@@ -234,6 +621,7 @@ export function CartoesCreditoScreen() {
     setDiaFechamento(v.diaFechamento);
     setDiaVencimento(v.diaVencimento);
     setCor(v.cor);
+    setAtivo(v.ativo);
     setConfirmandoExclusao(false);
     setErroModal(null);
     setModalAberto(true);
@@ -247,6 +635,7 @@ export function CartoesCreditoScreen() {
     setDiaFechamento(cartao.closingDay);
     setDiaVencimento(cartao.dueDay);
     setCor(cartao.color);
+    setAtivo(cartao.isActive === 1);
     setConfirmandoExclusao(false);
     setErroModal(null);
     setModalAberto(true);
@@ -284,7 +673,7 @@ export function CartoesCreditoScreen() {
         closingDay: diaFechamento,
         dueDay: diaVencimento,
         color: cor,
-        isActive: 1,
+        isActive: ativo ? 1 : 0,
         source: "MANUAL",
       };
       if (cartaoEditando) {
@@ -322,22 +711,6 @@ export function CartoesCreditoScreen() {
       });
     } finally {
       setSalvando(false);
-    }
-  }
-
-  async function alternarAtivo(cartao: CreditCard) {
-    try {
-      await atualizarCartao(cartao.id, { isActive: cartao.isActive ? 0 : 1 });
-      setCartoes((prev) =>
-        prev.map((c) =>
-          c.id === cartao.id ? { ...c, isActive: cartao.isActive ? 0 : 1 } : c
-        )
-      );
-    } catch (e) {
-      tratarErro(e, {
-        contexto: "alternar status do cartão",
-        mensagemUsuario: "Não foi possível alterar o status do cartão.",
-      });
     }
   }
 
@@ -416,7 +789,7 @@ export function CartoesCreditoScreen() {
         <div
           className="grid px-5 h-10 bg-surface-subtle border-b border-border items-center"
           style={{
-            gridTemplateColumns: "minmax(0,1fr) 130px 100px 100px 140px 56px 44px",
+            gridTemplateColumns: "minmax(0,1fr) 150px 96px 96px 130px 210px",
           }}
         >
           <span className="text-xs font-semibold text-ink-muted">Cartão</span>
@@ -424,7 +797,6 @@ export function CartoesCreditoScreen() {
           <span className="text-xs font-semibold text-ink-muted">Fechamento</span>
           <span className="text-xs font-semibold text-ink-muted">Vencimento</span>
           <span className="text-xs font-semibold text-ink-muted text-right">Limite</span>
-          <span className="text-xs font-semibold text-ink-muted text-center">Ativo</span>
           <span />
         </div>
 
@@ -449,7 +821,7 @@ export function CartoesCreditoScreen() {
               <div
                 className="grid px-5 py-3.5 items-center"
                 style={{
-                  gridTemplateColumns: "minmax(0,1fr) 130px 100px 100px 140px 56px 44px",
+                  gridTemplateColumns: "minmax(0,1fr) 150px 96px 96px 130px 210px",
                 }}
               >
                 {/* Cartão */}
@@ -461,6 +833,11 @@ export function CartoesCreditoScreen() {
                   >
                     {cartao.name}
                   </p>
+                  {!cartao.isActive && (
+                    <span className="shrink-0 inline-flex items-center h-[20px] px-2 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-surface-subtle text-ink-muted">
+                      Inativo
+                    </span>
+                  )}
                 </div>
 
                 {/* Bandeira */}
@@ -492,34 +869,32 @@ export function CartoesCreditoScreen() {
                   {formatarBRL(cartao.limitCents)}
                 </p>
 
-                {/* Toggle ativo */}
-                <div className="flex justify-center">
-                  <Toggle
-                    checked={cartao.isActive === 1}
-                    onChange={() => alternarAtivo(cartao)}
-                  />
-                </div>
-
-                {/* Editar */}
-                <button
-                  onClick={() => abrirModalEdicao(cartao)}
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-subtle transition-colors cursor-pointer border-none bg-transparent"
-                  aria-label="Editar cartão"
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                {/* Ações */}
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => abrirModalEdicao(cartao)}
+                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-surface text-[13px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-subtle transition-colors cursor-pointer"
                   >
-                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                    <path d="m15 5 4 4" />
-                  </svg>
-                </button>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                      <path d="m15 5 4 4" />
+                    </svg>
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => setCartaoFaturas(cartao)}
+                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-surface text-[13px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-subtle transition-colors cursor-pointer"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+                      <path d="M14 2v5h5" />
+                      <path d="M8 13h8" />
+                      <path d="M8 17h8" />
+                      <path d="M8 9h2" />
+                    </svg>
+                    Faturas
+                  </button>
+                </div>
               </div>
 
               {i < cartoesFiltrados.length - 1 && (
@@ -590,21 +965,28 @@ export function CartoesCreditoScreen() {
 
             {/* Bandeira */}
             <p className="text-[13px] font-semibold text-[#5B616E] mb-2.5">Bandeira</p>
-            <div className="flex flex-wrap gap-2 mb-5">
+            <div className="grid grid-cols-4 gap-2 mb-5">
               {BANDEIRAS.map((b) => {
                 const ativo = brand === b.id;
                 return (
                   <button
                     key={b.id}
                     onClick={() => setBrand(b.id)}
-                    className="h-9 px-4 rounded-full font-semibold text-[13px] cursor-pointer transition-colors"
+                    aria-pressed={ativo}
+                    className="flex flex-col items-center justify-center gap-1.5 h-[72px] rounded-xl cursor-pointer transition-all"
                     style={{
-                      border: ativo ? `1px solid ${b.cor}` : "1px solid #E3E6EC",
+                      border: ativo ? `1.5px solid ${b.cor}` : "1px solid #E3E6EC",
                       background: ativo ? b.tint : "#fff",
-                      color: ativo ? b.cor : "#5B616E",
+                      boxShadow: ativo ? `0 4px 12px -6px ${b.cor}66` : "none",
                     }}
                   >
-                    {b.label}
+                    <LogoBandeira brand={b.id} cor={b.cor} className="w-9 h-auto" />
+                    <span
+                      className="text-[11px] font-semibold leading-none"
+                      style={{ color: ativo ? b.cor : "#5B616E" }}
+                    >
+                      {b.label}
+                    </span>
                   </button>
                 );
               })}
@@ -668,28 +1050,32 @@ export function CartoesCreditoScreen() {
               })}
             </div>
 
+            {/* Ativo (somente na edição) */}
+            {cartaoEditando && (
+              <div
+                className="flex items-center justify-between rounded-xl px-4 py-3 mb-5"
+                style={{ border: "1px solid #E3E6EC" }}
+              >
+                <div>
+                  <p className="text-[14px] font-semibold text-ink">Cartão ativo</p>
+                  <p className="text-[12px] text-ink-muted mt-0.5">
+                    Cartões inativos não entram nas faturas nem no limite total.
+                  </p>
+                </div>
+                <Toggle checked={ativo} onChange={setAtivo} />
+              </div>
+            )}
+
             {/* Preview */}
             <div
               className="flex items-center gap-3 rounded-xl px-4 py-3 mb-5"
               style={{ background: tintDaCor(cor), border: `1px solid ${cor}22` }}
             >
               <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
                 style={{ background: cor + "22" }}
               >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={cor}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect width="20" height="14" x="2" y="5" rx="2" />
-                  <line x1="2" x2="22" y1="10" y2="10" />
-                </svg>
+                <LogoBandeira brand={brand} cor={cor} className="w-7 h-auto" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[14px] font-semibold" style={{ color: cor }}>
@@ -777,6 +1163,15 @@ export function CartoesCreditoScreen() {
             )}
           </div>
         </div>
+      )}
+
+      {/* ── Modal de faturas ──────────────────────────────────────────────────── */}
+      {cartaoFaturas && (
+        <ModalFaturas
+          cartao={cartaoFaturas}
+          onClose={() => setCartaoFaturas(null)}
+          onChange={carregarCartoes}
+        />
       )}
     </div>
   );

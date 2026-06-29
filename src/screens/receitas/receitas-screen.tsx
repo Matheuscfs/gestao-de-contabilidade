@@ -1074,8 +1074,9 @@ export function ReceitasScreen() {
                         </div>
                       </div>
                       <p className="text-[11px] text-ink-muted mt-2.5 leading-relaxed">
-                        + FGTS de <strong>{formatarBRL(cltPreview.fgtsCents)}</strong> pago pelo empregador. Estimativa sem
-                        dependentes; o valor real na folha pode variar.
+                        + FGTS de <strong>{formatarBRL(cltPreview.fgtsCents)}</strong>/mês lançado automaticamente numa
+                        conta poupança <strong>FGTS</strong>, vinculado a esta receita. Estimativa sem dependentes; o valor
+                        real pode variar.
                       </p>
                     </div>
                   )}
