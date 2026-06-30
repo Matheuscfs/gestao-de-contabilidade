@@ -339,26 +339,17 @@ fn upsert_conta_pluggy(
     match conta.subtype {
         SubtipoConta::CreditCard => {
             // Enriquece com o creditData da Pluggy (bandeira, limite, vencimento).
-            // Campos sem valor na Pluggy (closing/due/brand) caem no padrão na
-            // criação e preservam o valor atual na atualização (COALESCE).
+            // ON CONFLICT não funciona com índice parcial — INSERT OR IGNORE + UPDATE explícito.
             let cartao = cartao_pluggy_para_quibo(conta);
             conn.execute(
-                "INSERT INTO credit_cards (
+                "INSERT OR IGNORE INTO credit_cards (
                      id, name, brand, limit_cents, closing_day, due_day,
                      source, pluggy_id, pluggy_synced_at,
                      is_active, created_at, updated_at
                  ) VALUES (
                      ?1, ?2, COALESCE(?3,'OTHER'), ?4, COALESCE(?5,1), COALESCE(?6,10),
                      'PLUGGY', ?7, ?8, 1, ?8, ?8
-                 )
-                 ON CONFLICT(pluggy_id) DO UPDATE SET
-                     name             = excluded.name,
-                     brand            = COALESCE(?3, credit_cards.brand),
-                     limit_cents      = excluded.limit_cents,
-                     closing_day      = COALESCE(?5, credit_cards.closing_day),
-                     due_day          = COALESCE(?6, credit_cards.due_day),
-                     pluggy_synced_at = excluded.pluggy_synced_at,
-                     updated_at       = excluded.updated_at",
+                 )",
                 params![
                     id,
                     conta.name,
@@ -370,6 +361,26 @@ fn upsert_conta_pluggy(
                     agora,
                 ],
             )?;
+            conn.execute(
+                "UPDATE credit_cards SET
+                     name             = ?1,
+                     brand            = COALESCE(?2, brand),
+                     limit_cents      = ?3,
+                     closing_day      = COALESCE(?4, closing_day),
+                     due_day          = COALESCE(?5, due_day),
+                     pluggy_synced_at = ?6,
+                     updated_at       = ?6
+                 WHERE pluggy_id = ?7",
+                params![
+                    conta.name,
+                    cartao.brand,
+                    cartao.limit_cents,
+                    cartao.closing_day,
+                    cartao.due_day,
+                    agora,
+                    conta.id,
+                ],
+            )?;
         }
         _ => {
             let tipo_str = match conta.subtype {
@@ -379,15 +390,11 @@ fn upsert_conta_pluggy(
                 _                             => "OTHER",
             };
             conn.execute(
-                "INSERT INTO accounts (
+                "INSERT OR IGNORE INTO accounts (
                      id, name, type, bank,
                      balance_cents, source, pluggy_id, pluggy_synced_at,
                      is_active, created_at, updated_at
-                 ) VALUES (?1,?2,?3,?4,?5,'PLUGGY',?6,?7,1,?8,?8)
-                 ON CONFLICT(pluggy_id) DO UPDATE SET
-                     balance_cents    = excluded.balance_cents,
-                     pluggy_synced_at = excluded.pluggy_synced_at,
-                     updated_at       = excluded.updated_at",
+                 ) VALUES (?1,?2,?3,?4,?5,'PLUGGY',?6,?7,1,?8,?8)",
                 params![
                     id,
                     conta.name,
@@ -396,8 +403,16 @@ fn upsert_conta_pluggy(
                     balance_cents,
                     conta.id,
                     agora,
-                    agora
+                    agora,
                 ],
+            )?;
+            conn.execute(
+                "UPDATE accounts SET
+                     balance_cents    = ?1,
+                     pluggy_synced_at = ?2,
+                     updated_at       = ?2
+                 WHERE pluggy_id = ?3",
+                params![balance_cents, agora, conta.id],
             )?;
         }
     }
@@ -446,20 +461,16 @@ fn upsert_transacoes(
     for tx in transacoes {
         let entry = transacao_para_entry(tx, account_id, credit_card_id, e_credito);
 
-        let linhas = conn.execute(
-            "INSERT INTO transactions (
+        // ON CONFLICT não funciona com índice parcial — INSERT OR IGNORE + UPDATE explícito.
+        // conn.changes() == 1 indica linha nova; 0 indica que já existia.
+        conn.execute(
+            "INSERT OR IGNORE INTO transactions (
                 id, pluggy_id, source, pluggy_synced_at,
                 description, amount_cents, type, status,
                 date, month, year,
                 account_id, credit_card_id,
                 tags, created_at, updated_at
-             ) VALUES (?1,?2,'PLUGGY',?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)
-             ON CONFLICT(pluggy_id) DO UPDATE SET
-                description      = excluded.description,
-                amount_cents     = excluded.amount_cents,
-                type             = excluded.type,
-                pluggy_synced_at = excluded.pluggy_synced_at,
-                updated_at       = excluded.updated_at",
+             ) VALUES (?1,?2,'PLUGGY',?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)",
             params![
                 entry.id,
                 entry.pluggy_transaction_id,
@@ -478,8 +489,26 @@ fn upsert_transacoes(
                 entry.updated_at,
             ],
         )?;
+        let inserido = conn.changes() == 1;
 
-        if linhas == 1 {
+        conn.execute(
+            "UPDATE transactions SET
+                description      = ?1,
+                amount_cents     = ?2,
+                type             = ?3,
+                pluggy_synced_at = ?4,
+                updated_at       = ?4
+             WHERE pluggy_id = ?5",
+            params![
+                entry.description,
+                entry.amount_cents,
+                entry.tipo.to_str(),
+                agora,
+                entry.pluggy_transaction_id,
+            ],
+        )?;
+
+        if inserido {
             novos += 1;
         } else {
             atualizados += 1;

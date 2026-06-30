@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-shell";
 import {
+  type ContaPluggyResumo,
   type ItemResumo,
   type ResultadoSync,
   pluggyDescobrirItems,
   pluggyIniciarConexao,
+  pluggyListarContasItem,
   pluggyListarItems,
   pluggyRegistrarItem,
   pluggyRemoverCredenciais,
@@ -14,6 +16,7 @@ import {
   pluggyStatusCredenciais,
 } from "@/core/ipc/pluggy";
 import { toast } from "@/components/toast";
+import { bancoPorNome, reconhecerBanco } from "@/consts/banks";
 
 // ─── Logo Pluggy (SVG oficial) ────────────────────────────────────────────────
 
@@ -530,45 +533,101 @@ function ModalGerenciar({
   );
 }
 
+// ─── Helpers de logo e métricas ──────────────────────────────────────────────
+
+function logoParaItem(
+  connectorName: string | null,
+  contas: ContaPluggyResumo[],
+): string | null {
+  const porConector = bancoPorNome(connectorName);
+  if (porConector) return porConector.icon;
+  for (const conta of contas) {
+    const banco = reconhecerBanco(conta.name);
+    if (banco) return banco.icon;
+  }
+  return null;
+}
+
+function nomeExibivelBanco(
+  connectorName: string | null,
+  contas: ContaPluggyResumo[],
+): string {
+  if (connectorName && connectorName !== "MeuPluggy") return connectorName;
+  for (const conta of contas) {
+    const banco = reconhecerBanco(conta.name);
+    if (banco) return banco.name;
+  }
+  return connectorName ?? "Banco desconhecido";
+}
+
+function metricasContas(contas: ContaPluggyResumo[]): string | null {
+  if (contas.length === 0) return null;
+  const bancarias = contas.filter((c) => c.tipo !== "CreditCard").length;
+  const cartoes   = contas.filter((c) => c.tipo === "CreditCard").length;
+  const partes: string[] = [];
+  if (bancarias > 0) partes.push(`${bancarias} conta${bancarias > 1 ? "s" : ""}`);
+  if (cartoes > 0)   partes.push(`${cartoes} cartão${cartoes > 1 ? "ões" : ""}`);
+  return partes.join(" · ") || null;
+}
+
 // ─── Card de banco ────────────────────────────────────────────────────────────
 
 function CardBanco({
   item,
+  contas,
   onAtualizar,
   sincronizando,
 }: {
   item: ItemResumo;
+  contas: ContaPluggyResumo[] | null;
   onAtualizar: () => void;
   sincronizando: boolean;
 }) {
-  const badge = badgeItem(item);
-  const acao  = precisaAcao(item);
+  const badge    = badgeItem(item);
+  const acao     = precisaAcao(item);
+  const listaContas = contas ?? [];
+  const logo     = logoParaItem(item.connectorName, listaContas);
+  const nome     = nomeExibivelBanco(item.connectorName, listaContas);
+  const metricas = metricasContas(listaContas);
 
   const subtitulo = (): string | null => {
     if (item.status === "LOGIN_ERROR") return "as credenciais expiraram — reconecte no MeuPluggy";
     if (item.status === "OUTDATED")    return "a conexão venceu — reative no MeuPluggy";
-    return null;
+    return metricas;
   };
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "16px 20px" }}>
-      <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: corAvatar(item.connectorName), color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "15px", flex: "none" }}>
-        {iniciais(item.connectorName)}
+      {/* Avatar: logo do banco ou iniciais */}
+      <div style={{
+        width: "42px", height: "42px", borderRadius: "12px", flex: "none",
+        background: logo ? "#F4F5F7" : corAvatar(item.connectorName),
+        color: "#fff",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        overflow: "hidden",
+      }}>
+        {logo
+          ? <img src={logo} alt={nome} style={{ width: "30px", height: "30px", objectFit: "contain" }} />
+          : <span style={{ fontWeight: 700, fontSize: "15px" }}>{iniciais(item.connectorName)}</span>
+        }
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ fontWeight: 600, fontSize: "15px", color: "#0E1116" }}>
-            {item.connectorName ?? "Banco desconhecido"}
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <span style={{ fontWeight: 600, fontSize: "15px", color: "#0E1116" }}>{nome}</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", height: "22px", padding: "0 9px", borderRadius: "99px", background: badge.bg, color: badge.cor, fontWeight: 600, fontSize: "11.5px" }}>
             <span style={{ width: "5px", height: "5px", borderRadius: "99px", background: badge.ponto }} />
             {badge.texto}
           </span>
         </div>
         {subtitulo() && (
-          <div style={{ fontWeight: 500, fontSize: "13px", color: "#5B616E", marginTop: "3px" }}>
+          <div style={{ fontWeight: 500, fontSize: "12.5px", color: "#8A909C", marginTop: "3px" }}>
             {subtitulo()}
+          </div>
+        )}
+        {contas === null && (
+          <div style={{ fontWeight: 500, fontSize: "12px", color: "#B5BCC9", marginTop: "3px" }}>
+            carregando contas…
           </div>
         )}
       </div>
@@ -625,6 +684,7 @@ function ViewNaoConfigurado({ onConectar }: { onConectar: () => void }) {
 
 function ViewConectado({
   items,
+  contasPorItem,
   onAtualizar,
   onAtualizarTudo,
   onAdicionarBanco,
@@ -636,6 +696,7 @@ function ViewConectado({
   ultimoSync,
 }: {
   items: ItemResumo[];
+  contasPorItem: Record<string, ContaPluggyResumo[]>;
   onAtualizar: (id: string) => void;
   onAtualizarTudo: () => void;
   onAdicionarBanco: () => void;
@@ -717,6 +778,7 @@ function ViewConectado({
               <div key={item.pluggyItemId}>
                 <CardBanco
                   item={item}
+                  contas={contasPorItem[item.pluggyItemId] ?? null}
                   sincronizando={itemSincronizando === item.pluggyItemId || sincronizandoTodos}
                   onAtualizar={() => onAtualizar(item.pluggyItemId)}
                 />
@@ -774,12 +836,25 @@ type EstadoTela = "carregando" | "nao-configurado" | "configurado";
 export function PluggyIntegracaoScreen() {
   const [estadoTela, setEstadoTela]                   = useState<EstadoTela>("carregando");
   const [items, setItems]                             = useState<ItemResumo[]>([]);
+  const [contasPorItem, setContasPorItem]             = useState<Record<string, ContaPluggyResumo[]>>({});
   const [modalConectarAberto, setModalConectarAberto]   = useState(false);
   const [modalGerenciarAberto, setModalGerenciarAberto] = useState(false);
   const [modalAdicionarAberto, setModalAdicionarAberto] = useState(false);
   const [itemSincronizando, setItemSincronizando]       = useState<string | null>(null);
   const [sincronizandoTodos, setSincronizandoTodos]     = useState(false);
   const [resultados, setResultados]                   = useState<ResultadoSync[]>([]);
+
+  async function carregarContasDeItems(lista: ItemResumo[]) {
+    const resultados = await Promise.allSettled(
+      lista.map((item) => pluggyListarContasItem(item.pluggyItemId))
+    );
+    const mapa: Record<string, ContaPluggyResumo[]> = {};
+    lista.forEach((item, i) => {
+      const r = resultados[i];
+      mapa[item.pluggyItemId] = r.status === "fulfilled" ? r.value : [];
+    });
+    setContasPorItem(mapa);
+  }
 
   const carregarEstado = useCallback(async () => {
     try {
@@ -788,6 +863,7 @@ export function PluggyIntegracaoScreen() {
       const lista = await pluggyListarItems();
       setItems(lista);
       setEstadoTela("configurado");
+      carregarContasDeItems(lista);
     } catch {
       setEstadoTela("nao-configurado");
     }
@@ -801,6 +877,7 @@ export function PluggyIntegracaoScreen() {
       const descobertos = await pluggyDescobrirItems();
       setItems(descobertos);
       setEstadoTela("configurado");
+      carregarContasDeItems(descobertos);
     } catch {
       await carregarEstado();
     }
@@ -812,6 +889,11 @@ export function PluggyIntegracaoScreen() {
       const jaExiste = prev.some((i) => i.pluggyItemId === item.pluggyItemId);
       return jaExiste ? prev : [...prev, item];
     });
+    pluggyListarContasItem(item.pluggyItemId)
+      .then((contas) =>
+        setContasPorItem((prev) => ({ ...prev, [item.pluggyItemId]: contas }))
+      )
+      .catch(() => {});
   }
 
   async function handleAtualizar(pluggyItemId: string) {
@@ -936,6 +1018,7 @@ export function PluggyIntegracaoScreen() {
       {estadoTela === "configurado" && (
         <ViewConectado
           items={items}
+          contasPorItem={contasPorItem}
           onAtualizar={handleAtualizar}
           onAtualizarTudo={handleAtualizarTudo}
           onAdicionarBanco={() => setModalAdicionarAberto(true)}
