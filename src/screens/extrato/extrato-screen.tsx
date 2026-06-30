@@ -50,7 +50,10 @@ const TODOS = "__todos__";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function dataEfetiva(m: MovimentoExtrato): Date {
-  return new Date(m.date || m.dueDate || m.createdAt);
+  const s = m.date || m.dueDate || m.createdAt;
+  // Datas "YYYY-MM-DD" viram meio-dia local para não escorregar de dia/mês no fuso.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(`${s}T12:00:00`);
+  return new Date(s);
 }
 
 function valorExibicao(m: MovimentoExtrato): { texto: string; cor: string } {

@@ -145,6 +145,10 @@ type BadgeInfo = { bg: string; cor: string; ponto: string; texto: string };
 function badgeItem(item: ItemResumo): BadgeInfo {
   switch (item.status) {
     case "UPDATED":
+      // Nunca sincronizado localmente → amarelo (conectado mas ainda sem dados)
+      if (!item.lastSyncedAt) {
+        return { bg: "#FCF1DF", cor: "#A8740F", ponto: "#E5982B", texto: "nunca sincronizado" };
+      }
       return { bg: "#E2F4EC", cor: "#0E885A", ponto: "#12A06B", texto: `atualizado ${tempoRelativo(item.lastSyncedAt)}` };
     case "UPDATING":
       return { bg: "#EAF1FD", cor: "#2F63C9", ponto: "#4078E6", texto: "atualizando…" };
@@ -179,7 +183,6 @@ function ModalRemoverBanco({
   const [removendo, setRemovendo] = useState(false);
   const [erro, setErro]           = useState<string | null>(null);
 
-  const qtdTransacoes = contas.length; // placeholder visual — real count não fica em memória
   const nome          = nomeExibivelBanco(item.connectorName, contas);
 
   async function handleRemover() {
@@ -729,13 +732,7 @@ function CardBanco({
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-          <span style={{ fontWeight: 600, fontSize: "15px", color: "#0E1116" }}>{nome}</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", height: "22px", padding: "0 9px", borderRadius: "99px", background: badge.bg, color: badge.cor, fontWeight: 600, fontSize: "11.5px" }}>
-            <span style={{ width: "5px", height: "5px", borderRadius: "99px", background: badge.ponto }} />
-            {badge.texto}
-          </span>
-        </div>
+        <span style={{ fontWeight: 600, fontSize: "15px", color: "#0E1116" }}>{nome}</span>
         {subtitulo() && (
           <div style={{ fontWeight: 500, fontSize: "12.5px", color: "#8A909C", marginTop: "3px" }}>
             {subtitulo()}
@@ -748,7 +745,16 @@ function CardBanco({
         )}
       </div>
 
-      <div style={{ display: "flex", gap: "6px", flex: "none" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: "none" }}>
+        {/* Badge alinhado à esquerda dos botões */}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", height: "22px", padding: "0 9px", borderRadius: "99px", background: badge.bg, color: badge.cor, fontWeight: 600, fontSize: "11.5px", whiteSpace: "nowrap" }}>
+          <span style={{ width: "5px", height: "5px", borderRadius: "99px", background: badge.ponto, flex: "none" }} />
+          {badge.texto}
+        </span>
+
+        {/* Separador visual */}
+        <div style={{ width: "1px", height: "20px", background: "#E3E6EC" }} />
+
         {acao ? (
           <button
             onClick={() => open("https://meu.pluggy.ai")}

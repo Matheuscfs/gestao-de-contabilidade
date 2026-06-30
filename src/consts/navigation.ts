@@ -10,6 +10,7 @@ export const TITULOS_PAGINA: Record<string, string> = {
   "/receitas": "Receitas",
   "/custo-de-vida": "Custo de vida",
   "/cartoes": "Cartões de crédito",
+  "/extrato": "Extrato",
   "/dividas": "Dívidas",
   "/contas": "Contas",
   "/categorias": "Categorias",

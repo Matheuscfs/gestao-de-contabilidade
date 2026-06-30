@@ -4,6 +4,7 @@ import { CartoesCreditoScreen } from "@/screens/cartoes";
 import { CategoriasScreen } from "@/screens/categorias/categorias-screen";
 import { CustoDeVidaScreen } from "@/screens/custo-de-vida";
 import { DividasScreen } from "@/screens/dividas";
+import { ExtratoScreen } from "@/screens/extrato/extrato-screen";
 import { IaScreen } from "@/screens/ia/ia-screen";
 import { InvestimentosScreen } from "@/screens/investimentos/investimentos-screen";
 import { LancamentosScreen } from "@/screens/lancamentos/lancamentos-screen";
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
       { path: "receitas", element: <ReceitasScreen /> },
       { path: "custo-de-vida", element: <CustoDeVidaScreen /> },
       { path: "cartoes", element: <CartoesCreditoScreen /> },
+      { path: "extrato", element: <ExtratoScreen /> },
       { path: "dividas", element: <DividasScreen /> },
       { path: "contas", element: <ContasScreen /> },
       { path: "categorias", element: <CategoriasScreen /> },

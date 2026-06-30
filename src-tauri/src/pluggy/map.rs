@@ -97,6 +97,18 @@ pub enum TipoInvestimentoQuibo {
     Other,
 }
 
+impl TipoInvestimentoQuibo {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            TipoInvestimentoQuibo::FixedIncome => "FIXED_INCOME",
+            TipoInvestimentoQuibo::Stock       => "STOCK",
+            TipoInvestimentoQuibo::Etf         => "ETF",
+            TipoInvestimentoQuibo::Pension     => "PENSION",
+            TipoInvestimentoQuibo::Other       => "OTHER",
+        }
+    }
+}
+
 // ─── Mapeamento Transaction → EntryImportado ─────────────────────────────────
 
 /// Converte uma Transaction da Pluggy em parâmetros de inserção para `entries`.

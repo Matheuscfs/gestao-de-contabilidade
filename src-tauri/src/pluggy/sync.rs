@@ -611,7 +611,7 @@ fn upsert_investimentos(
     for inv in investimentos {
         let mapeado = investimento_pluggy_para_quibo(inv);
         let agora = Utc::now().to_rfc3339();
-        let sub_type_str = format!("{:?}", mapeado.tipo).to_uppercase();
+        let sub_type_str = mapeado.tipo.to_str();
         let purchase_date = inv
             .due_date
             .map(|d| d.format("%Y-%m-%d").to_string())

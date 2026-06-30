@@ -46,6 +46,14 @@ const ICONS: Record<string, SvgPart[]> = {
     ["path", { d: "M13 17V5" }],
     ["path", { d: "M8 17v-3" }],
   ],
+  list: [
+    ["line", { x1: 8, x2: 21, y1: 6, y2: 6 }],
+    ["line", { x1: 8, x2: 21, y1: 12, y2: 12 }],
+    ["line", { x1: 8, x2: 21, y1: 18, y2: 18 }],
+    ["line", { x1: 3, x2: 3.01, y1: 6, y2: 6 }],
+    ["line", { x1: 3, x2: 3.01, y1: 12, y2: 12 }],
+    ["line", { x1: 3, x2: 3.01, y1: 18, y2: 18 }],
+  ],
   sparkles: [
     [
       "path",
@@ -96,6 +104,7 @@ const NAV = [
     icon: "receipt",
   },
   { to: "/cartoes", id: "cartoes", label: "Cartões", icon: "credit-card" },
+  { to: "/extrato", id: "extrato", label: "Extrato", icon: "list" },
   { to: "/dividas", id: "dividas", label: "Dívidas", icon: "coins" },
   { to: "/analise", id: "analise", label: "Análise", icon: "bar-chart" },
   { to: "/ia", id: "ia", label: "Quibo IA", icon: "sparkles" },
