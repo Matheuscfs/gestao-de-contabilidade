@@ -207,6 +207,62 @@ pub fn e_cartao_de_credito(account: &Account) -> bool {
         || account.subtype == SubtipoConta::CreditCard
 }
 
+// ─── Mapeamento de cartão de crédito ──────────────────────────────────────────
+
+/// Dados de cartão derivados do `creditData` da conta Pluggy.
+/// `closing_day`/`due_day` são `None` quando a Pluggy não informa as datas —
+/// nesse caso o sync preserva o valor já existente (ou aplica um padrão).
+#[derive(Debug, Clone)]
+pub struct CartaoImportado {
+    pub brand: Option<String>,
+    pub limit_cents: i64,
+    pub closing_day: Option<i32>,
+    pub due_day: Option<i32>,
+}
+
+pub fn cartao_pluggy_para_quibo(account: &Account) -> CartaoImportado {
+    let cd = account.credit_data.as_ref();
+
+    let brand = cd
+        .and_then(|c| c.brand.as_deref())
+        .map(normalizar_bandeira);
+
+    let limit_cents = cd
+        .and_then(|c| c.credit_limit)
+        .map(decimal_para_centavos)
+        .unwrap_or(0);
+
+    let due_day = cd.and_then(|c| c.balance_due_date.as_deref()).and_then(dia_do_iso);
+    let closing_day = cd
+        .and_then(|c| c.balance_close_date.as_deref())
+        .and_then(dia_do_iso);
+
+    CartaoImportado {
+        brand,
+        limit_cents,
+        closing_day,
+        due_day,
+    }
+}
+
+/// Normaliza a bandeira da Pluggy para as suportadas no Quibo.
+fn normalizar_bandeira(b: &str) -> String {
+    match b.trim().to_uppercase().as_str() {
+        "VISA" => "VISA",
+        "MASTERCARD" | "MASTER" => "MASTERCARD",
+        "ELO" => "ELO",
+        _ => "OTHER",
+    }
+    .to_string()
+}
+
+/// Extrai o dia (1–31) de uma data "YYYY-MM-DD" (ou ISO com hora).
+fn dia_do_iso(s: &str) -> Option<i32> {
+    let data = s.split('T').next()?;
+    let dia = data.split('-').nth(2)?;
+    dia.parse::<i32>().ok().filter(|d| (1..=31).contains(d))
+}
+
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 
 fn uuid_novo() -> String {

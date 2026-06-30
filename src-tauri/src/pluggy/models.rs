@@ -171,10 +171,36 @@ pub struct Account {
     pub owner: Option<String>,
     #[serde(default)]
     pub tax_number: Option<String>,
+    /// Dados de cartão de crédito (presente apenas quando subtype = CREDIT_CARD).
+    #[serde(default)]
+    pub credit_data: Option<CreditData>,
 }
 
 fn default_brl() -> String {
     "BRL".into()
+}
+
+/// Bloco `creditData` de uma conta de cartão (limite, bandeira, vencimento).
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CreditData {
+    #[serde(default)]
+    pub brand: Option<String>,
+    #[serde(default)]
+    pub level: Option<String>,
+    /// Limite total do cartão (decimal — converter para centavos).
+    #[serde(default)]
+    pub credit_limit: Option<f64>,
+    #[serde(default)]
+    pub available_credit_limit: Option<f64>,
+    /// Data de vencimento da fatura atual ("YYYY-MM-DD").
+    #[serde(default)]
+    pub balance_due_date: Option<String>,
+    /// Data de fechamento da fatura atual ("YYYY-MM-DD"), quando disponível.
+    #[serde(default)]
+    pub balance_close_date: Option<String>,
+    #[serde(default)]
+    pub minimum_payment: Option<f64>,
 }
 
 // ─── Transaction ─────────────────────────────────────────────────────────────

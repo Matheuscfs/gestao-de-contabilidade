@@ -143,10 +143,13 @@ export async function deletarCartao(id: string): Promise<void> {
 }
 
 /**
- * Soma, em centavos, o total lançado nos cartões de crédito na competência
- * informada — a "fatura deste mês". Considera despesas (`EXPENSE`), faturas
- * (`INVOICE`) e parcelas de dívida (`DEBT_INSTALLMENT`) vinculadas a algum
- * cartão. Retorna 0 quando ainda não há lançamentos.
+ * Soma, em centavos, o total de faturas dos cartões de crédito na competência
+ * informada — a "fatura deste mês". Considera as faturas (`INVOICE`) e parcelas
+ * de dívida (`DEBT_INSTALLMENT`) vinculadas a algum cartão.
+ *
+ * Os gastos individuais (`EXPENSE`) importados pela Pluggy NÃO entram aqui: eles
+ * já são consolidados em uma `INVOICE` por competência durante o sync. Somá-los
+ * junto contaria o mesmo valor duas vezes.
  */
 export async function faturaDoMes(mes: number, ano: number): Promise<number> {
   const conn = await db();
@@ -154,7 +157,7 @@ export async function faturaDoMes(mes: number, ano: number): Promise<number> {
     `SELECT COALESCE(SUM(amount_cents), 0) AS total
        FROM transactions
       WHERE credit_card_id IS NOT NULL
-        AND type IN ('EXPENSE', 'INVOICE', 'DEBT_INSTALLMENT')
+        AND type IN ('INVOICE', 'DEBT_INSTALLMENT')
         AND month = $1
         AND year = $2`,
     [mes, ano]

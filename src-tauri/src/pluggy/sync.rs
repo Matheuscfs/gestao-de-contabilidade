@@ -9,7 +9,7 @@ use crate::errors::AppError;
 use super::auth::EstadoAuth;
 use super::items;
 use super::map::{
-    conta_pluggy_para_quibo, decimal_para_centavos, e_cartao_de_credito,
+    cartao_pluggy_para_quibo, conta_pluggy_para_quibo, decimal_para_centavos, e_cartao_de_credito,
     investimento_pluggy_para_quibo, transacao_para_entry,
 };
 use super::models::{Account, SubtipoConta};
@@ -26,6 +26,7 @@ pub struct ResultadoSync {
     pub entries_importados: u32,
     pub entries_atualizados: u32,
     pub investimentos_sincronizados: u32,
+    pub faturas_sincronizadas: u32,
     pub erro: Option<String>,
     pub synced_at: String,
     pub proximo_sync: Option<String>,
@@ -75,6 +76,7 @@ pub async fn sincronizar_item(
             entries_importados: 0,
             entries_atualizados: 0,
             investimentos_sincronizados: 0,
+            faturas_sincronizadas: 0,
             erro: Some(e.to_string()),
             synced_at,
             proximo_sync: None,
@@ -119,6 +121,7 @@ async fn sincronizar_item_interno(
             entries_importados: 0,
             entries_atualizados: 0,
             investimentos_sincronizados: 0,
+            faturas_sincronizadas: 0,
             erro: Some("Credenciais inválidas. Reconecte no MeuPluggy.".into()),
             synced_at: Utc::now().to_rfc3339(),
             proximo_sync: item.next_auto_sync_at.map(|d| d.to_rfc3339()),
@@ -133,6 +136,7 @@ async fn sincronizar_item_interno(
             entries_importados: 0,
             entries_atualizados: 0,
             investimentos_sincronizados: 0,
+            faturas_sincronizadas: 0,
             erro: Some("Ação necessária. Resolva no MeuPluggy.".into()),
             synced_at: Utc::now().to_rfc3339(),
             proximo_sync: item.next_auto_sync_at.map(|d| d.to_rfc3339()),
@@ -147,6 +151,7 @@ async fn sincronizar_item_interno(
             entries_importados: 0,
             entries_atualizados: 0,
             investimentos_sincronizados: 0,
+            faturas_sincronizadas: 0,
             erro: None,
             synced_at: Utc::now().to_rfc3339(),
             proximo_sync: item.next_auto_sync_at.map(|d| d.to_rfc3339()),
@@ -157,6 +162,7 @@ async fn sincronizar_item_interno(
 
     let mut total_importados = 0u32;
     let mut total_atualizados = 0u32;
+    let mut total_faturas = 0u32;
 
     let desde = last_synced_at.and_then(|s| s.parse::<DateTime<Utc>>().ok());
 
@@ -184,6 +190,14 @@ async fn sincronizar_item_interno(
         let conta_importada = conta_pluggy_para_quibo(conta, connector_name.as_deref());
         if let Some(ref acc_id) = account_id_local {
             atualizar_saldo_conta(&conn, acc_id, conta_importada.balance_cents)?;
+        }
+
+        // Cartão: regenera as faturas (uma INVOICE por competência) a partir
+        // dos gastos importados, preservando o status de pagamento existente.
+        if e_credito {
+            if let Some(ref card_id) = credit_card_id_local {
+                total_faturas += regenerar_faturas_cartao(&conn, card_id)?;
+            }
         }
     }
 
@@ -215,6 +229,7 @@ async fn sincronizar_item_interno(
         entries_importados: total_importados,
         entries_atualizados: total_atualizados,
         investimentos_sincronizados: total_inv,
+        faturas_sincronizadas: total_faturas,
         erro: None,
         synced_at: agora.clone(),
         proximo_sync: item.next_auto_sync_at.map(|d| d.to_rfc3339()),
@@ -323,17 +338,37 @@ fn upsert_conta_pluggy(
 
     match conta.subtype {
         SubtipoConta::CreditCard => {
+            // Enriquece com o creditData da Pluggy (bandeira, limite, vencimento).
+            // Campos sem valor na Pluggy (closing/due/brand) caem no padrão na
+            // criação e preservam o valor atual na atualização (COALESCE).
+            let cartao = cartao_pluggy_para_quibo(conta);
             conn.execute(
                 "INSERT INTO credit_cards (
                      id, name, brand, limit_cents, closing_day, due_day,
                      source, pluggy_id, pluggy_synced_at,
                      is_active, created_at, updated_at
-                 ) VALUES (?1,?2,'OTHER',0,1,10,'PLUGGY',?3,?4,1,?5,?5)
+                 ) VALUES (
+                     ?1, ?2, COALESCE(?3,'OTHER'), ?4, COALESCE(?5,1), COALESCE(?6,10),
+                     'PLUGGY', ?7, ?8, 1, ?8, ?8
+                 )
                  ON CONFLICT(pluggy_id) DO UPDATE SET
                      name             = excluded.name,
+                     brand            = COALESCE(?3, credit_cards.brand),
+                     limit_cents      = excluded.limit_cents,
+                     closing_day      = COALESCE(?5, credit_cards.closing_day),
+                     due_day          = COALESCE(?6, credit_cards.due_day),
                      pluggy_synced_at = excluded.pluggy_synced_at,
                      updated_at       = excluded.updated_at",
-                params![id, conta.name, conta.id, agora, agora],
+                params![
+                    id,
+                    conta.name,
+                    cartao.brand,
+                    cartao.limit_cents,
+                    cartao.closing_day,
+                    cartao.due_day,
+                    conta.id,
+                    agora,
+                ],
             )?;
         }
         _ => {
@@ -452,6 +487,90 @@ fn upsert_transacoes(
     }
 
     Ok((novos, atualizados))
+}
+
+/// Regenera as faturas de um cartão a partir dos gastos importados.
+///
+/// Para cada competência (ano/mês) com gastos, mantém UMA transação
+/// `type = 'INVOICE'` cujo valor é a soma dos `EXPENSE` daquele mês. Atualiza a
+/// fatura existente (preservando status/pagamento) ou cria uma nova. Retorna a
+/// quantidade de faturas tocadas.
+fn regenerar_faturas_cartao(conn: &Connection, credit_card_id: &str) -> Result<u32, AppError> {
+    // Dia de vencimento do cartão para datar a fatura.
+    let due_day: i32 = conn
+        .query_row(
+            "SELECT due_day FROM credit_cards WHERE id = ?1",
+            params![credit_card_id],
+            |row| row.get(0),
+        )
+        .unwrap_or(10);
+    let dia_venc = due_day.clamp(1, 28);
+
+    // Soma dos gastos por competência.
+    let competencias: Vec<(i32, i32, i64)> = {
+        let mut stmt = conn.prepare(
+            "SELECT year, month, COALESCE(SUM(amount_cents), 0) AS total
+               FROM transactions
+              WHERE credit_card_id = ?1
+                AND type = 'EXPENSE'
+                AND year IS NOT NULL
+                AND month IS NOT NULL
+              GROUP BY year, month",
+        )?;
+        let linhas: Vec<(i32, i32, i64)> = stmt
+            .query_map(params![credit_card_id], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+        linhas
+    };
+
+    let agora = Utc::now().to_rfc3339();
+    let mut total = 0u32;
+
+    for (ano, mes, valor) in competencias {
+        let due_date = format!("{ano:04}-{mes:02}-{dia_venc:02}");
+        let descricao = format!("Fatura {mes:02}/{ano}");
+
+        let existente: Option<String> = conn
+            .query_row(
+                "SELECT id FROM transactions
+                  WHERE credit_card_id = ?1 AND type = 'INVOICE' AND year = ?2 AND month = ?3
+                  LIMIT 1",
+                params![credit_card_id, ano, mes],
+                |row| row.get(0),
+            )
+            .ok();
+
+        match existente {
+            // Atualiza só o valor/descrição — não mexe em status nem paid_at,
+            // preservando faturas já marcadas como pagas.
+            Some(inv_id) => {
+                conn.execute(
+                    "UPDATE transactions
+                        SET amount_cents = ?1, description = ?2, due_date = ?3, updated_at = ?4
+                      WHERE id = ?5",
+                    params![valor, descricao, due_date, agora, inv_id],
+                )?;
+            }
+            None => {
+                let inv_id = format!("inv_{credit_card_id}_{ano:04}{mes:02}");
+                conn.execute(
+                    "INSERT INTO transactions (
+                         id, type, status, description, amount_cents, due_date, date,
+                         month, year, credit_card_id, is_template, is_recurring,
+                         source, created_at, updated_at
+                     ) VALUES (?1,'INVOICE','CONFIRMADO',?2,?3,?4,?4,?5,?6,?7,0,0,'PLUGGY',?8,?8)",
+                    params![inv_id, descricao, valor, due_date, mes, ano, credit_card_id, agora],
+                )?;
+            }
+        }
+
+        total += 1;
+    }
+
+    Ok(total)
 }
 
 fn upsert_investimentos(

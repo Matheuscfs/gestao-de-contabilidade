@@ -3,6 +3,7 @@ import { open } from "@tauri-apps/plugin-shell";
 import {
   type ItemResumo,
   type ResultadoSync,
+  pluggyDescobrirItems,
   pluggyIniciarConexao,
   pluggyListarItems,
   pluggyRegistrarItem,
@@ -793,8 +794,17 @@ export function PluggyIntegracaoScreen() {
 
   async function handleCredenciaisSalvas() {
     setModalConectarAberto(false);
+    try {
+      const descobertos = await pluggyDescobrirItems();
+      if (descobertos.length > 0) {
+        setItems(descobertos);
+        setEstadoTela("configurado");
+        return;
+      }
+    } catch {
+      // Se a descoberta falhar, segue normalmente para o modal de adição manual
+    }
     await carregarEstado();
-    // Abre o modal de adicionar banco logo após salvar credenciais
     setModalAdicionarAberto(true);
   }
 

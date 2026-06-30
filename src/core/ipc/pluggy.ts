@@ -24,6 +24,7 @@ export type ResultadoSync = {
   entriesImportados: number;
   entriesAtualizados: number;
   investimentosSincronizados: number;
+  faturasSincronizadas: number;
   erro: string | null;
   syncedAt: string;
   proximoSync: string | null;
