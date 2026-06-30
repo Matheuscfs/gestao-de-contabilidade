@@ -307,7 +307,9 @@ pub enum TipoInvestimento {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum StatusInvestimento {
     Active,
+    Pending,
     Redeemed,
+    TotalWithdrawal,
     #[serde(other)]
     Outro,
 }
@@ -324,20 +326,24 @@ pub struct Investment {
     pub tipo: TipoInvestimento,
     #[serde(default)]
     pub subtype: Option<String>,
-    /// Valor atual — converter para centavos no mapper.
-    pub balance: f64,
-    /// Valor investido (custo) — converter para centavos.
-    pub amount: f64,
-    /// Lucro acumulado — converter para centavos.
+    /// Valor atual (pode ser null em alguns conectores) — converter para centavos no mapper.
     #[serde(default)]
-    pub amount_profit: f64,
+    pub balance: Option<f64>,
+    /// Valor investido — pode ser null em alguns conectores.
+    #[serde(default)]
+    pub amount: Option<f64>,
+    /// Lucro acumulado — opcional conforme doc.
+    #[serde(default)]
+    pub amount_profit: Option<f64>,
     #[serde(default)]
     pub annual_rate: Option<f64>,
     #[serde(default)]
     pub rate_type: Option<String>,
     #[serde(default)]
     pub due_date: Option<DateTime<Utc>>,
-    pub status: StatusInvestimento,
+    /// Status é opcional na API (pode ser null).
+    #[serde(default)]
+    pub status: Option<StatusInvestimento>,
     #[serde(default = "default_brl")]
     pub currency_code: String,
 }

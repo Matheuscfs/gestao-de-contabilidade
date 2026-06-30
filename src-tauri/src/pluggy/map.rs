@@ -193,9 +193,9 @@ pub fn investimento_pluggy_para_quibo(inv: &Investment) -> InvestimentoImportado
         name: inv.name.clone(),
         tipo,
         ticker: inv.code.clone(),
-        balance_cents: decimal_para_centavos(inv.balance),
-        purchase_price_cents: decimal_para_centavos(inv.amount),
-        profit_cents: decimal_para_centavos(inv.amount_profit),
+        balance_cents: decimal_para_centavos(inv.balance.unwrap_or(0.0)),
+        purchase_price_cents: decimal_para_centavos(inv.amount.unwrap_or(0.0)),
+        profit_cents: decimal_para_centavos(inv.amount_profit.unwrap_or(0.0)),
         annual_rate: inv.annual_rate,
         due_date: inv.due_date.map(|d| d.format("%Y-%m-%d").to_string()),
     }
