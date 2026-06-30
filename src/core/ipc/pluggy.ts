@@ -114,6 +114,14 @@ export async function pluggyRemoverItem(pluggyItemId: string): Promise<void> {
   return invoke("pluggy_remover_item", { pluggyItemId });
 }
 
+/** Remove o item e todos os dados locais: transactions, accounts, credit_cards, integrations. */
+export async function pluggyRemoverItemCompleto(
+  pluggyItemId: string,
+  pluggyAccountIds: string[],
+): Promise<void> {
+  return invoke("pluggy_remover_item_completo", { pluggyItemId, pluggyAccountIds });
+}
+
 export async function pluggyDeletarItemRemoto(
   pluggyItemId: string
 ): Promise<void> {

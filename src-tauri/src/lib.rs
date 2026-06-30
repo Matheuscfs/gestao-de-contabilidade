@@ -44,6 +44,7 @@ pub fn run() {
             commands::pluggy::pluggy_listar_contas_item,
             commands::pluggy::pluggy_salvar_mapeamento,
             commands::pluggy::pluggy_remover_item,
+            commands::pluggy::pluggy_remover_item_completo,
             commands::pluggy::pluggy_deletar_item_remoto,
             // Pluggy — sync
             commands::pluggy::pluggy_sincronizar_item,

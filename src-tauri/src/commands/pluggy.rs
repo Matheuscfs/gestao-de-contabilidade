@@ -289,6 +289,21 @@ pub async fn pluggy_remover_item(
         .map_err(|e| e.to_string())
 }
 
+/// Remove o item e todos os dados locais associados (cascade: transactions, accounts,
+/// credit_cards, integrations). Não deleta na Pluggy.
+#[tauri::command]
+pub async fn pluggy_remover_item_completo(
+    app: AppHandle,
+    pluggy_item_id: String,
+    pluggy_account_ids: Vec<String>,
+) -> Result<(), String> {
+    let caminho = db::caminho_banco(&app).map_err(|e| e.to_string())?;
+    let conn = Connection::open(&caminho).map_err(|e| e.to_string())?;
+
+    sync::remover_item_completo(&conn, &pluggy_item_id, &pluggy_account_ids)
+        .map_err(|e| e.to_string())
+}
+
 /// Deleta o Item na Pluggy E remove do banco local.
 /// Aviso: remove todos os dados associados na Pluggy permanentemente.
 #[tauri::command]

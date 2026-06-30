@@ -84,6 +84,16 @@ function IcoLinkExterno() {
   );
 }
 
+function IcoLixo() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18" />
+      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+    </svg>
+  );
+}
+
 function IcoRefresh({ spin }: { spin?: boolean }) {
   return (
     <svg
@@ -151,6 +161,110 @@ function badgeItem(item: ItemResumo): BadgeInfo {
 
 function precisaAcao(item: ItemResumo): boolean {
   return ["LOGIN_ERROR","WAITING_USER_INPUT","OUTDATED"].includes(item.status);
+}
+
+// ─── Modal de remoção de banco ────────────────────────────────────────────────
+
+function ModalRemoverBanco({
+  item,
+  contas,
+  onRemovido,
+  onFechar,
+}: {
+  item: ItemResumo;
+  contas: ContaPluggyResumo[];
+  onRemovido: () => void;
+  onFechar: () => void;
+}) {
+  const [removendo, setRemovendo] = useState(false);
+  const [erro, setErro]           = useState<string | null>(null);
+
+  const qtdTransacoes = contas.length; // placeholder visual — real count não fica em memória
+  const nome          = nomeExibivelBanco(item.connectorName, contas);
+
+  async function handleRemover() {
+    setRemovendo(true);
+    setErro(null);
+    try {
+      const { pluggyRemoverItemCompleto } = await import("@/core/ipc/pluggy");
+      await pluggyRemoverItemCompleto(
+        item.pluggyItemId,
+        contas.map((c) => c.pluggyAccountId),
+      );
+      onRemovido();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRemovendo(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(14,17,22,.42)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 80 }}>
+      <div style={{ width: "460px", background: "#fff", borderRadius: "24px", padding: "28px 30px 26px", boxShadow: "0 24px 60px -20px rgba(14,17,22,.4)" }}>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ width: "38px", height: "38px", borderRadius: "11px", background: "#FDE9ED", color: "#D74A45", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+              <IcoLixo />
+            </div>
+            <div style={{ fontWeight: 700, fontSize: "19px", letterSpacing: "-0.01em", color: "#0E1116" }}>Remover banco</div>
+          </div>
+          <button
+            aria-label="Fechar"
+            onClick={onFechar}
+            style={{ width: "34px", height: "34px", borderRadius: "99px", border: "none", background: "#F0F2F6", color: "#5B616E", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+          >
+            <IcoFechar />
+          </button>
+        </div>
+
+        <p style={{ fontWeight: 500, fontSize: "14px", color: "#3A3F4A", lineHeight: 1.6, marginBottom: "16px" }}>
+          Isso vai remover <strong style={{ fontWeight: 700 }}>{nome}</strong> e apagar permanentemente do Quibo:
+        </p>
+
+        <ul style={{ margin: "0 0 18px 0", padding: "0 0 0 20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+          {contas.filter((c) => c.tipo !== "CreditCard").length > 0 && (
+            <li style={{ fontWeight: 500, fontSize: "13.5px", color: "#5B616E" }}>
+              {contas.filter((c) => c.tipo !== "CreditCard").length} conta{contas.filter((c) => c.tipo !== "CreditCard").length > 1 ? "s" : ""} bancária{contas.filter((c) => c.tipo !== "CreditCard").length > 1 ? "s" : ""}
+            </li>
+          )}
+          {contas.filter((c) => c.tipo === "CreditCard").length > 0 && (
+            <li style={{ fontWeight: 500, fontSize: "13.5px", color: "#5B616E" }}>
+              {contas.filter((c) => c.tipo === "CreditCard").length} cartão{contas.filter((c) => c.tipo === "CreditCard").length > 1 ? "ões" : ""} de crédito
+            </li>
+          )}
+          <li style={{ fontWeight: 500, fontSize: "13.5px", color: "#5B616E" }}>todas as transações importadas</li>
+        </ul>
+
+        <div style={{ background: "#FEF3CD", border: "1px solid #F5D97A", borderRadius: "12px", padding: "12px 14px", marginBottom: "20px" }}>
+          <span style={{ fontWeight: 600, fontSize: "13px", color: "#7A5600" }}>
+            Não tem volta. Os lançamentos confirmados manualmente ficam, mas os importados pela Pluggy serão apagados.
+          </span>
+        </div>
+
+        {erro && (
+          <p style={{ fontSize: "13px", fontWeight: 500, color: "#D74A45", marginBottom: "14px" }}>{erro}</p>
+        )}
+
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            onClick={onFechar}
+            style={{ flex: "none", height: "48px", padding: "0 22px", borderRadius: "99px", border: "1px solid #D4D8E0", background: "#fff", color: "#0E1116", fontWeight: 600, fontSize: "15px", cursor: "pointer" }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleRemover}
+            disabled={removendo}
+            style={{ flex: 1, height: "48px", borderRadius: "99px", border: "none", background: "#D74A45", color: "#fff", fontWeight: 600, fontSize: "15px", cursor: "pointer", opacity: removendo ? 0.6 : 1 }}
+          >
+            {removendo ? "Removendo…" : "Remover banco"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Modal de adição de banco (OAuth local + fallback manual) ────────────────
@@ -576,11 +690,13 @@ function CardBanco({
   item,
   contas,
   onAtualizar,
+  onRemover,
   sincronizando,
 }: {
   item: ItemResumo;
   contas: ContaPluggyResumo[] | null;
   onAtualizar: () => void;
+  onRemover: () => void;
   sincronizando: boolean;
 }) {
   const badge    = badgeItem(item);
@@ -632,26 +748,36 @@ function CardBanco({
         )}
       </div>
 
-      {acao ? (
+      <div style={{ display: "flex", gap: "6px", flex: "none" }}>
+        {acao ? (
+          <button
+            onClick={() => open("https://meu.pluggy.ai")}
+            aria-label="Abrir MeuPluggy"
+            title="Abrir MeuPluggy"
+            style={{ width: "36px", height: "36px", borderRadius: "10px", border: "none", background: badge.bg, color: badge.cor, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+          >
+            <IcoLinkExterno />
+          </button>
+        ) : (
+          <button
+            onClick={onAtualizar}
+            disabled={sincronizando}
+            aria-label={sincronizando ? "Atualizando…" : "Atualizar"}
+            title={sincronizando ? "Atualizando…" : "Atualizar"}
+            style={{ width: "36px", height: "36px", borderRadius: "10px", border: "1px solid #D4D8E0", background: "#fff", color: "#0E1116", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", opacity: sincronizando ? 0.6 : 1 }}
+          >
+            <IcoRefresh spin={sincronizando} />
+          </button>
+        )}
         <button
-          onClick={() => open("https://meu.pluggy.ai")}
-          aria-label="Abrir MeuPluggy"
-          title="Abrir MeuPluggy"
-          style={{ width: "36px", height: "36px", borderRadius: "10px", border: "none", background: badge.bg, color: badge.cor, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}
+          onClick={onRemover}
+          aria-label="Remover banco"
+          title="Remover banco"
+          style={{ width: "36px", height: "36px", borderRadius: "10px", border: "1px solid #F5C6C6", background: "#FEF2F2", color: "#D74A45", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
         >
-          <IcoLinkExterno />
+          <IcoLixo />
         </button>
-      ) : (
-        <button
-          onClick={onAtualizar}
-          disabled={sincronizando}
-          aria-label={sincronizando ? "Atualizando…" : "Atualizar"}
-          title={sincronizando ? "Atualizando…" : "Atualizar"}
-          style={{ width: "36px", height: "36px", borderRadius: "10px", border: "1px solid #D4D8E0", background: "#fff", color: "#0E1116", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none", opacity: sincronizando ? 0.6 : 1 }}
-        >
-          <IcoRefresh spin={sincronizando} />
-        </button>
-      )}
+      </div>
     </div>
   );
 }
@@ -686,6 +812,7 @@ function ViewConectado({
   items,
   contasPorItem,
   onAtualizar,
+  onRemover,
   onAtualizarTudo,
   onAdicionarBanco,
   onGerenciar,
@@ -698,6 +825,7 @@ function ViewConectado({
   items: ItemResumo[];
   contasPorItem: Record<string, ContaPluggyResumo[]>;
   onAtualizar: (id: string) => void;
+  onRemover: (item: ItemResumo) => void;
   onAtualizarTudo: () => void;
   onAdicionarBanco: () => void;
   onGerenciar: () => void;
@@ -781,6 +909,7 @@ function ViewConectado({
                   contas={contasPorItem[item.pluggyItemId] ?? null}
                   sincronizando={itemSincronizando === item.pluggyItemId || sincronizandoTodos}
                   onAtualizar={() => onAtualizar(item.pluggyItemId)}
+                  onRemover={() => onRemover(item)}
                 />
                 {i < items.length - 1 && (
                   <div style={{ height: "1px", background: "#EEF0F4", margin: "0 20px" }} />
@@ -840,6 +969,7 @@ export function PluggyIntegracaoScreen() {
   const [modalConectarAberto, setModalConectarAberto]   = useState(false);
   const [modalGerenciarAberto, setModalGerenciarAberto] = useState(false);
   const [modalAdicionarAberto, setModalAdicionarAberto] = useState(false);
+  const [itemParaRemover, setItemParaRemover]           = useState<ItemResumo | null>(null);
   const [itemSincronizando, setItemSincronizando]       = useState<string | null>(null);
   const [sincronizandoTodos, setSincronizandoTodos]     = useState(false);
   const [resultados, setResultados]                   = useState<ResultadoSync[]>([]);
@@ -1020,6 +1150,7 @@ export function PluggyIntegracaoScreen() {
           items={items}
           contasPorItem={contasPorItem}
           onAtualizar={handleAtualizar}
+          onRemover={(item) => setItemParaRemover(item)}
           onAtualizarTudo={handleAtualizarTudo}
           onAdicionarBanco={() => setModalAdicionarAberto(true)}
           onGerenciar={() => setModalGerenciarAberto(true)}
@@ -1050,6 +1181,25 @@ export function PluggyIntegracaoScreen() {
         <ModalAdicionarBanco
           onAdicionado={handleBancoAdicionado}
           onFechar={() => setModalAdicionarAberto(false)}
+        />
+      )}
+
+      {itemParaRemover && (
+        <ModalRemoverBanco
+          item={itemParaRemover}
+          contas={contasPorItem[itemParaRemover.pluggyItemId] ?? []}
+          onRemovido={() => {
+            const id = itemParaRemover.pluggyItemId;
+            setItemParaRemover(null);
+            setItems((prev) => prev.filter((i) => i.pluggyItemId !== id));
+            setContasPorItem((prev) => {
+              const next = { ...prev };
+              delete next[id];
+              return next;
+            });
+            toast.sucesso("Banco removido", { descricao: nomeExibivelBanco(itemParaRemover.connectorName, contasPorItem[id] ?? []) });
+          }}
+          onFechar={() => setItemParaRemover(null)}
         />
       )}
     </div>

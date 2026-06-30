@@ -729,3 +729,62 @@ pub fn remover_item_local(conn: &Connection, pluggy_item_id: &str) -> Result<(),
     )?;
     Ok(())
 }
+
+/// Remove o item e todos os dados locais associados (cascade completo).
+///
+/// Ordem: transactions → accounts/credit_cards → integration.
+/// `pluggy_account_ids` são os IDs de conta/cartão retornados pela API Pluggy.
+pub fn remover_item_completo(
+    conn: &Connection,
+    pluggy_item_id: &str,
+    pluggy_account_ids: &[String],
+) -> Result<(), AppError> {
+    if !pluggy_account_ids.is_empty() {
+        let placeholders = pluggy_account_ids
+            .iter()
+            .enumerate()
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect::<Vec<_>>()
+            .join(",");
+
+        // Transações vinculadas a contas bancárias do item
+        conn.execute(
+            &format!(
+                "DELETE FROM transactions WHERE account_id IN (
+                    SELECT id FROM accounts WHERE pluggy_id IN ({placeholders})
+                )"
+            ),
+            rusqlite::params_from_iter(pluggy_account_ids.iter()),
+        )?;
+
+        // Transações vinculadas a cartões de crédito do item
+        conn.execute(
+            &format!(
+                "DELETE FROM transactions WHERE credit_card_id IN (
+                    SELECT id FROM credit_cards WHERE pluggy_id IN ({placeholders})
+                )"
+            ),
+            rusqlite::params_from_iter(pluggy_account_ids.iter()),
+        )?;
+
+        // Contas bancárias
+        conn.execute(
+            &format!("DELETE FROM accounts WHERE pluggy_id IN ({placeholders})"),
+            rusqlite::params_from_iter(pluggy_account_ids.iter()),
+        )?;
+
+        // Cartões de crédito
+        conn.execute(
+            &format!("DELETE FROM credit_cards WHERE pluggy_id IN ({placeholders})"),
+            rusqlite::params_from_iter(pluggy_account_ids.iter()),
+        )?;
+    }
+
+    // Registro de integração
+    conn.execute(
+        "DELETE FROM integrations WHERE type='PLUGGY' AND pluggy_item_id = ?1",
+        params![pluggy_item_id],
+    )?;
+
+    Ok(())
+}
