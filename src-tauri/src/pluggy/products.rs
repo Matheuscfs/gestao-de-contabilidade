@@ -10,13 +10,25 @@ const PLUGGY_API: &str = "https://api.pluggy.ai";
 /// Pluggy retorna até 500 transações por página.
 const PAGE_SIZE: u32 = 500;
 
+/// Converte uma lista de `Value` em pares `(T, Value)`, descartando os itens que
+/// não desserializam para `T` — mantém o sync resiliente a campos novos/ausentes.
+fn emparelhar_raw<T: serde::de::DeserializeOwned>(
+    valores: Vec<serde_json::Value>,
+) -> Vec<(T, serde_json::Value)> {
+    valores
+        .into_iter()
+        .filter_map(|v| serde_json::from_value::<T>(v.clone()).ok().map(|t| (t, v)))
+        .collect()
+}
+
 // ─── Contas ───────────────────────────────────────────────────────────────────
 
-/// Busca todas as contas bancárias e cartões de um Item.
-pub async fn buscar_contas(
+/// Busca todas as contas bancárias e cartões de um Item, com o JSON cru de cada
+/// conta ao lado do modelo tipado (para persistir em `raw`).
+pub async fn buscar_contas_raw(
     estado: &EstadoAuth,
     item_id: &str,
-) -> Result<Vec<Account>, AppError> {
+) -> Result<Vec<(Account, serde_json::Value)>, AppError> {
     estado
         .com_retry(|api_key| {
             let item_id = item_id.to_string();
@@ -31,32 +43,46 @@ pub async fn buscar_contas(
 
                 checar_status_http(&resp, "/accounts").await?;
 
-                resp.json::<Paginado<Account>>()
+                let pagina = resp
+                    .json::<Paginado<serde_json::Value>>()
                     .await
-                    .map(|p| p.results)
-                    .map_err(|e| AppError::Integration(format!("JSON /accounts inválido: {e}")))
+                    .map_err(|e| AppError::Integration(format!("JSON /accounts inválido: {e}")))?;
+
+                Ok(emparelhar_raw::<Account>(pagina.results))
             }
         })
         .await
 }
 
+/// Busca todas as contas bancárias e cartões de um Item (somente tipado).
+pub async fn buscar_contas(
+    estado: &EstadoAuth,
+    item_id: &str,
+) -> Result<Vec<Account>, AppError> {
+    Ok(buscar_contas_raw(estado, item_id)
+        .await?
+        .into_iter()
+        .map(|(c, _)| c)
+        .collect())
+}
+
 // ─── Transações (paginadas) ───────────────────────────────────────────────────
 
-/// Busca transações de uma conta, desde `desde` (exclusive), com paginação completa.
-/// Retorna todas as páginas concatenadas.
+/// Busca transações de uma conta com o JSON cru de cada transação ao lado do
+/// modelo tipado (para persistir em `raw`). Paginação completa.
 /// `desde`: se `None`, busca o histórico disponível (~12 meses).
-pub async fn buscar_transacoes(
+pub async fn buscar_transacoes_raw(
     estado: &EstadoAuth,
     account_id: &str,
     desde: Option<DateTime<Utc>>,
-) -> Result<Vec<Transaction>, AppError> {
-    let mut todas: Vec<Transaction> = Vec::new();
+) -> Result<Vec<(Transaction, serde_json::Value)>, AppError> {
+    let mut todas: Vec<(Transaction, serde_json::Value)> = Vec::new();
     let mut pagina = 1u32;
 
     loop {
         let lote = buscar_pagina_transacoes(estado, account_id, desde, pagina).await?;
         let total_paginas = lote.total_pages;
-        todas.extend(lote.results);
+        todas.extend(emparelhar_raw::<Transaction>(lote.results));
 
         if pagina >= total_paginas || total_paginas == 0 {
             break;
@@ -67,12 +93,25 @@ pub async fn buscar_transacoes(
     Ok(todas)
 }
 
+/// Busca transações de uma conta (somente tipado).
+pub async fn buscar_transacoes(
+    estado: &EstadoAuth,
+    account_id: &str,
+    desde: Option<DateTime<Utc>>,
+) -> Result<Vec<Transaction>, AppError> {
+    Ok(buscar_transacoes_raw(estado, account_id, desde)
+        .await?
+        .into_iter()
+        .map(|(t, _)| t)
+        .collect())
+}
+
 async fn buscar_pagina_transacoes(
     estado: &EstadoAuth,
     account_id: &str,
     desde: Option<DateTime<Utc>>,
     pagina: u32,
-) -> Result<Paginado<Transaction>, AppError> {
+) -> Result<Paginado<serde_json::Value>, AppError> {
     estado
         .com_retry(|api_key| {
             let account_id = account_id.to_string();
@@ -98,7 +137,7 @@ async fn buscar_pagina_transacoes(
 
                 checar_status_http(&resp, "/transactions").await?;
 
-                resp.json::<Paginado<Transaction>>()
+                resp.json::<Paginado<serde_json::Value>>()
                     .await
                     .map_err(|e| {
                         AppError::Integration(format!("JSON /transactions inválido: {e}"))
@@ -108,13 +147,43 @@ async fn buscar_pagina_transacoes(
         .await
 }
 
+// ─── Transação individual (JSON cru) ──────────────────────────────────────────
+
+/// Busca UMA transação pelo ID e devolve o JSON exatamente como a Pluggy retorna
+/// (sem mapear para os modelos internos). Usado para inspeção/cópia no extrato.
+pub async fn buscar_transacao_raw(
+    estado: &EstadoAuth,
+    transaction_id: &str,
+) -> Result<serde_json::Value, AppError> {
+    let path = format!("/transactions/{transaction_id}");
+    estado
+        .com_retry(|api_key| {
+            let path = path.clone();
+            async move {
+                let resp = reqwest::Client::new()
+                    .get(format!("{PLUGGY_API}{path}"))
+                    .header("X-API-KEY", &api_key)
+                    .send()
+                    .await
+                    .map_err(|e| AppError::Integration(format!("GET {path} falhou: {e}")))?;
+
+                checar_status_http(&resp, &path).await?;
+
+                resp.json::<serde_json::Value>()
+                    .await
+                    .map_err(|e| AppError::Integration(format!("JSON {path} inválido: {e}")))
+            }
+        })
+        .await
+}
+
 // ─── Investimentos ────────────────────────────────────────────────────────────
 
-/// Busca todos os investimentos de um Item.
-pub async fn buscar_investimentos(
+/// Busca todos os investimentos de um Item com o JSON cru ao lado do tipado.
+pub async fn buscar_investimentos_raw(
     estado: &EstadoAuth,
     item_id: &str,
-) -> Result<Vec<Investment>, AppError> {
+) -> Result<Vec<(Investment, serde_json::Value)>, AppError> {
     estado
         .com_retry(|api_key| {
             let item_id = item_id.to_string();
@@ -129,15 +198,29 @@ pub async fn buscar_investimentos(
 
                 checar_status_http(&resp, "/investments").await?;
 
-                resp.json::<Paginado<Investment>>()
+                let pagina = resp
+                    .json::<Paginado<serde_json::Value>>()
                     .await
-                    .map(|p| p.results)
                     .map_err(|e| {
                         AppError::Integration(format!("JSON /investments inválido: {e}"))
-                    })
+                    })?;
+
+                Ok(emparelhar_raw::<Investment>(pagina.results))
             }
         })
         .await
+}
+
+/// Busca todos os investimentos de um Item (somente tipado).
+pub async fn buscar_investimentos(
+    estado: &EstadoAuth,
+    item_id: &str,
+) -> Result<Vec<Investment>, AppError> {
+    Ok(buscar_investimentos_raw(estado, item_id)
+        .await?
+        .into_iter()
+        .map(|(i, _)| i)
+        .collect())
 }
 
 // ─── Identidade ───────────────────────────────────────────────────────────────

@@ -142,6 +142,42 @@ function mapearLinha(r: ExtratoRow): MovimentoExtrato {
 
 // ─── Query ──────────────────────────────────────────────────────────────────
 
+/** Representa um registro pronto para cópia: o JSON cru da Pluggy + a linha local. */
+export type RegistroCompleto = {
+  /** Objeto exatamente como salvo em `transactions.raw` (ou null se manual). */
+  pluggy: unknown | null;
+  /** Todos os campos da linha em `transactions`, exceto `raw`. */
+  quibo: Record<string, unknown>;
+};
+
+/**
+ * Lê a linha completa de uma transação (todos os campos da tabela) e separa o
+ * payload cru da Pluggy guardado em `raw`. Usado para copiar `{ pluggy, quibo }`.
+ */
+export async function obterRegistroCompleto(id: string): Promise<RegistroCompleto> {
+  const sqlite = await getSqlite();
+  const rows = await sqlite.select<Record<string, unknown>[]>(
+    `SELECT * FROM transactions WHERE id = $1 LIMIT 1`,
+    [id]
+  );
+  const row = rows[0] ?? {};
+
+  let pluggy: unknown | null = null;
+  const raw = row.raw;
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      pluggy = JSON.parse(raw);
+    } catch {
+      pluggy = raw; // se não for JSON válido, devolve a string crua
+    }
+  }
+
+  const quibo: Record<string, unknown> = { ...row };
+  delete quibo.raw;
+
+  return { pluggy, quibo };
+}
+
 /**
  * Lista todos os movimentos reais (não-modelo), do mais recente para o mais
  * antigo, com os dados de conta, cartão, categoria e persona já resolvidos.

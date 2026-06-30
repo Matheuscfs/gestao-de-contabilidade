@@ -153,3 +153,10 @@ export async function pluggyRecorrentes(
 ): Promise<RecorrentesResumo> {
   return invoke<RecorrentesResumo>("pluggy_recorrentes", { pluggyItemId });
 }
+
+/** Busca o JSON cru de uma transação, exatamente como vem da Pluggy. */
+export async function pluggyTransacaoRaw(
+  pluggyTransactionId: string
+): Promise<string> {
+  return invoke<string>("pluggy_transacao_raw", { pluggyTransactionId });
+}

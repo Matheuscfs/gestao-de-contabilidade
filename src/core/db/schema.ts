@@ -63,6 +63,8 @@ export const accounts = sqliteTable(
     /** ID da conta na Pluggy (chave de idempotência) */
     pluggyId: text("pluggy_id"),
     pluggySyncedAt: text("pluggy_synced_at"),
+    /** Payload JSON cru da Pluggy, exatamente como recebido. NULL = manual. */
+    raw: text("raw"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -91,6 +93,8 @@ export const creditCards = sqliteTable(
     source: text("source").notNull().default("MANUAL"),
     pluggyId: text("pluggy_id"),
     pluggySyncedAt: text("pluggy_synced_at"),
+    /** Payload JSON cru da Pluggy, exatamente como recebido. NULL = manual. */
+    raw: text("raw"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -184,6 +188,8 @@ export const transactions = sqliteTable(
     /** ID da transação na Pluggy (chave de idempotência) */
     pluggyId: text("pluggy_id"),
     pluggySyncedAt: text("pluggy_synced_at"),
+    /** Payload JSON cru da Pluggy, exatamente como recebido. NULL = manual. */
+    raw: text("raw"),
 
     // ── SAL — SALARY ──────────────────────────────────────────────────────
     salCalculationType: text("sal_calculation_type"),

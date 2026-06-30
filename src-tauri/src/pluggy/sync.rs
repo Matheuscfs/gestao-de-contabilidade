@@ -158,7 +158,7 @@ async fn sincronizar_item_interno(
         });
     }
 
-    let contas = products::buscar_contas(estado, pluggy_item_id).await?;
+    let contas = products::buscar_contas_raw(estado, pluggy_item_id).await?;
 
     let mut total_importados = 0u32;
     let mut total_atualizados = 0u32;
@@ -166,15 +166,16 @@ async fn sincronizar_item_interno(
 
     let desde = last_synced_at.and_then(|s| s.parse::<DateTime<Utc>>().ok());
 
-    for conta in &contas {
-        // Espelha a conta no banco local (accounts ou credit_cards).
-        upsert_conta_pluggy(&conn, conta, connector_name.as_deref())?;
+    for (conta, conta_raw) in &contas {
+        // Espelha a conta no banco local (accounts ou credit_cards), guardando o
+        // JSON cru da Pluggy em `raw`.
+        upsert_conta_pluggy(&conn, conta, conta_raw, connector_name.as_deref())?;
 
         let (account_id_local, credit_card_id_local) =
             resolver_conta_local(&conn, &conta.id)?;
 
         let e_credito = e_cartao_de_credito(conta);
-        let transacoes = products::buscar_transacoes(estado, &conta.id, desde).await?;
+        let transacoes = products::buscar_transacoes_raw(estado, &conta.id, desde).await?;
 
         let (importados, atualizados) = upsert_transacoes(
             &conn,
@@ -201,7 +202,7 @@ async fn sincronizar_item_interno(
         }
     }
 
-    let investimentos = products::buscar_investimentos(estado, pluggy_item_id).await?;
+    let investimentos = products::buscar_investimentos_raw(estado, pluggy_item_id).await?;
     let total_inv = upsert_investimentos(&conn, &investimentos)?;
 
     let agora = Utc::now().to_rfc3339();
@@ -330,11 +331,13 @@ fn atualizar_status_item(
 fn upsert_conta_pluggy(
     conn: &Connection,
     conta: &Account,
+    conta_raw: &serde_json::Value,
     connector_name: Option<&str>,
 ) -> Result<(), AppError> {
     let balance_cents = decimal_para_centavos(conta.balance);
     let agora = Utc::now().to_rfc3339();
     let id = format!("acc_{}", Utc::now().timestamp_nanos_opt().unwrap_or(0));
+    let raw_str = serde_json::to_string(conta_raw).unwrap_or_default();
 
     match conta.subtype {
         SubtipoConta::CreditCard => {
@@ -344,11 +347,11 @@ fn upsert_conta_pluggy(
             conn.execute(
                 "INSERT OR IGNORE INTO credit_cards (
                      id, name, brand, limit_cents, closing_day, due_day,
-                     source, pluggy_id, pluggy_synced_at,
+                     source, pluggy_id, pluggy_synced_at, raw,
                      is_active, created_at, updated_at
                  ) VALUES (
                      ?1, ?2, COALESCE(?3,'OTHER'), ?4, COALESCE(?5,1), COALESCE(?6,10),
-                     'PLUGGY', ?7, ?8, 1, ?8, ?8
+                     'PLUGGY', ?7, ?8, ?9, 1, ?8, ?8
                  )",
                 params![
                     id,
@@ -359,6 +362,7 @@ fn upsert_conta_pluggy(
                     cartao.due_day,
                     conta.id,
                     agora,
+                    raw_str,
                 ],
             )?;
             conn.execute(
@@ -369,8 +373,9 @@ fn upsert_conta_pluggy(
                      closing_day      = COALESCE(?4, closing_day),
                      due_day          = COALESCE(?5, due_day),
                      pluggy_synced_at = ?6,
+                     raw              = ?7,
                      updated_at       = ?6
-                 WHERE pluggy_id = ?7",
+                 WHERE pluggy_id = ?8",
                 params![
                     conta.name,
                     cartao.brand,
@@ -378,6 +383,7 @@ fn upsert_conta_pluggy(
                     cartao.closing_day,
                     cartao.due_day,
                     agora,
+                    raw_str,
                     conta.id,
                 ],
             )?;
@@ -392,9 +398,9 @@ fn upsert_conta_pluggy(
             conn.execute(
                 "INSERT OR IGNORE INTO accounts (
                      id, name, type, bank,
-                     balance_cents, source, pluggy_id, pluggy_synced_at,
+                     balance_cents, source, pluggy_id, pluggy_synced_at, raw,
                      is_active, created_at, updated_at
-                 ) VALUES (?1,?2,?3,?4,?5,'PLUGGY',?6,?7,1,?8,?8)",
+                 ) VALUES (?1,?2,?3,?4,?5,'PLUGGY',?6,?7,?9,1,?8,?8)",
                 params![
                     id,
                     conta.name,
@@ -404,15 +410,17 @@ fn upsert_conta_pluggy(
                     conta.id,
                     agora,
                     agora,
+                    raw_str,
                 ],
             )?;
             conn.execute(
                 "UPDATE accounts SET
                      balance_cents    = ?1,
                      pluggy_synced_at = ?2,
+                     raw              = ?3,
                      updated_at       = ?2
-                 WHERE pluggy_id = ?3",
-                params![balance_cents, agora, conta.id],
+                 WHERE pluggy_id = ?4",
+                params![balance_cents, agora, raw_str, conta.id],
             )?;
         }
     }
@@ -449,7 +457,7 @@ fn resolver_conta_local(
 /// Idempotente via `pluggy_id`. Retorna `(novos, atualizados)`.
 fn upsert_transacoes(
     conn: &Connection,
-    transacoes: &[super::models::Transaction],
+    transacoes: &[(super::models::Transaction, serde_json::Value)],
     account_id: Option<&str>,
     credit_card_id: Option<&str>,
     e_credito: bool,
@@ -458,8 +466,9 @@ fn upsert_transacoes(
     let mut atualizados = 0u32;
     let agora = Utc::now().to_rfc3339();
 
-    for tx in transacoes {
+    for (tx, tx_raw) in transacoes {
         let entry = transacao_para_entry(tx, account_id, credit_card_id, e_credito);
+        let raw_str = serde_json::to_string(tx_raw).unwrap_or_default();
 
         // ON CONFLICT não funciona com índice parcial — INSERT OR IGNORE + UPDATE explícito.
         // conn.changes() == 1 indica linha nova; 0 indica que já existia.
@@ -469,8 +478,8 @@ fn upsert_transacoes(
                 description, amount_cents, type, status,
                 date, month, year,
                 account_id, credit_card_id,
-                tags, created_at, updated_at
-             ) VALUES (?1,?2,'PLUGGY',?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)",
+                tags, raw, created_at, updated_at
+             ) VALUES (?1,?2,'PLUGGY',?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)",
             params![
                 entry.id,
                 entry.pluggy_transaction_id,
@@ -485,6 +494,7 @@ fn upsert_transacoes(
                 entry.account_id,
                 entry.credit_card_id,
                 entry.category_pluggy,
+                raw_str,
                 entry.created_at,
                 entry.updated_at,
             ],
@@ -497,13 +507,15 @@ fn upsert_transacoes(
                 amount_cents     = ?2,
                 type             = ?3,
                 pluggy_synced_at = ?4,
+                raw              = ?5,
                 updated_at       = ?4
-             WHERE pluggy_id = ?5",
+             WHERE pluggy_id = ?6",
             params![
                 entry.description,
                 entry.amount_cents,
                 entry.tipo.to_str(),
                 agora,
+                raw_str,
                 entry.pluggy_transaction_id,
             ],
         )?;
@@ -604,14 +616,15 @@ fn regenerar_faturas_cartao(conn: &Connection, credit_card_id: &str) -> Result<u
 
 fn upsert_investimentos(
     conn: &Connection,
-    investimentos: &[super::models::Investment],
+    investimentos: &[(super::models::Investment, serde_json::Value)],
 ) -> Result<u32, AppError> {
     let mut total = 0u32;
 
-    for inv in investimentos {
+    for (inv, inv_raw) in investimentos {
         let mapeado = investimento_pluggy_para_quibo(inv);
         let agora = Utc::now().to_rfc3339();
         let sub_type_str = mapeado.tipo.to_str();
+        let raw_str = serde_json::to_string(inv_raw).unwrap_or_default();
         let purchase_date = inv
             .due_date
             .map(|d| d.format("%Y-%m-%d").to_string())
@@ -622,11 +635,12 @@ fn upsert_investimentos(
                 id, type, status, source,
                 description, amount_cents, date,
                 inv_sub_type, inv_ticker, inv_quantity,
-                inv_current_price_cents,
+                inv_current_price_cents, raw,
                 created_at, updated_at
-             ) VALUES (?1,'INVESTMENT','CONFIRMADO','PLUGGY',?2,?3,?4,?5,?6,1.0,?7,?8,?8)
+             ) VALUES (?1,'INVESTMENT','CONFIRMADO','PLUGGY',?2,?3,?4,?5,?6,1.0,?7,?9,?8,?8)
              ON CONFLICT(id) DO UPDATE SET
                 inv_current_price_cents = excluded.inv_current_price_cents,
+                raw                     = excluded.raw,
                 updated_at              = excluded.updated_at",
             params![
                 mapeado.pluggy_investment_id,
@@ -637,6 +651,7 @@ fn upsert_investimentos(
                 mapeado.ticker,
                 mapeado.balance_cents,
                 agora,
+                raw_str,
             ],
         )?;
 

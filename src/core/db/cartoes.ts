@@ -22,6 +22,7 @@ type CartaoRow = {
   source: string;
   pluggy_id: string | null;
   pluggy_synced_at: string | null;
+  raw: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -40,6 +41,7 @@ function mapearLinha(r: CartaoRow): CreditCard {
     source: r.source,
     pluggyId: r.pluggy_id ?? null,
     pluggySyncedAt: r.pluggy_synced_at ?? null,
+    raw: r.raw ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };

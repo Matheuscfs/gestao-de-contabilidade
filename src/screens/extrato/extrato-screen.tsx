@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { formatarBRL } from "@/utils/money";
 import { formatarData, formatarMesAno } from "@/utils/dates";
 import { tratarErro } from "@/core/errors";
-import { listarExtrato, type MovimentoExtrato } from "@/core/db/extrato";
+import { toast } from "@/components/toast";
+import { pluggyTransacaoRaw } from "@/core/ipc/pluggy";
+import {
+  listarExtrato,
+  obterRegistroCompleto,
+  type MovimentoExtrato,
+} from "@/core/db/extrato";
 
 // ─── Constantes de apresentação ────────────────────────────────────────────────
 
@@ -231,6 +237,38 @@ function ModalDetalhes({ m, onClose }: { m: MovimentoExtrato; onClose: () => voi
   const st = infoStatus(m.status);
   const valor = valorExibicao(m);
   const tags = parseTags(m.tags);
+  const [copiando, setCopiando] = useState(false);
+
+  async function copiarJson() {
+    setCopiando(true);
+    try {
+      // Monta { pluggy, quibo }: o JSON cru salvo em transactions.raw e a linha
+      // local completa. Se o raw ainda não foi salvo (sync antigo) mas há
+      // pluggy_id, busca o cru ao vivo como fallback.
+      const { pluggy, quibo } = await obterRegistroCompleto(m.id);
+
+      let pluggyFinal: unknown | null = pluggy;
+      if (pluggyFinal == null && m.pluggyId) {
+        try {
+          pluggyFinal = JSON.parse(await pluggyTransacaoRaw(m.pluggyId));
+        } catch {
+          pluggyFinal = null;
+        }
+      }
+
+      await navigator.clipboard.writeText(
+        JSON.stringify({ pluggy: pluggyFinal, quibo }, null, 2)
+      );
+      toast.sucesso(pluggyFinal ? "JSON copiado (pluggy + quibo)" : "Registro copiado");
+    } catch (e) {
+      tratarErro(e, {
+        contexto: "copiar JSON da transação",
+        mensagemUsuario: "Não foi possível copiar.",
+      });
+    } finally {
+      setCopiando(false);
+    }
+  }
 
   return (
     <div
@@ -257,16 +295,37 @@ function ModalDetalhes({ m, onClose }: { m: MovimentoExtrato; onClose: () => voi
               </div>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Fechar"
-            className="w-[34px] h-[34px] rounded-full border-none cursor-pointer flex items-center justify-center hover:opacity-80 transition-opacity shrink-0"
-            style={{ background: "#F0F2F6", color: "#5B616E" }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={copiarJson}
+              disabled={copiando}
+              aria-label={m.pluggyId ? "Copiar JSON da Pluggy" : "Copiar registro (JSON)"}
+              title={m.pluggyId ? "Copiar JSON da Pluggy" : "Copiar registro (JSON)"}
+              className="w-[34px] h-[34px] rounded-full border-none cursor-pointer flex items-center justify-center hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: "#F0F2F6", color: "#5B616E" }}
+            >
+              {copiando ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              aria-label="Fechar"
+              className="w-[34px] h-[34px] rounded-full border-none cursor-pointer flex items-center justify-center hover:opacity-80 transition-opacity"
+              style={{ background: "#F0F2F6", color: "#5B616E" }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Valor */}

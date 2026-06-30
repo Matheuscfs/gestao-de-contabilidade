@@ -51,6 +51,7 @@ pub fn run() {
             commands::pluggy::pluggy_sincronizar_todos,
             // Pluggy — intelligence
             commands::pluggy::pluggy_recorrentes,
+            commands::pluggy::pluggy_transacao_raw,
             // IA — integração BYOK
             commands::ai::ai_verificar_chave,
             commands::ai::ai_obter_integracao,

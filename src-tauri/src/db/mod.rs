@@ -74,6 +74,7 @@ fn aplicar_migracoes(conn: &Connection) -> Result<(), AppError> {
         (include_str!("../../migrations/0003_add_persona_avatar.sql"), 3),
         (include_str!("../../migrations/0004_add_persona_self.sql"), 4),
         (include_str!("../../migrations/0005_add_income_modality.sql"), 5),
+        (include_str!("../../migrations/0006_add_raw_json.sql"), 6),
     ];
 
     for (sql, versao) in migracoes {

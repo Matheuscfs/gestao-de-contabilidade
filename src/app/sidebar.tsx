@@ -96,6 +96,7 @@ const NAV = [
     label: "Lançamentos",
     icon: "check-circle",
   },
+  { to: "/extrato", id: "extrato", label: "Extrato", icon: "list" },
   { to: "/receitas", id: "receitas", label: "Receitas", icon: "trending-up" },
   {
     to: "/custo-de-vida",
@@ -104,7 +105,6 @@ const NAV = [
     icon: "receipt",
   },
   { to: "/cartoes", id: "cartoes", label: "Cartões", icon: "credit-card" },
-  { to: "/extrato", id: "extrato", label: "Extrato", icon: "list" },
   { to: "/dividas", id: "dividas", label: "Dívidas", icon: "coins" },
   { to: "/analise", id: "analise", label: "Análise", icon: "bar-chart" },
   { to: "/ia", id: "ia", label: "Quibo IA", icon: "sparkles" },

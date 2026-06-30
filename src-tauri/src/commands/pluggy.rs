@@ -323,6 +323,24 @@ pub async fn pluggy_deletar_item_remoto(
         .map_err(|e| e.to_string())
 }
 
+// ─── Transação individual (JSON cru) ──────────────────────────────────────────
+
+/// Retorna o JSON cru de uma transação, exatamente como vem da Pluggy.
+/// Usado pelo extrato para copiar o registro original da transação.
+#[tauri::command]
+pub async fn pluggy_transacao_raw(
+    estado: State<'_, EstadoAuth>,
+    pluggy_transaction_id: String,
+) -> Result<String, String> {
+    use crate::pluggy::products;
+
+    let valor = products::buscar_transacao_raw(&estado, &pluggy_transaction_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    serde_json::to_string_pretty(&valor).map_err(|e| e.to_string())
+}
+
 // ─── Intelligence ─────────────────────────────────────────────────────────────
 
 /// Retorna pagamentos recorrentes de um Item (assinaturas, contas fixas).
