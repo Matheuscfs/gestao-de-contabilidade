@@ -671,15 +671,22 @@ pub fn registrar_item(
     let id = format!("int_{}", Utc::now().timestamp_nanos_opt().unwrap_or(0));
     let agora = Utc::now().to_rfc3339();
 
+    // ON CONFLICT não funciona com índice parcial (WHERE pluggy_item_id IS NOT NULL),
+    // então usamos INSERT OR IGNORE seguido de UPDATE explícito.
     conn.execute(
-        "INSERT INTO integrations (
+        "INSERT OR IGNORE INTO integrations (
              id, type, pluggy_item_id, pluggy_connector_name, pluggy_status,
              created_at, updated_at
-         ) VALUES (?1,'PLUGGY',?2,?3,'PENDING',?4,?4)
-         ON CONFLICT(pluggy_item_id) DO UPDATE SET
-             pluggy_connector_name = COALESCE(excluded.pluggy_connector_name, integrations.pluggy_connector_name),
-             updated_at            = excluded.updated_at",
+         ) VALUES (?1,'PLUGGY',?2,?3,'PENDING',?4,?4)",
         params![id, pluggy_item_id, connector_name, agora],
+    )?;
+
+    conn.execute(
+        "UPDATE integrations
+         SET pluggy_connector_name = COALESCE(?1, pluggy_connector_name),
+             updated_at            = ?2
+         WHERE pluggy_item_id = ?3",
+        params![connector_name, agora, pluggy_item_id],
     )?;
 
     Ok(id)

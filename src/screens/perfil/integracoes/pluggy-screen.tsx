@@ -13,6 +13,7 @@ import {
   pluggySincronizarTodos,
   pluggyStatusCredenciais,
 } from "@/core/ipc/pluggy";
+import { toast } from "@/components/toast";
 
 // ─── Logo Pluggy (SVG oficial) ────────────────────────────────────────────────
 
@@ -631,6 +632,7 @@ function ViewConectado({
   itemSincronizando,
   sincronizandoTodos,
   totalImportadasMes,
+  totalFaturas,
   ultimoSync,
 }: {
   items: ItemResumo[];
@@ -641,6 +643,7 @@ function ViewConectado({
   itemSincronizando: string | null;
   sincronizandoTodos: boolean;
   totalImportadasMes: number;
+  totalFaturas: number;
   ultimoSync: string | null;
 }) {
   const totalContas = items.length;
@@ -744,7 +747,7 @@ function ViewConectado({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: "15px", color: "#0E1116" }}>Importadas este mês</div>
           <div style={{ fontWeight: 500, fontSize: "13px", color: "#5B616E", marginTop: "3px", fontFeatureSettings: "'tnum' 1,'lnum' 1" }}>
-            {totalImportadasMes} transações · {ultimoTexto}
+            {totalImportadasMes} transações{totalFaturas > 0 ? ` · ${totalFaturas} faturas` : ""} · {ultimoTexto}
           </div>
         </div>
         <button
@@ -796,16 +799,11 @@ export function PluggyIntegracaoScreen() {
     setModalConectarAberto(false);
     try {
       const descobertos = await pluggyDescobrirItems();
-      if (descobertos.length > 0) {
-        setItems(descobertos);
-        setEstadoTela("configurado");
-        return;
-      }
+      setItems(descobertos);
+      setEstadoTela("configurado");
     } catch {
-      // Se a descoberta falhar, segue normalmente para o modal de adição manual
+      await carregarEstado();
     }
-    await carregarEstado();
-    setModalAdicionarAberto(true);
   }
 
   function handleBancoAdicionado(item: ItemResumo) {
@@ -819,8 +817,29 @@ export function PluggyIntegracaoScreen() {
   async function handleAtualizar(pluggyItemId: string) {
     setItemSincronizando(pluggyItemId);
     try {
-      await pluggySincronizarItem(pluggyItemId, true);
+      const res = await pluggySincronizarItem(pluggyItemId, true);
       setItems(await pluggyListarItems());
+      const total = res.entriesImportados + res.entriesAtualizados;
+      if (res.status === "SUCCESS") {
+        toast.sucesso(
+          total > 0
+            ? `${total} transaç${total === 1 ? "ão importada" : "ões importadas"}`
+            : "Banco atualizado",
+          { descricao: res.connectorName ?? undefined }
+        );
+      } else if (res.status === "LOGIN_ERROR") {
+        toast.aviso("Reconecte o banco", {
+          descricao: `${res.connectorName ?? "Banco"} precisa de nova autorização no MeuPluggy`,
+        });
+      } else if (res.status === "ERROR") {
+        toast.erro("Falha ao atualizar", {
+          descricao: res.erro ?? res.connectorName ?? undefined,
+        });
+      }
+    } catch (e) {
+      toast.erro("Falha ao atualizar banco", {
+        descricao: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setItemSincronizando(null);
     }
@@ -832,6 +851,36 @@ export function PluggyIntegracaoScreen() {
       const res = await pluggySincronizarTodos(true);
       setResultados(res);
       setItems(await pluggyListarItems());
+
+      const totalImportadas = res.reduce(
+        (s, r) => s + r.entriesImportados + r.entriesAtualizados,
+        0
+      );
+      const comErro = res.filter((r) =>
+        ["ERROR", "LOGIN_ERROR"].includes(r.status)
+      );
+
+      if (comErro.length === 0) {
+        toast.sucesso(
+          totalImportadas > 0
+            ? `${totalImportadas} transaç${totalImportadas === 1 ? "ão importada" : "ões importadas"}`
+            : "Todos os bancos atualizados",
+          { descricao: `${res.length} banco${res.length === 1 ? "" : "s"} sincronizado${res.length === 1 ? "" : "s"}` }
+        );
+      } else {
+        toast.aviso(
+          `${res.length - comErro.length} de ${res.length} banco${res.length === 1 ? "" : "s"} atualizado${res.length - comErro.length === 1 ? "" : "s"}`,
+          {
+            descricao: comErro
+              .map((r) => r.connectorName ?? r.pluggyItemId)
+              .join(", ") + " com problema",
+          }
+        );
+      }
+    } catch (e) {
+      toast.erro("Falha ao sincronizar", {
+        descricao: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setSincronizandoTodos(false);
     }
@@ -846,6 +895,10 @@ export function PluggyIntegracaoScreen() {
 
   const totalImportadasMes = resultados.reduce(
     (s, r) => s + r.entriesImportados + r.entriesAtualizados, 0
+  );
+
+  const totalFaturas = resultados.reduce(
+    (s, r) => s + (r.faturasSincronizadas ?? 0), 0
   );
 
   const ultimoSync = items.reduce<string | null>((mais, item) => {
@@ -890,6 +943,7 @@ export function PluggyIntegracaoScreen() {
           itemSincronizando={itemSincronizando}
           sincronizandoTodos={sincronizandoTodos}
           totalImportadasMes={totalImportadasMes}
+          totalFaturas={totalFaturas}
           ultimoSync={ultimoSync}
         />
       )}
