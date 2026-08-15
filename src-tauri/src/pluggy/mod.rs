@@ -6,8 +6,8 @@
 ///   - `items`        → listar/consultar Items
 ///   - `products`     → contas, transações paginadas, investimentos, identidade, empréstimos
 ///   - `intelligence` → pagamentos recorrentes + enriquecimento de transações
-///   - `map`          → Pluggy → Quibo (decimal→centavos, sinal→tipo)
-///   - `categorias`   → de-para da taxonomia de categorias Pluggy → Quibo
+///   - `map`          → Pluggy → Gestão de Contabilidade (decimal→centavos, sinal→tipo)
+///   - `categorias`   → de-para da taxonomia de categorias Pluggy → Gestão de Contabilidade
 ///   - `sync`         → engine de polling idempotente alinhado ao nextAutoSyncAt
 ///
 /// Estado Tauri registrado em lib.rs: `pluggy::auth::EstadoAuth`

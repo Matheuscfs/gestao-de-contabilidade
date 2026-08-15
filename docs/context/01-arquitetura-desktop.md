@@ -1,6 +1,6 @@
-# Quibo — Arquitetura Desktop & Tecnologia
+# Gestão de Contabilidade — Arquitetura Desktop & Tecnologia
 
-> Como o Quibo é construído por dentro. Define a stack, a topologia local-first, o papel de cada camada, segurança, build e distribuição. Pré-requisito de leitura: [00 — Visão Geral do Produto](./00-visao-geral-produto.md).
+> Como o Gestão de Contabilidade é construído por dentro. Define a stack, a topologia local-first, o papel de cada camada, segurança, build e distribuição. Pré-requisito de leitura: [00 — Visão Geral do Produto](./00-visao-geral-produto.md).
 
 ---
 
@@ -28,14 +28,14 @@
 
 ## 1. Visão geral da stack
 
-O Quibo é um aplicativo **desktop multiplataforma** com frontend web rodando numa webview nativa e um núcleo em Rust. Tudo é **local-first**: não há servidor remoto na operação normal.
+O Gestão de Contabilidade é um aplicativo **desktop multiplataforma** com frontend web rodando numa webview nativa e um núcleo em Rust. Tudo é **local-first**: não há servidor remoto na operação normal.
 
 | Camada | Tecnologia | Papel |
 |---|---|---|
 | **Shell desktop** | Tauri 2 | Janela nativa, webview do SO, ponte IPC, empacotamento |
 | **Núcleo / backend** | Rust | Comandos, segredos, integrações externas, acesso ao DB |
 | **UI** | React 18 + TypeScript 5 | Telas, componentes, estado de tela |
-| **Estilo** | Tailwind CSS | Design system do Quibo (tokens, utilitários) |
+| **Estilo** | Tailwind CSS | Design system do Gestão de Contabilidade (tokens, utilitários) |
 | **Roteamento UI** | React Router (ou similar SPA) | Navegação entre telas (sidebar/header) |
 | **Estado / dados (front)** | TanStack Query + Zustand | Cache de leitura, estado local de UI |
 | **Persistência** | SQLite | Banco local único por usuário |
@@ -151,7 +151,7 @@ A arquitetura segue uma separação clara entre **UI**, **lógica de domínio** 
 
 ### 4.1 UI (webview)
 
-- **Telas e componentes** (React + Tailwind, design system do Quibo).
+- **Telas e componentes** (React + Tailwind, design system do Gestão de Contabilidade).
 - **Estado de tela** (mês selecionado, filtros, modais abertos) via Zustand.
 - **Cache de leitura** via TanStack Query, com chave por entidade+mês.
 - **Sem segredos.** A UI nunca toca em chaves de API; ela pede ao core.
@@ -178,7 +178,7 @@ A arquitetura segue uma separação clara entre **UI**, **lógica de domínio** 
 
 ## 5. O backend Rust como "servidor seguro local"
 
-Este é o ponto de arquitetura mais sutil e mais importante do Quibo, e o que torna BYOK viável sem servidor.
+Este é o ponto de arquitetura mais sutil e mais importante do Gestão de Contabilidade, e o que torna BYOK viável sem servidor.
 
 ### O problema
 
@@ -378,7 +378,7 @@ O v1 **não sincroniza** entre dispositivos. O dado vive numa máquina. Isso é 
 ### Estratégias de continuidade (sem servidor próprio)
 
 - **Export/import manual**: o usuário exporta o banco (ou um dump) e leva para outra máquina.
-- **Backup criptografado** em pasta sincronizada pelo próprio usuário (iCloud Drive, Dropbox, Drive) — o Quibo grava um arquivo criptografado; a nuvem é do usuário, não nossa.
+- **Backup criptografado** em pasta sincronizada pelo próprio usuário (iCloud Drive, Dropbox, Drive) — o Gestão de Contabilidade grava um arquivo criptografado; a nuvem é do usuário, não nossa.
 
 ### Sync futuro (se um dia)
 

@@ -1,12 +1,12 @@
 ---
-description: Diretrizes de performance para o Quibo — app desktop local-first com SQLite
+description: Diretrizes de performance para o Gestão de Contabilidade — app desktop local-first com SQLite
 globs: **/*.{ts,tsx,rs}
 alwaysApply: false
 ---
 
-# Performance — Quibo
+# Performance — Gestão de Contabilidade
 
-O Quibo é local-first. Consultas ao SQLite devem ser **imperceptíveis** (< 50ms). Nenhuma tela deve exibir loading em operação normal.
+O Gestão de Contabilidade é local-first. Consultas ao SQLite devem ser **imperceptíveis** (< 50ms). Nenhuma tela deve exibir loading em operação normal.
 
 ---
 

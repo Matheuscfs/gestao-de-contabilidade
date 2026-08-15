@@ -37,7 +37,7 @@ Transações de conta bancária (corrente ou poupança). Retornadas por `GET /tr
 - `operationType = "CARTAO"` indica compra no débito (não confundir com fatura).
 - `operationType = "OPERACAO_CREDITO"` inclui seguros, empréstimos, capitalização.
 - `paymentData.payer.documentNumber` é o CPF do titular na maioria das saídas.
-- `category` vem em inglês — o Quibo deve mapear para categorias próprias.
+- `category` vem em inglês — o Gestão de Contabilidade deve mapear para categorias próprias.
 - Paginação: `pageSize` máximo é 500. Usar `page` para iterar.
 
 ## Amostra

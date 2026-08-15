@@ -301,7 +301,7 @@ pub async fn buscar_identidade(
 // ─── Empréstimos ──────────────────────────────────────────────────────────────
 
 /// Busca empréstimos e financiamentos de um Item.
-/// Dados usados para reconciliar com `debts` no Quibo.
+/// Dados usados para reconciliar com `debts` no Gestão de Contabilidade.
 pub async fn buscar_emprestimos(
     estado: &EstadoAuth,
     item_id: &str,

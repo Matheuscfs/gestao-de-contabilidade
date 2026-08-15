@@ -1,10 +1,10 @@
 ---
-description: Padrão de código Rust e IPC Tauri para o backend local do Quibo
+description: Padrão de código Rust e IPC Tauri para o backend local do Gestão de Contabilidade
 globs: **/*.rs
 alwaysApply: false
 ---
 
-# Rust & Tauri — Quibo
+# Rust & Tauri — Gestão de Contabilidade
 
 ## Naming conventions
 

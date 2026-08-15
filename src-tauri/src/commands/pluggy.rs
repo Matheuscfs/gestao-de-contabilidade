@@ -220,7 +220,7 @@ pub struct ContaPluggyResumo {
     pub account_number: Option<String>,
 }
 
-/// Vincula contas/cartões existentes no Quibo às suas contrapartes na Pluggy.
+/// Vincula contas/cartões existentes no Gestão de Contabilidade às suas contrapartes na Pluggy.
 /// O mapa recebido é `{ pluggy_account_id: local_entity_id }`.
 /// Seta `pluggy_id` e `source='PLUGGY'` na entidade local correspondente.
 #[tauri::command]
@@ -523,12 +523,12 @@ async fn aguardar_callback_http(
         });
 
     let html = r#"<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-<title>Quibo — Conectado!</title>
+<title>Gestão de Contabilidade — Conectado!</title>
 <style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#F4F5F7}
 .card{background:#fff;border-radius:16px;padding:40px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.08);max-width:360px}
 h2{color:#0E1116;margin:0 0 8px}p{color:#5B616E;margin:0}</style></head>
 <body><div class="card"><div style="font-size:40px;margin-bottom:16px">✅</div>
-<h2>Banco conectado!</h2><p>Pode fechar esta janela e voltar ao Quibo.</p></div></body></html>"#;
+<h2>Banco conectado!</h2><p>Pode fechar esta janela e voltar ao Gestão de Contabilidade.</p></div></body></html>"#;
 
     let response = format!(
         "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",

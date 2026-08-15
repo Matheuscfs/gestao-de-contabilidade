@@ -1,7 +1,7 @@
 [package]
 name = "quibo"
 version = "0.1.0"
-description = "Quibo — finanças pessoais local-first"
+description = "Gestão de Contabilidade — finanças pessoais local-first"
 authors = []
 edition = "2021"
 # App principal é o binário `quibo`; `migrate` é utilitário (make migrate).

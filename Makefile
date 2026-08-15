@@ -1,4 +1,4 @@
-# ─── Quibo — Makefile ─────────────────────────────────────────────────────────
+# ─── Gestão de Contabilidade — Makefile ─────────────────────────────────────────────────────────
 # Comandos disponíveis:
 #   make dev      — inicia o app desktop com hot reload
 #   make migrate  — aplica migrações pendentes no banco (sem resetar dados)
@@ -39,7 +39,7 @@ DB_FILE := $(DB_DIR)/quibo.db
 # ─── dev ──────────────────────────────────────────────────────────────────────
 ## Inicia o app desktop com hot reload (Vite + Tauri)
 dev:
-	@echo "$(CYAN)$(BOLD)▶ Iniciando Quibo em modo desenvolvimento...$(RESET)"
+	@echo "$(CYAN)$(BOLD)▶ Iniciando Gestão de Contabilidade em modo desenvolvimento...$(RESET)"
 	@yarn tauri dev
 
 # ─── migrate ──────────────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ refresh:
 ## Builda o app em modo release para a plataforma atual (macOS / Windows / Linux)
 ## Para builds multiplataforma use o workflow .github/workflows/release.yml (CI)
 build:
-	@echo "$(CYAN)$(BOLD)▶ Buildando Quibo (release)...$(RESET)"
+	@echo "$(CYAN)$(BOLD)▶ Buildando Gestão de Contabilidade (release)...$(RESET)"
 	@yarn tauri build
 	@echo ""
 	@echo "$(GREEN)$(BOLD)✓ Build gerado em src-tauri/target/release/bundle/$(RESET)"

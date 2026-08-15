@@ -1,9 +1,9 @@
 ---
-description: Formato de Conventional Commits para o Quibo — aplica em toda sessão
+description: Formato de Conventional Commits para o Gestão de Contabilidade — aplica em toda sessão
 alwaysApply: true
 ---
 
-# Conventional Commits — Quibo
+# Conventional Commits — Gestão de Contabilidade
 
 Nunca commite sem ordem explícita do usuário. Quando solicitado, use este formato.
 

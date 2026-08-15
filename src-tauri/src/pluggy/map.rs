@@ -40,7 +40,7 @@ pub struct EntryImportado {
     pub credit_card_id: Option<String>,
     /// Rótulo original da Pluggy, preservado em `tags` para rastreabilidade.
     pub category_pluggy: Option<String>,
-    /// Nome da categoria Quibo resolvida pelo de-para (`categorias::categoria_quibo`).
+    /// Nome da categoria Gestão de Contabilidade resolvida pelo de-para (`categorias::categoria_quibo`).
     /// O sync converte este nome no `category_id` correspondente.
     pub categoria_quibo: Option<&'static str>,
     pub created_at: String,
@@ -171,7 +171,7 @@ pub fn transacao_para_entry(
     }
 }
 
-/// Traduz o `status` da Pluggy (POSTED | PENDING) para o status do Quibo.
+/// Traduz o `status` da Pluggy (POSTED | PENDING) para o status do Gestão de Contabilidade.
 ///
 /// A distinção entre conta e cartão é essencial, porque "pendente" significa
 /// coisas diferentes nos dois casos:
@@ -309,7 +309,7 @@ pub fn cartao_pluggy_para_quibo(account: &Account) -> CartaoImportado {
     }
 }
 
-/// Normaliza a bandeira da Pluggy para as suportadas no Quibo.
+/// Normaliza a bandeira da Pluggy para as suportadas no Gestão de Contabilidade.
 fn normalizar_bandeira(b: &str) -> String {
     match b.trim().to_uppercase().as_str() {
         "VISA" => "VISA",

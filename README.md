@@ -1,6 +1,6 @@
-# Quibo — Pacote de Contexto
+# Gestão de Contabilidade — Pacote de Contexto
 
-Base de contexto de ponta a ponta do **Quibo**, um app **desktop, local-first e open-source** de finanças pessoais para o brasileiro. Filosofia central: **tão fácil que assusta**.
+Base de contexto de ponta a ponta do **Gestão de Contabilidade**, um app **desktop, local-first e open-source** de finanças pessoais para o brasileiro. Filosofia central: **tão fácil que assusta**.
 
 > Ferramenta pessoal, construída primeiro para o autor, oferecida como cortesia (source-available, sem garantia). Sem SaaS, sem servidor, sem coleta de dado. O dado é do usuário; integrações usam as chaves dele (BYOK).
 

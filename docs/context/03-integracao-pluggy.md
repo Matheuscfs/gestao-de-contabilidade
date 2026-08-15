@@ -1,6 +1,6 @@
-# Quibo — Integração com a Pluggy (via MeuPluggy pessoal)
+# Gestão de Contabilidade — Integração com a Pluggy (via MeuPluggy pessoal)
 
-> Como o Quibo importa dados bancários reais via Pluggy, no modelo **pessoal (MeuPluggy)**, local-first e BYOK, sem servidor próprio. Define os dois caminhos de integração, o fluxo correto do MeuPluggy (proxy OAuth), a autenticação, os endpoints, o ciclo de vida do Item, o refresh diário e o mapeamento de dados. Pré-requisitos: [00](./00-visao-geral-produto.md), [01](./01-arquitetura-desktop.md), [02](./02-estrutura-de-dados.md).
+> Como o Gestão de Contabilidade importa dados bancários reais via Pluggy, no modelo **pessoal (MeuPluggy)**, local-first e BYOK, sem servidor próprio. Define os dois caminhos de integração, o fluxo correto do MeuPluggy (proxy OAuth), a autenticação, os endpoints, o ciclo de vida do Item, o refresh diário e o mapeamento de dados. Pré-requisitos: [00](./00-visao-geral-produto.md), [01](./01-arquitetura-desktop.md), [02](./02-estrutura-de-dados.md).
 
 > **Nota de fonte:** alguns detalhes operacionais (cobertura de conectores, limites do plano gratuito, credenciais de sandbox, versões de pacote/CDN) mudam com o tempo. Este documento traz o modelo conceitual e o fluxo; **confirme os valores exatos na documentação oficial** (docs.pluggy.ai, dashboard.pluggy.ai, github.com/pluggyai) antes de implementar.
 
@@ -8,7 +8,7 @@
 
 ## Sumário
 
-1. [Papel da Pluggy no Quibo](#1-papel-da-pluggy-no-quibo)
+1. [Papel da Pluggy no Gestão de Contabilidade](#1-papel-da-pluggy-no-quibo)
 2. [Dois caminhos: Dashboard padrão vs MeuPluggy](#2-dois-caminhos-dashboard-padrão-vs-meupluggy)
 3. [MeuPluggy: a porta de entrada pessoal](#3-meupluggy-a-porta-de-entrada-pessoal)
 4. [Conceitos da Pluggy](#4-conceitos-da-pluggy)
@@ -20,7 +20,7 @@
 10. [Ciclo de vida do Item](#10-ciclo-de-vida-do-item)
 11. [Produtos consumidos e formatos de dados](#11-produtos-consumidos-e-formatos-de-dados)
 12. [APIs de inteligência](#12-apis-de-inteligência)
-13. [Mapeamento Pluggy → modelo Quibo](#13-mapeamento-pluggy--modelo-quibo)
+13. [Mapeamento Pluggy → modelo Gestão de Contabilidade](#13-mapeamento-pluggy--modelo-quibo)
 14. [Anti-duplicata e idempotência](#14-anti-duplicata-e-idempotência)
 15. [Reconciliação esperado × realizado](#15-reconciliação-esperado--realizado)
 16. [Sandbox e desenvolvimento](#16-sandbox-e-desenvolvimento)
@@ -33,11 +33,11 @@
 
 ---
 
-## 1. Papel da Pluggy no Quibo
+## 1. Papel da Pluggy no Gestão de Contabilidade
 
 ### O que a Pluggy resolve
 
-A dor que originou o Quibo é a **digitação manual** (Excel). A Pluggy é a infraestrutura de Open Finance brasileira que, com uma única API, traz os dados financeiros direto das instituições — conta, cartão, fatura, transações, investimentos e empréstimos, padronizados, com até ~12 meses de histórico de transações. Para o Quibo, isso transforma o produto de **"app de digitar"** em **"app que já sabe"**: o maior salto de UX possível.
+A dor que originou o Gestão de Contabilidade é a **digitação manual** (Excel). A Pluggy é a infraestrutura de Open Finance brasileira que, com uma única API, traz os dados financeiros direto das instituições — conta, cartão, fatura, transações, investimentos e empréstimos, padronizados, com até ~12 meses de histórico de transações. Para o Gestão de Contabilidade, isso transforma o produto de **"app de digitar"** em **"app que já sabe"**: o maior salto de UX possível.
 
 A Pluggy é uma **instituição de pagamento autorizada pelo Banco Central** (ITP), o que dá lastro regulatório ao acesso via Open Finance.
 
@@ -47,10 +47,10 @@ A Pluggy é o **Pilar 2 de inteligência** (00 §9): traz o **realizado** (lanç
 
 ### Princípios da integração
 
-- **Pessoal (MeuPluggy):** o usuário usa a **própria conta MeuPluggy** e as **próprias credenciais de desenvolvedor**. Não há conta Pluggy "mãe" do Quibo.
+- **Pessoal (MeuPluggy):** o usuário usa a **própria conta MeuPluggy** e as **próprias credenciais de desenvolvedor**. Não há conta Pluggy "mãe" do Gestão de Contabilidade.
 - **Local-first:** dados importados vão para o SQLite local; nada passa por servidor nosso (não há servidor nosso).
 - **Opt-in e transparente:** desligada por padrão; quando ligada, o usuário vê o que sai e para onde (P7).
-- **Opcional:** todo o Quibo funciona sem ela (digitação manual). Ela é enriquecimento.
+- **Opcional:** todo o Gestão de Contabilidade funciona sem ela (digitação manual). Ela é enriquecimento.
 
 ---
 
@@ -67,7 +67,7 @@ Seu app  ──(Connect Widget)──►  usuário faz login no banco DENTRO do 
                                  → Item criado e mantido pela SUA aplicação
 ```
 
-### Caminho B — MeuPluggy (modelo "pessoal/proxy") ⭐ recomendado para o Quibo
+### Caminho B — MeuPluggy (modelo "pessoal/proxy") ⭐ recomendado para o Gestão de Contabilidade
 
 O **usuário conecta os bancos na própria conta MeuPluggy** (o app de consumo da Pluggy, em meu.pluggy.ai). Sua aplicação de desenvolvedor então **vincula-se à conta MeuPluggy via OAuth**, agindo como um **proxy** que lê a conexão que o **usuário** mantém. O MeuPluggy **mantém e atualiza diariamente** essa conexão.
 
@@ -78,7 +78,7 @@ Seu app de dev  ──(OAuth MeuPluggy)──►  proxy de leitura sobre o Item 
                                         → refresh diário automático
 ```
 
-### Por que o Caminho B é melhor para o Quibo
+### Por que o Caminho B é melhor para o Gestão de Contabilidade
 
 | Aspecto | Caminho A (Widget) | Caminho B (MeuPluggy) |
 |---|---|---|
@@ -89,9 +89,9 @@ Seu app de dev  ──(OAuth MeuPluggy)──►  proxy de leitura sobre o Item 
 | Refresh | você dispara/recebe webhook | **diário automático** pelo MeuPluggy |
 | Superfície do seu app | maior (widget, login) | menor (só leitura) |
 
-O Caminho B é **mais local-first**: a parte sensível (login do banco, consentimento) fica num app de consumo polido e regulado (MeuPluggy), e o Quibo só lê. Menos código sensível no Quibo, mais propriedade para o usuário.
+O Caminho B é **mais local-first**: a parte sensível (login do banco, consentimento) fica num app de consumo polido e regulado (MeuPluggy), e o Gestão de Contabilidade só lê. Menos código sensível no Gestão de Contabilidade, mais propriedade para o usuário.
 
-> O Quibo adota o **Caminho B (MeuPluggy)** como padrão. O Caminho A fica documentado como alternativa, caso algum banco só funcione via widget direto.
+> O Gestão de Contabilidade adota o **Caminho B (MeuPluggy)** como padrão. O Caminho A fica documentado como alternativa, caso algum banco só funcione via widget direto.
 
 ---
 
@@ -122,9 +122,9 @@ Depois que o usuário conectou os bancos no MeuPluggy, o desenvolvedor:
 3. A autorização funciona como **proxy** sobre a conexão original (mantida pelo MeuPluggy) e **atualiza os dados diariamente**.
 4. A aplicação passa a **ler os dados via Pluggy API/SDK** usando as credenciais de dev.
 
-### Implicação para o Quibo
+### Implicação para o Gestão de Contabilidade
 
-Para o **autor** (uso pessoal), isso é quase ideal: conecta os bancos uma vez no MeuPluggy, autoriza o app de dev, e o Quibo lê dados sempre frescos (refresh diário). O Quibo nunca lida com o login do banco — só consome.
+Para o **autor** (uso pessoal), isso é quase ideal: conecta os bancos uma vez no MeuPluggy, autoriza o app de dev, e o Gestão de Contabilidade lê dados sempre frescos (refresh diário). O Gestão de Contabilidade nunca lida com o login do banco — só consome.
 
 ---
 
@@ -147,7 +147,7 @@ Para o **autor** (uso pessoal), isso é quase ideal: conecta os bancos uma vez n
 ### O fluxo de credenciais
 
 1. Com `client_id` + `client_secret` (de desenvolvimento, obtidos no Dashboard), chama-se `POST /auth` e recebe-se uma **API Key** de acesso completo, válida por ~2h.
-2. As credenciais são **extremamente sensíveis** e esse passo deve ocorrer só num **ambiente seguro** (no Quibo: o core Rust local — ver §6).
+2. As credenciais são **extremamente sensíveis** e esse passo deve ocorrer só num **ambiente seguro** (no Gestão de Contabilidade: o core Rust local — ver §6).
 3. (Caminho A) Com a API Key, gera-se um **Connect Token** (`POST /connect_token`), ~30min, para o widget no cliente.
 4. Dados detalhados de produtos exigem requisições com a **API Key** (server-side).
 
@@ -180,7 +180,7 @@ No **Caminho B**, o passo central não é o Connect Token (widget), e sim a **au
 
 ## 6. O encaixe no local-first: Rust como servidor seguro
 
-O `client_secret` de desenvolvimento e a API Key exigem "ambiente seguro". O Quibo **não tem servidor**. A solução (doc 01 §5):
+O `client_secret` de desenvolvimento e a API Key exigem "ambiente seguro". O Gestão de Contabilidade **não tem servidor**. A solução (doc 01 §5):
 
 > **O backend Rust do Tauri é o "ambiente seguro" — na máquina de cada usuário.**
 
@@ -203,20 +203,20 @@ O `client_secret` de desenvolvimento e a API Key exigem "ambiente seguro". O Qui
                                         grava no SQLite local
 ```
 
-No Caminho B, o Quibo **nem precisa embutir o widget de login do banco** — isso aconteceu no MeuPluggy. O Rust só autentica com as credenciais de dev e lê.
+No Caminho B, o Gestão de Contabilidade **nem precisa embutir o widget de login do banco** — isso aconteceu no MeuPluggy. O Rust só autentica com as credenciais de dev e lê.
 
 ---
 
 ## 7. Fluxo de integração passo a passo (MeuPluggy)
 
-### 7.1 Pré-requisito (uma vez, fora do Quibo)
+### 7.1 Pré-requisito (uma vez, fora do Gestão de Contabilidade)
 
 1. Usuário cria conta em **https://meu.pluggy.ai** (Auth0).
 2. Conecta os bancos lá (consentimento Open Finance).
 3. Cria uma **Development Application** em **https://dashboard.pluggy.ai** → obtém `client_id`/`client_secret` de dev.
 4. Vincula a conta MeuPluggy ao app de dev via **autorização OAuth do MeuPluggy** (uma vez por banco).
 
-### 7.2 Configuração no Quibo (uma vez)
+### 7.2 Configuração no Gestão de Contabilidade (uma vez)
 
 1. **Ajustes → Integrações → Pluggy (MeuPluggy)**.
 2. O app explica o passo 7.1 e linka para meu.pluggy.ai e dashboard.pluggy.ai.
@@ -228,7 +228,7 @@ No Caminho B, o Quibo **nem precisa embutir o widget de login do banco** — iss
 ```
 Rust, com API Key:
   GET /items                → lista os Items (conexões via MeuPluggy)
-  GET /accounts?itemId=...  → mapeia contas Pluggy → contas Quibo
+  GET /accounts?itemId=...  → mapeia contas Pluggy → contas Gestão de Contabilidade
   GET /transactions?accountId=...  → cria entries (anti-duplicata por id)
   GET /investments?itemId=...      → carteira (doc 05)
 Reconciliação (doc 02 §12):
@@ -246,11 +246,11 @@ Como o usuário pode já ter contas manuais, o primeiro sync **pergunta** como m
 
 ### O que o MeuPluggy faz por você
 
-No Caminho B, o MeuPluggy **mantém a conexão e atualiza os dados diariamente** (refresh automático no lado da Pluggy). O campo **`nextAutoSyncAt`** do Item indica quando será a próxima atualização. Ou seja, **os dados já chegam frescos** sem o Quibo precisar disparar a coleta no banco.
+No Caminho B, o MeuPluggy **mantém a conexão e atualiza os dados diariamente** (refresh automático no lado da Pluggy). O campo **`nextAutoSyncAt`** do Item indica quando será a próxima atualização. Ou seja, **os dados já chegam frescos** sem o Gestão de Contabilidade precisar disparar a coleta no banco.
 
-### Como o Quibo descobre que atualizou: polling (não webhook)
+### Como o Gestão de Contabilidade descobre que atualizou: polling (não webhook)
 
-A forma "ideal" de saber que um Item atualizou é o **webhook** (a Pluggy faz um POST para uma URL sua). Mas webhook exige **URL pública**, que um app desktop local-first **não tem**. Então o Quibo usa **polling controlado**:
+A forma "ideal" de saber que um Item atualizou é o **webhook** (a Pluggy faz um POST para uma URL sua). Mas webhook exige **URL pública**, que um app desktop local-first **não tem**. Então o Gestão de Contabilidade usa **polling controlado**:
 
 | Gatilho | Quando |
 |---|---|
@@ -269,7 +269,7 @@ pull(item):
 
 ### Por que isso é suficiente
 
-Como o MeuPluggy já atualiza **diariamente**, o Quibo só precisa **buscar** o que já foi atualizado — não precisa de tempo real. Para finanças pessoais, "atualizado hoje" basta. A ausência de webhook deixa de ser limitação e vira simplicidade.
+Como o MeuPluggy já atualiza **diariamente**, o Gestão de Contabilidade só precisa **buscar** o que já foi atualizado — não precisa de tempo real. Para finanças pessoais, "atualizado hoje" basta. A ausência de webhook deixa de ser limitação e vira simplicidade.
 
 ---
 
@@ -277,10 +277,10 @@ Como o MeuPluggy já atualiza **diariamente**, o Quibo só precisa **buscar** o 
 
 ### SDK oficial (Node/JS) — referência
 
-A Pluggy tem SDK server-side (`pluggy-sdk`) e o widget (`react-pluggy-connect` / script via CDN). No Quibo, a **leitura** acontece no **Rust** (a chave fica no keychain), então o SDK Node serve mais de **referência de contrato** — o Rust replica as mesmas chamadas. Onde fizer sentido (ex.: parte de desenvolvimento/testes), o SDK pode ser usado na camada TS.
+A Pluggy tem SDK server-side (`pluggy-sdk`) e o widget (`react-pluggy-connect` / script via CDN). No Gestão de Contabilidade, a **leitura** acontece no **Rust** (a chave fica no keychain), então o SDK Node serve mais de **referência de contrato** — o Rust replica as mesmas chamadas. Onde fizer sentido (ex.: parte de desenvolvimento/testes), o SDK pode ser usado na camada TS.
 
 ```ts
-// Referência de contrato (Node) — no Quibo, equivalente roda no Rust core
+// Referência de contrato (Node) — no Gestão de Contabilidade, equivalente roda no Rust core
 import { PluggyClient } from 'pluggy-sdk';
 const client = new PluggyClient({ clientId, clientSecret });
 const accounts     = await client.fetchAccounts(itemId);
@@ -301,7 +301,7 @@ GET https://api.pluggy.ai/identity?itemId=...     # identidade
 
 ### Widget (Caminho A — alternativa)
 
-Caso algum banco exija o fluxo de widget (não-MeuPluggy), o Quibo embute o Connect Widget na webview com um Connect Token gerado pelo Rust:
+Caso algum banco exija o fluxo de widget (não-MeuPluggy), o Gestão de Contabilidade embute o Connect Widget na webview com um Connect Token gerado pelo Rust:
 
 ```
 1. Rust: POST /connect_token → accessToken
@@ -315,9 +315,9 @@ Caso algum banco exija o fluxo de widget (não-MeuPluggy), o Quibo embute o Conn
 
 ## 10. Ciclo de vida do Item
 
-O Item tem um **status** que o Quibo monitora para saber se os dados estão prontos ou se precisa de ação do usuário.
+O Item tem um **status** que o Gestão de Contabilidade monitora para saber se os dados estão prontos ou se precisa de ação do usuário.
 
-| Status | Significado | Ação do Quibo |
+| Status | Significado | Ação do Gestão de Contabilidade |
 |---|---|---|
 | `UPDATING` | sincronizando com a instituição | aguardar; mostrar "atualizando…" |
 | `UPDATED` | dados atualizados com sucesso | puxar dados |
@@ -325,17 +325,17 @@ O Item tem um **status** que o Quibo monitora para saber se os dados estão pron
 | `OUTDATED` | erro inesperado | pode reprocessar; retentar mais tarde |
 | `WAITING_USER_INPUT` | aguardando MFA/ação | sinalizar "ação necessária" |
 
-Campos úteis: **`nextAutoSyncAt`** (próxima atualização automática) orienta o agendamento do polling do Quibo (§8).
+Campos úteis: **`nextAutoSyncAt`** (próxima atualização automática) orienta o agendamento do polling do Gestão de Contabilidade (§8).
 
-> No Caminho B, erros de login se resolvem no **MeuPluggy** (onde a conexão mora), não dentro do Quibo — o Quibo só orienta o usuário a reconectar lá.
+> No Caminho B, erros de login se resolvem no **MeuPluggy** (onde a conexão mora), não dentro do Gestão de Contabilidade — o Gestão de Contabilidade só orienta o usuário a reconectar lá.
 
 ---
 
 ## 11. Produtos consumidos e formatos de dados
 
-O Quibo consome (e o que cada um vira):
+O Gestão de Contabilidade consome (e o que cada um vira):
 
-| Produto | Uso no Quibo | Vira |
+| Produto | Uso no Gestão de Contabilidade | Vira |
 |---|---|---|
 | **Account** | contas e saldos reais | `accounts` (ou mapeadas) |
 | **Transaction** | movimentações reais (categorizadas) | `entries` (com id Pluggy) |
@@ -362,11 +362,11 @@ O Quibo consome (e o que cada um vira):
   "annualRate": 13.25, "rateType": "CDI", "status": "ACTIVE" }
 ```
 
-> Atenção ao **dinheiro**: a Pluggy entrega valores em **decimal** (ex.: `1209.50`). O Quibo converte para **centavos inteiros** na importação (× 100, arredondado) — doc 02 §3.1. Sinal do `amount` define `type` (DEBIT → EXPENSE, CREDIT → INCOME).
+> Atenção ao **dinheiro**: a Pluggy entrega valores em **decimal** (ex.: `1209.50`). O Gestão de Contabilidade converte para **centavos inteiros** na importação (× 100, arredondado) — doc 02 §3.1. Sinal do `amount` define `type` (DEBIT → EXPENSE, CREDIT → INCOME).
 
-### O que o Quibo NÃO usa
+### O que o Gestão de Contabilidade NÃO usa
 
-- **Payments / Pix / Smart Transfers / Boleto:** o Quibo **lê**, não **move** dinheiro (00 §11). Iniciar pagamentos está fora de escopo.
+- **Payments / Pix / Smart Transfers / Boleto:** o Gestão de Contabilidade **lê**, não **move** dinheiro (00 §11). Iniciar pagamentos está fora de escopo.
 
 ---
 
@@ -374,22 +374,22 @@ O Quibo consome (e o que cada um vira):
 
 A Pluggy oferece inteligência que alimenta o motor de insights (doc 06) e a reconciliação (doc 02), de forma **determinística** — reduzindo o que sobra para o LLM:
 
-| API | Entrega | Uso no Quibo |
+| API | Entrega | Uso no Gestão de Contabilidade |
 |---|---|---|
 | **Recurring Payments** | pagamentos recorrentes (assinaturas, contas fixas) | estado "Apertado" → "N assinaturas somam R$ X" |
 | **Transaction Enrichment** | enriquecimento (merchant, categoria) | melhora categorização dos entries |
 | **Connection Insights** | saúde da conexão/itens | diagnóstico |
 
-A categorização automática das transações também vem da Pluggy, reduzindo o trabalho manual. Tudo isso é **fato determinístico** → alimenta o Pilar 1, não a voz (P8). Caminho futuro: a Pluggy tem **MCP server / skills de IA**, que poderiam deixar a camada de IA do Quibo (doc 04) consultar a Pluggy diretamente (v2).
+A categorização automática das transações também vem da Pluggy, reduzindo o trabalho manual. Tudo isso é **fato determinístico** → alimenta o Pilar 1, não a voz (P8). Caminho futuro: a Pluggy tem **MCP server / skills de IA**, que poderiam deixar a camada de IA do Gestão de Contabilidade (doc 04) consultar a Pluggy diretamente (v2).
 
 ---
 
-## 13. Mapeamento Pluggy → modelo Quibo
+## 13. Mapeamento Pluggy → modelo Gestão de Contabilidade
 
 ### Transaction → `entries`
 
 ```
-Pluggy Transaction            Quibo entries
+Pluggy Transaction            Gestão de Contabilidade entries
 ──────────────────            ─────────────
 id            ────► pluggyTransactionId (único, anti-duplicata)
 description   ────► description
@@ -465,13 +465,13 @@ src/core/integrations/pluggy/   # parte TS (tipos, status, UI de configuração)
 
 ### Consentimento
 
-- No **Caminho B**, o consentimento Open Finance é gerenciado pelo **usuário no MeuPluggy** — incluindo **revogar** a qualquer momento. O Quibo apenas lê enquanto a autorização existir.
-- Consentimentos Open Finance **expiram**; o Quibo detecta (status do Item) e orienta o usuário a renovar no MeuPluggy.
+- No **Caminho B**, o consentimento Open Finance é gerenciado pelo **usuário no MeuPluggy** — incluindo **revogar** a qualquer momento. O Gestão de Contabilidade apenas lê enquanto a autorização existir.
+- Consentimentos Open Finance **expiram**; o Gestão de Contabilidade detecta (status do Item) e orienta o usuário a renovar no MeuPluggy.
 
 ### LGPD e propriedade do dado
 
-- O dado importado é do usuário e mora **na máquina dele** (SQLite local). O autor do Quibo **não tem acesso** a nada — não há servidor que receba.
-- A relação de tratamento de dado é entre **o usuário, o MeuPluggy e a Pluggy** (contas dele). O Quibo é o cliente local que consome.
+- O dado importado é do usuário e mora **na máquina dele** (SQLite local). O autor do Gestão de Contabilidade **não tem acesso** a nada — não há servidor que receba.
+- A relação de tratamento de dado é entre **o usuário, o MeuPluggy e a Pluggy** (contas dele). O Gestão de Contabilidade é o cliente local que consome.
 - Transparência total: a UI mostra os Items, quando sincronizaram, e permite parar de ler e apagar os dados locais a qualquer momento.
 
 ---
@@ -513,7 +513,7 @@ Mensagens em linguagem de gente (P4). Dados já importados permanecem utilizáve
 
 Ponto honesto que afeta o público (00 §7).
 
-No **Caminho B (MeuPluggy)**, para outra pessoa usar a integração no Quibo dela, **essa pessoa precisa**:
+No **Caminho B (MeuPluggy)**, para outra pessoa usar a integração no Gestão de Contabilidade dela, **essa pessoa precisa**:
 
 1. Criar conta no **MeuPluggy** e conectar os bancos lá.
 2. Criar a própria **Development Application** no Dashboard (client_id/secret próprios).
@@ -521,7 +521,7 @@ No **Caminho B (MeuPluggy)**, para outra pessoa usar a integração no Quibo del
 
 Ou seja: **há fricção de setup por usuário** — perfeitamente ok para gente técnica, mas barreira para leigos. Isso reforça a conclusão (00 §7): a integração Pluggy é, na prática, para **público técnico**. Para o **autor**, é setup único e indolor.
 
-> Alternativa para reduzir fricção a leigos exigiria o **Caminho A** com uma aplicação Pluggy compartilhada e um backend que gere Connect Tokens — o que reintroduz servidor, custo e responsabilidade. O Quibo **não** vai por aí (anti-roadmap, doc 08 §14). A integração permanece opcional; quem não quer, digita manual.
+> Alternativa para reduzir fricção a leigos exigiria o **Caminho A** com uma aplicação Pluggy compartilhada e um backend que gere Connect Tokens — o que reintroduz servidor, custo e responsabilidade. O Gestão de Contabilidade **não** vai por aí (anti-roadmap, doc 08 §14). A integração permanece opcional; quem não quer, digita manual.
 
 ---
 
@@ -529,14 +529,14 @@ Ou seja: **há fricção de setup por usuário** — perfeitamente ok para gente
 
 - **Opcional e fora do caminho:** vive em Ajustes → Integrações. Quem não quer, nunca esbarra.
 - **Explicação humana + links:** o app guia o passo-a-passo do MeuPluggy + Dashboard com linguagem clara, e linka os dois sites.
-- **Mapeamento guiado:** vincular contas Pluggy a contas Quibo é um wizard curto.
+- **Mapeamento guiado:** vincular contas Pluggy a contas Gestão de Contabilidade é um wizard curto.
 - **Status visível:** cada Item mostra "atualizado há X" e botão "Atualizar".
 - **Confirmação assistida:** pós-sync, "Falta confirmar" mostra o que casou e o que precisa de um toque.
 - **Parar é fácil:** desligar a leitura e apagar dados importados é um clique; revogar consentimento é no MeuPluggy.
 
 ### Contrato de transparência (texto exemplo)
 
-> "Você conecta seus bancos no **MeuPluggy** (um app da Pluggy, gratuito, onde **você** controla e revoga o acesso). O Quibo só **lê** esses dados usando **suas** credenciais, guardadas só neste computador. Nada vai para o autor do Quibo — não existe servidor nosso."
+> "Você conecta seus bancos no **MeuPluggy** (um app da Pluggy, gratuito, onde **você** controla e revoga o acesso). O Gestão de Contabilidade só **lê** esses dados usando **suas** credenciais, guardadas só neste computador. Nada vai para o autor do Gestão de Contabilidade — não existe servidor nosso."
 
 ---
 
@@ -552,7 +552,7 @@ Ou seja: **há fricção de setup por usuário** — perfeitamente ok para gente
 | PL-6 | Anti-duplicata por `pluggyTransactionId` único | Idempotência no nível do banco |
 | PL-7 | Só leitura (sem Payments/Pix) | Reduzir risco e responsabilidade |
 | PL-8 | Valores Pluggy (decimal) → centavos inteiros na importação | Coerência com doc 02 §3.1 |
-| PL-9 | Pluggy é 100% opcional | O Quibo funciona pleno sem ela |
+| PL-9 | Pluggy é 100% opcional | O Gestão de Contabilidade funciona pleno sem ela |
 | PL-10 | Distribuição com fricção (setup por usuário) → público técnico | Não reintroduzir servidor para atender leigos |
 | PL-11 | Confirmar specs voláteis na doc oficial | Coberturas, limites, sandbox e versões mudam |
 
@@ -572,11 +572,11 @@ Não. O MeuPluggy é para pessoa física, e a Development Application no Dashboa
 **Qual a diferença prática entre o Caminho A (widget) e o B (MeuPluggy)?**
 No A, o usuário conecta o banco **dentro do seu app** (você embute o widget e mantém o Item). No B, o usuário conecta o banco **no MeuPluggy** (app da Pluggy) e seu app **lê via proxy OAuth**. O B é mais local-first: a parte sensível (login do banco, consentimento) não passa pelo seu app, e o MeuPluggy já atualiza diariamente.
 
-**O Quibo precisa do Connect Token?**
+**O Gestão de Contabilidade precisa do Connect Token?**
 No Caminho B (padrão), o passo central é a autorização OAuth do MeuPluggy, e a leitura usa a API Key. O Connect Token é do Caminho A (widget), mantido como alternativa.
 
 **Por que não usar webhook, já que existe?**
-Webhook exige URL pública, que um app desktop local-first não tem. Como o MeuPluggy atualiza diariamente, o Quibo só faz **polling** (puxar o que já atualizou) — alinhado ao `nextAutoSyncAt`. Para finanças pessoais, "atualizado hoje" basta.
+Webhook exige URL pública, que um app desktop local-first não tem. Como o MeuPluggy atualiza diariamente, o Gestão de Contabilidade só faz **polling** (puxar o que já atualizou) — alinhado ao `nextAutoSyncAt`. Para finanças pessoais, "atualizado hoje" basta.
 
 ### Sobre dados
 
@@ -584,18 +584,18 @@ Webhook exige URL pública, que um app desktop local-first não tem. Como o MeuP
 Tipicamente até ~12 meses, dependendo da instituição e do produto. Confirme na doc/coverage atual.
 
 **Os valores vêm em centavos?**
-Não — vêm em decimal (ex.: `-55.90`). O Quibo converte para **centavos inteiros** na importação (doc 02 §3.1). O sinal define o tipo (DEBIT → EXPENSE, CREDIT → INCOME).
+Não — vêm em decimal (ex.: `-55.90`). O Gestão de Contabilidade converte para **centavos inteiros** na importação (doc 02 §3.1). O sinal define o tipo (DEBIT → EXPENSE, CREDIT → INCOME).
 
 **A Pluggy já categoriza?**
-Sim, há categorização automática e enriquecimento. O Quibo usa isso para preencher `categoryId`/`tags`, reduzindo trabalho manual, e a API de recorrência para detectar assinaturas (alimenta o motor de insights, doc 06).
+Sim, há categorização automática e enriquecimento. O Gestão de Contabilidade usa isso para preencher `categoryId`/`tags`, reduzindo trabalho manual, e a API de recorrência para detectar assinaturas (alimenta o motor de insights, doc 06).
 
 ### Troubleshooting
 
 **O Item está em `LOGIN_ERROR`. E agora?**
-A conexão com o banco precisa ser renovada **no MeuPluggy** (onde ela mora), não no Quibo. O Quibo detecta o status e orienta o usuário a reconectar lá; depois, "Atualizar" no Quibo puxa de novo.
+A conexão com o banco precisa ser renovada **no MeuPluggy** (onde ela mora), não no Gestão de Contabilidade. O Gestão de Contabilidade detecta o status e orienta o usuário a reconectar lá; depois, "Atualizar" no Gestão de Contabilidade puxa de novo.
 
 **O Item está em `WAITING_USER_INPUT`.**
-O banco pediu MFA/confirmação. Resolve-se no MeuPluggy; o Quibo sinaliza "ação necessária".
+O banco pediu MFA/confirmação. Resolve-se no MeuPluggy; o Gestão de Contabilidade sinaliza "ação necessária".
 
 **O sync importou transações duplicadas.**
 Não deveria — há índice único em `pluggyTransactionId` (doc 02 §10). Se aconteceu, verifique se o upsert está usando esse campo como chave e se a janela `lastSyncedAt` está correta.
@@ -626,9 +626,9 @@ Esta seção registra a reconciliação entre a análise gerada anteriormente e 
 
 ### O que foi corrigido
 
-- **O fluxo do MeuPluggy.** A análise tratou o MeuPluggy como "porta de entrada" e em seguida descreveu o fluxo padrão de **embutir o Connect Widget** (Caminho A). O modelo correto do MeuPluggy é um **proxy via OAuth** (Caminho B): o usuário conecta os bancos **no MeuPluggy**, cria uma Development Application no Dashboard, e **vincula a conta MeuPluggy ao app de dev via autorização OAuth** (uma vez por banco); o app então **lê** os dados, que o MeuPluggy **atualiza diariamente**. O Quibo adota esse modelo.
-- **A arquitetura "com backend".** A análise sugeriu um backend Node + Express recebendo webhooks (via ngrok/Vercel). Isso é o modelo SaaS e **contradiz o local-first** do Quibo. Aqui, o **core Rust local** faz o papel de ambiente seguro, e a sincronização é por **polling** (não webhook), alinhada ao refresh diário do MeuPluggy.
-- **Refresh.** Ficou explícito que o MeuPluggy já atualiza **diariamente** no lado da Pluggy; o Quibo apenas **puxa** o que atualizou (não dispara coleta no banco, não depende de webhook).
+- **O fluxo do MeuPluggy.** A análise tratou o MeuPluggy como "porta de entrada" e em seguida descreveu o fluxo padrão de **embutir o Connect Widget** (Caminho A). O modelo correto do MeuPluggy é um **proxy via OAuth** (Caminho B): o usuário conecta os bancos **no MeuPluggy**, cria uma Development Application no Dashboard, e **vincula a conta MeuPluggy ao app de dev via autorização OAuth** (uma vez por banco); o app então **lê** os dados, que o MeuPluggy **atualiza diariamente**. O Gestão de Contabilidade adota esse modelo.
+- **A arquitetura "com backend".** A análise sugeriu um backend Node + Express recebendo webhooks (via ngrok/Vercel). Isso é o modelo SaaS e **contradiz o local-first** do Gestão de Contabilidade. Aqui, o **core Rust local** faz o papel de ambiente seguro, e a sincronização é por **polling** (não webhook), alinhada ao refresh diário do MeuPluggy.
+- **Refresh.** Ficou explícito que o MeuPluggy já atualiza **diariamente** no lado da Pluggy; o Gestão de Contabilidade apenas **puxa** o que atualizou (não dispara coleta no banco, não depende de webhook).
 
 ### O que foi acrescentado
 

@@ -358,14 +358,14 @@ function ModalAreaDePerigo({ onFechar }: { onFechar: () => void }) {
     limpar: {
       titulo: "Limpar todos os dados?",
       descricao:
-        "Seus lançamentos, contas, dívidas, compromissos e integrações serão apagados. Seu nome e foto ficam. O Quibo volta ao estado inicial — só as categorias e conta padrão permanecem.",
+        "Seus lançamentos, contas, dívidas, compromissos e integrações serão apagados. Seu nome e foto ficam. O Gestão de Contabilidade volta ao estado inicial — só as categorias e conta padrão permanecem.",
       botao: "Sim, limpar dados",
       corBotao: "bg-[#E8A020] hover:bg-[#CC8B18]",
     },
     redefinir: {
       titulo: "Redefinir tudo?",
       descricao:
-        "Tudo será apagado: dados, configurações, perfil e histórico. O Quibo volta à tela inicial como se fosse instalado agora. Essa ação não tem volta.",
+        "Tudo será apagado: dados, configurações, perfil e histórico. O Gestão de Contabilidade volta à tela inicial como se fosse instalado agora. Essa ação não tem volta.",
       botao: "Sim, redefinir tudo",
       corBotao: "bg-negative hover:bg-red-700",
     },
@@ -557,7 +557,7 @@ export function PerfilScreen() {
               {nome || "Seu nome"}
             </p>
             <p className="text-sm text-ink-secondary mt-0.5">
-              no Quibo desde hoje
+              no Gestão de Contabilidade desde hoje
             </p>
           </div>
           <button className="h-[42px] px-[18px] rounded-full border border-border-strong bg-surface text-ink text-sm font-semibold hover:bg-surface-subtle transition-colors shrink-0">

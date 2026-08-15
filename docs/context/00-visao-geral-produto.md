@@ -1,6 +1,6 @@
-# Quibo — Visão Geral do Produto
+# Gestão de Contabilidade — Visão Geral do Produto
 
-> Documento âncora. É a porta de entrada do pacote de contexto: define o que o Quibo é, para quem, com que filosofia, e indexa todos os outros documentos. Sempre que houver dúvida sobre "qual é a intenção", a resposta mora aqui.
+> Documento âncora. É a porta de entrada do pacote de contexto: define o que o Gestão de Contabilidade é, para quem, com que filosofia, e indexa todos os outros documentos. Sempre que houver dúvida sobre "qual é a intenção", a resposta mora aqui.
 
 ---
 
@@ -26,25 +26,25 @@
 
 ## 1. Identidade do produto
 
-O **Quibo** é um aplicativo **desktop** de **gestão financeira pessoal** para o usuário brasileiro, construído com uma única obsessão: ser **tão fácil que assusta**. Ele organiza a vida financeira em **ciclos mensais** e responde, de relance, quatro perguntas — e só essas quatro:
+O **Gestão de Contabilidade** é um aplicativo **desktop** de **gestão financeira pessoal** para o usuário brasileiro, construído com uma única obsessão: ser **tão fácil que assusta**. Ele organiza a vida financeira em **ciclos mensais** e responde, de relance, quatro perguntas — e só essas quatro:
 
 1. Quanto **entra** esse mês?
 2. Quanto **sai**?
 3. Quanto **sobra**?
 4. O que ainda **falta confirmar**?
 
-Tudo o que existe no produto serve a uma dessas perguntas ou se esconde até ser necessário. O Quibo **não é um painel de analytics**, **não é uma planilha com esteroides** e **não é um assistente que fala demais**. É uma superfície calma que diz a coisa certa na hora certa.
+Tudo o que existe no produto serve a uma dessas perguntas ou se esconde até ser necessário. O Gestão de Contabilidade **não é um painel de analytics**, **não é uma planilha com esteroides** e **não é um assistente que fala demais**. É uma superfície calma que diz a coisa certa na hora certa.
 
 O produto nasce de uma dor pessoal real (gestão no Excel, que é imprática) e é construído primeiro **para o próprio autor**. A possibilidade de doar para outras pessoas é consequência, não objetivo — e essa ordem de prioridade molda quase todas as decisões: simplicidade acima de completude, propriedade do dado acima de conveniência de nuvem, qualidade acima de alcance.
 
-### O que o Quibo é
+### O que o Gestão de Contabilidade é
 
 - Um app **local-first**: os dados moram na máquina do usuário, num banco SQLite local. Sem servidor central, sem conta na nuvem obrigatória.
 - Um app **open-source / source-available**: o código é público desde o primeiro commit. Em finanças, transparência de código é funcionalidade de confiança.
 - Um app **BYOK** ("bring your own key"): integrações externas (Pluggy, IA) usam as chaves do próprio usuário, armazenadas localmente e nunca compartilhadas.
 - Um app **desktop multiplataforma**: macOS, Windows e Linux a partir de uma base única (Tauri).
 
-### O que o Quibo não é
+### O que o Gestão de Contabilidade não é
 
 - Não é um SaaS. Não há multi-tenancy, não há servidor que guarde o dado de muitos usuários, não há assinatura.
 - Não é um produto comercial (ao menos não por enquanto). Sem funil, sem growth, sem captura de e-mail.
@@ -62,15 +62,15 @@ Quem tenta se organizar financeiramente cai em um de dois baldes:
 - **Planilha (Excel/Sheets):** flexível, mas trabalhosa, feia, sem inteligência, e que exige disciplina manual constante. Some o hábito, some a organização.
 - **Apps financeiros existentes:** o mercado está **lotado** — apps mobile, web, integrações com IA que leem áudio de WhatsApp e viram gestor financeiro. Mas a maioria sofre de três males: **complexidade** (forçam o usuário a aprender muitos conceitos), **ansiedade** (recebem com gráfico e número vermelho) e **captura de dado** (o modelo de negócio é monetizar a informação financeira do usuário).
 
-A aposta do Quibo **não é** competir nesse mercado lotado por download ou receita. A aposta é resolver a dor de um jeito que ninguém resolve bem: **radicalmente simples, com o dado 100% do usuário, e com inteligência que reduz atrito em vez de aumentar carga cognitiva.**
+A aposta do Gestão de Contabilidade **não é** competir nesse mercado lotado por download ou receita. A aposta é resolver a dor de um jeito que ninguém resolve bem: **radicalmente simples, com o dado 100% do usuário, e com inteligência que reduz atrito em vez de aumentar carga cognitiva.**
 
 ### Por que "mercado lotado" é a métrica errada aqui
 
-Mercado cheio importa quando se precisa capturar cliente e receita. O Quibo, sendo ferramenta pessoal eventualmente doada, não disputa atenção nem dinheiro. A pergunta certa não é "tem espaço no mercado?", é **"as ferramentas que existem resolvem a minha dor?"** — e a resposta empírica (o autor está no Excel) é não. Isso, sozinho, justifica o esforço.
+Mercado cheio importa quando se precisa capturar cliente e receita. O Gestão de Contabilidade, sendo ferramenta pessoal eventualmente doada, não disputa atenção nem dinheiro. A pergunta certa não é "tem espaço no mercado?", é **"as ferramentas que existem resolvem a minha dor?"** — e a resposta empírica (o autor está no Excel) é não. Isso, sozinho, justifica o esforço.
 
 ### A assimetria que torna tudo viável
 
-As características que tornam o Quibo bom **para o autor** — rápido, local, dados próprios, sem conta, simples e bonito — são **exatamente** as mesmas que o tornam compartilhável a custo marginal quase zero. A versão "pessoal" e a versão "pro pessoal" **convergem**, desde que o produto seja local-first. O conflito entre as duas só existiria no mundo SaaS (custo de servidor, custo de inferência, responsabilidade jurídica de guardar dado alheio) — mundo que o Quibo descarta de propósito.
+As características que tornam o Gestão de Contabilidade bom **para o autor** — rápido, local, dados próprios, sem conta, simples e bonito — são **exatamente** as mesmas que o tornam compartilhável a custo marginal quase zero. A versão "pessoal" e a versão "pro pessoal" **convergem**, desde que o produto seja local-first. O conflito entre as duas só existiria no mundo SaaS (custo de servidor, custo de inferência, responsabilidade jurídica de guardar dado alheio) — mundo que o Gestão de Contabilidade descarta de propósito.
 
 ---
 
@@ -112,7 +112,7 @@ Toda aritmética financeira (totais, saldos, tendências, projeções) é **dete
 
 ### P9 — Esconder a complexidade, não eliminá-la
 
-O Quibo tem domínios ricos (salário horista, dívidas parceladas com juros, ciclos de fatura). Essa riqueza existe, mas é configurada uma vez e esquecida. A complexidade mora atrás de "Mais"; o dia a dia é simples.
+O Gestão de Contabilidade tem domínios ricos (salário horista, dívidas parceladas com juros, ciclos de fatura). Essa riqueza existe, mas é configurada uma vez e esquecida. A complexidade mora atrás de "Mais"; o dia a dia é simples.
 
 ### P10 — Essencial, mas muito bem feito
 
@@ -149,7 +149,7 @@ Parcela financiamento     ──────► Parcela paga
 - O **motor de reconciliação** casa um com o outro: "esse pagamento de R$ 1.500 é o seu aluguel".
 - O usuário só precisa **confirmar** o que o sistema não conseguiu casar sozinho.
 
-Esse modelo elimina a proliferação de conceitos do sistema antigo (que tinha quatro formas diferentes de marcar "pago": status de transação, status de fatura, status de parcela e registro mensal de pagamento). No Quibo, há **um estado de confirmação unificado**.
+Esse modelo elimina a proliferação de conceitos do sistema antigo (que tinha quatro formas diferentes de marcar "pago": status de transação, status de fatura, status de parcela e registro mensal de pagamento). No Gestão de Contabilidade, há **um estado de confirmação unificado**.
 
 ---
 
@@ -165,7 +165,7 @@ Regra de negócio herdada e mantida, **mas tornada explícita** (não mágica gl
 
 > A renda recebida no mês **M** corresponde ao trabalho do mês **M−1**.
 
-No sistema antigo, isso era uma regra global invisível que confundia. No Quibo, vira um **campo por compromisso** (um offset tipo "recebo no mês seguinte"). Assim, o salário sabe sozinho que o trabalho de maio é pago em junho, sem o usuário ter que decifrar por que junho mostra os salários de maio. Explícito e local = confiança.
+No sistema antigo, isso era uma regra global invisível que confundia. No Gestão de Contabilidade, vira um **campo por compromisso** (um offset tipo "recebo no mês seguinte"). Assim, o salário sabe sozinho que o trabalho de maio é pago em junho, sem o usuário ter que decifrar por que junho mostra os salários de maio. Explícito e local = confiança.
 
 ### Estados do mês
 
@@ -180,7 +180,7 @@ Cada mês tem um **estado financeiro calculado** que dirige a experiência (ver 
 
 ### O ritual de fechar o mês
 
-Diferente de uma planilha (que nunca "fecha"), o Quibo tem um **ritual de fechamento**: ao virar o mês, ele revisa o que ficou em aberto, pergunta o que confirmar, e carrega pendências relevantes para o próximo mês. Esse ritual é parte do que torna o produto um hábito, não uma obrigação.
+Diferente de uma planilha (que nunca "fecha"), o Gestão de Contabilidade tem um **ritual de fechamento**: ao virar o mês, ele revisa o que ficou em aberto, pergunta o que confirmar, e carrega pendências relevantes para o próximo mês. Esse ritual é parte do que torna o produto um hábito, não uma obrigação.
 
 ---
 
@@ -218,7 +218,7 @@ Integrações externas (Pluggy, provedores de IA) usam as **chaves do próprio u
 - Cada usuário é dono das próprias conexões.
 - Os segredos ficam no **keychain do sistema operacional**, nunca em texto plano, nunca num servidor.
 
-Detalhe crucial de arquitetura: a Pluggy e a maioria dos provedores assumem um "servidor seguro" para guardar segredos. No Quibo, **o backend Rust do Tauri faz esse papel localmente** — é o "servidor seguro" de cada usuário, na própria máquina. Isso resolve a tensão sem comprometer o local-first.
+Detalhe crucial de arquitetura: a Pluggy e a maioria dos provedores assumem um "servidor seguro" para guardar segredos. No Gestão de Contabilidade, **o backend Rust do Tauri faz esse papel localmente** — é o "servidor seguro" de cada usuário, na própria máquina. Isso resolve a tensão sem comprometer o local-first.
 
 ---
 
@@ -226,7 +226,7 @@ Detalhe crucial de arquitetura: a Pluggy e a maioria dos provedores assumem um "
 
 ### Público primário: o autor
 
-O Quibo é construído **para o próprio autor** resolver a própria dor. Toda decisão de UX prioriza o uso diário do autor. Isso é uma força, não uma limitação — produtos feitos para uma pessoa real costumam ser melhores que produtos feitos para uma persona genérica.
+O Gestão de Contabilidade é construído **para o próprio autor** resolver a própria dor. Toda decisão de UX prioriza o uso diário do autor. Isso é uma força, não uma limitação — produtos feitos para uma pessoa real costumam ser melhores que produtos feitos para uma persona genérica.
 
 ### Público secundário: qualquer pessoa, sem promessa
 
@@ -252,7 +252,7 @@ Resolução para o v1: **desktop local-first, mirando quem é técnico o suficie
 
 ## 8. Mapa de domínios
 
-Os domínios financeiros do Quibo, em alto nível. O detalhamento de cada um está no documento 02 (Estrutura de Dados).
+Os domínios financeiros do Gestão de Contabilidade, em alto nível. O detalhamento de cada um está no documento 02 (Estrutura de Dados).
 
 | Domínio | Natureza | Papel | Doc |
 |---|---|---|---|
@@ -291,7 +291,7 @@ Usuário
 
 ## 9. Os pilares de inteligência
 
-O Quibo combina três fontes de inteligência, cada uma no seu papel — a separação é deliberada (ver P8).
+O Gestão de Contabilidade combina três fontes de inteligência, cada uma no seu papel — a separação é deliberada (ver P8).
 
 ### Pilar 1 — Cálculo determinístico (local, confiável)
 
@@ -309,7 +309,7 @@ O LLM recebe **fatos já calculados** (não dado bruto para fazer conta) e produ
 
 ## 10. Mapa de documentos de contexto
 
-Este pacote é a base de contexto de ponta a ponta do Quibo. Ordem de leitura recomendada: 00 → 01 → 02 → demais conforme necessidade.
+Este pacote é a base de contexto de ponta a ponta do Gestão de Contabilidade. Ordem de leitura recomendada: 00 → 01 → 02 → demais conforme necessidade.
 
 | Doc | Título | Cobre |
 |---|---|---|
@@ -353,7 +353,7 @@ Este pacote é a base de contexto de ponta a ponta do Quibo. Ordem de leitura re
 - Multi-usuário / multi-tenant.
 - Sincronização em nuvem hospedada por nós.
 - App mobile (até haver demanda real).
-- Pagamentos / Pix via Pluggy (o Quibo lê, não move dinheiro).
+- Pagamentos / Pix via Pluggy (o Gestão de Contabilidade lê, não move dinheiro).
 
 ---
 
@@ -407,7 +407,7 @@ Local-first + IA + Pluggy + investimentos é muita superfície. Mitigação: o v
 
 Como é ferramenta pessoal, as métricas de sucesso são pessoais, não de negócio:
 
-1. **O autor abandonou o Excel.** Critério número um. Se o Quibo não substituir a planilha no uso real, falhou.
+1. **O autor abandonou o Excel.** Critério número um. Se o Gestão de Contabilidade não substituir a planilha no uso real, falhou.
 2. **Fechar o mês leva minutos, não horas.** O ritual mensal é leve.
 3. **Registrar um gasto é instantâneo.** Atrito de captura próximo de zero (idealmente, com Pluggy, quase nenhum).
 4. **A home responde "estou bem?" em 2 segundos.** O herói + a frase humana bastam.
@@ -433,12 +433,12 @@ Não são métricas de DAU, retenção ou receita. São métricas de **utilidade
 | **Pluggy** | Plataforma de Open Finance brasileira que importa dados bancários. Usada via chave pessoal do usuário. |
 | **Item (Pluggy)** | Uma conexão com uma instituição financeira no modelo da Pluggy. |
 | **Connect Token** | Token de escopo reduzido da Pluggy, usado pelo widget no cliente, gerado pelo backend local. |
-| **Mês de trabalho × mês de pagamento** | Convenção: renda recebida no mês M refere-se ao trabalho de M−1. No Quibo, é um offset explícito por compromisso. |
+| **Mês de trabalho × mês de pagamento** | Convenção: renda recebida no mês M refere-se ao trabalho de M−1. No Gestão de Contabilidade, é um offset explícito por compromisso. |
 | **Persona** | Recorte de contexto financeiro (pessoal, PJ, família) vinculável a quase tudo. |
 | **Movimento (insight)** | Ação contextual sugerida pelo motor de insights conforme o estado do mês (guardar, cortar, investir, permitir um gosto). |
 | **"Permitir um gosto"** | Movimento de insight que abençoa explicitamente um gasto de prazer quando há sobra — diferencial emocional do produto. |
 | **Tauri** | Framework para apps desktop com frontend web e backend Rust, binário leve. |
-| **Drizzle** | ORM TypeScript usado sobre SQLite no Quibo (no lugar do Prisma). |
+| **Drizzle** | ORM TypeScript usado sobre SQLite no Gestão de Contabilidade (no lugar do Prisma). |
 
 ---
 

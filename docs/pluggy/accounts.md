@@ -33,7 +33,7 @@ Lista de contas vinculadas a um item. Retornada por `GET /accounts?itemId={id}`.
 
 ## Observações
 
-- `balance` é float na API. O Quibo converte para centavos inteiros: `round(balance * 100)`.
+- `balance` é float na API. O Gestão de Contabilidade converte para centavos inteiros: `round(balance * 100)`.
 - Para cartões, `balance` representa o total da fatura atual (o que foi gasto), não o disponível.
 - O mesmo `number` pode aparecer em duas contas do mesmo banco (ex: conta corrente e poupança com mesma agência/conta).
 - `taxNumber` do titular está presente na conta corrente, ausente nos cartões.

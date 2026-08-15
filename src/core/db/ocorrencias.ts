@@ -4,7 +4,7 @@ import { getSqlite } from "./client";
 
 // ─── Materialização de ocorrências ────────────────────────────────────────────
 //
-// O Quibo guarda REGRAS (modelos) e OCORRÊNCIAS na mesma tabela `transactions`:
+// O Gestão de Contabilidade guarda REGRAS (modelos) e OCORRÊNCIAS na mesma tabela `transactions`:
 //
 //   modelo      → is_template = 1   (a receita, o custo fixo, a dívida cadastrada)
 //   ocorrência  → is_template = 0   (o que de fato entra/sai naquela competência)

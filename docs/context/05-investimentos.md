@@ -1,12 +1,12 @@
-# Quibo — Investimentos & Mercado
+# Gestão de Contabilidade — Investimentos & Mercado
 
-> Como o Quibo acompanha o patrimônio investido, traz cotações de mercado e oferece "opções bacanas" de investimento — sempre como acompanhamento e opções, nunca como corretora ou recomendação definitiva. Pré-requisitos: [00](./00-visao-geral-produto.md), [02](./02-estrutura-de-dados.md), [04](./04-integracao-ia-byok.md), [06](./06-motor-de-insights.md).
+> Como o Gestão de Contabilidade acompanha o patrimônio investido, traz cotações de mercado e oferece "opções bacanas" de investimento — sempre como acompanhamento e opções, nunca como corretora ou recomendação definitiva. Pré-requisitos: [00](./00-visao-geral-produto.md), [02](./02-estrutura-de-dados.md), [04](./04-integracao-ia-byok.md), [06](./06-motor-de-insights.md).
 
 ---
 
 ## Sumário
 
-1. [Papel dos investimentos no Quibo](#1-papel-dos-investimentos-no-quibo)
+1. [Papel dos investimentos no Gestão de Contabilidade](#1-papel-dos-investimentos-no-quibo)
 2. [Filosofia: acompanhar, não aconselhar](#2-filosofia-acompanhar-não-aconselhar)
 3. [Modelo de dados](#3-modelo-de-dados)
 4. [Tipos de investimento](#4-tipos-de-investimento)
@@ -24,12 +24,12 @@
 
 ---
 
-## 1. Papel dos investimentos no Quibo
+## 1. Papel dos investimentos no Gestão de Contabilidade
 
 O domínio de investimentos cumpre dois papéis:
 
 1. **Patrimônio:** mostrar quanto o usuário tem investido e como está rendendo — uma foto do patrimônio que complementa o fluxo de caixa mensal.
-2. **Destino da sobra:** quando o mês fecha com sobra (estado `SOBRA_BOA`, doc 06), investir é um dos **movimentos** sugeridos — e o Quibo precisa oferecer **opções bacanas** de forma inteligente.
+2. **Destino da sobra:** quando o mês fecha com sobra (estado `SOBRA_BOA`, doc 06), investir é um dos **movimentos** sugeridos — e o Gestão de Contabilidade precisa oferecer **opções bacanas** de forma inteligente.
 
 ### Onde se encaixa
 
@@ -47,7 +47,7 @@ Investimentos **não fazem parte do v1** (00 §11) — entram em v1.5/v2, depois
 
 ## 2. Filosofia: acompanhar, não aconselhar
 
-O Quibo **não é** uma corretora, **não é** um robô-trader, **não é** um consultor de investimentos registrado. Ele:
+O Gestão de Contabilidade **não é** uma corretora, **não é** um robô-trader, **não é** um consultor de investimentos registrado. Ele:
 
 - **Acompanha** o que o usuário já tem (carteira manual ou via Pluggy).
 - **Calcula** valor de mercado, rentabilidade, alocação — determinístico (Pilar 1, P8).
@@ -55,8 +55,8 @@ O Quibo **não é** uma corretora, **não é** um robô-trader, **não é** um c
 
 ### Por que essa linha é firme
 
-- **Legal/ético:** recomendação de investimento específica é atividade regulada. O Quibo, sendo ferramenta pessoal open-source sem registro, **não** entra nesse terreno.
-- **Confiança:** prometer "dicas que enriquecem" é o caminho de apps duvidosos. O Quibo é honesto: ele organiza e mostra opções, a decisão é do usuário.
+- **Legal/ético:** recomendação de investimento específica é atividade regulada. O Gestão de Contabilidade, sendo ferramenta pessoal open-source sem registro, **não** entra nesse terreno.
+- **Confiança:** prometer "dicas que enriquecem" é o caminho de apps duvidosos. O Gestão de Contabilidade é honesto: ele organiza e mostra opções, a decisão é do usuário.
 - **Coerência com P8:** a IA **nunca** decide nem calcula retorno futuro; ela **explica** análises determinísticas e fala em **opções**, não certezas (ver doc 04 §13).
 
 ### A régua mental
@@ -131,7 +131,7 @@ Derivar evita inconsistência: a carteira sempre reflete a última cotação + o
 
 ## 5. Dados de mercado (cotações)
 
-Para mostrar valor atual e rentabilidade, o Quibo busca cotações — coerente com local-first e BYOK.
+Para mostrar valor atual e rentabilidade, o Gestão de Contabilidade busca cotações — coerente com local-first e BYOK.
 
 ### Princípios
 
@@ -224,7 +224,7 @@ A Pluggy cobre **Investments** e **Investment Transactions** (doc 03 §7), entã
 
 > Com Pluggy conectada, a carteira pode ser quase 100% automática — coerente com a promessa de "app que já sabe" (doc 03 §1).
 
-Quando não há Pluggy, o usuário cadastra manualmente e o Quibo busca cotações via provedor de mercado (§5).
+Quando não há Pluggy, o usuário cadastra manualmente e o Gestão de Contabilidade busca cotações via provedor de mercado (§5).
 
 ---
 
@@ -247,7 +247,7 @@ reservaOk = mesesCobertos >= metaReserva   // ex.: 3 a 6 meses (configurável)
 | sobra boa **e** sem reserva | "Antes de investir, vale formar uma reserva. Guardar R$ X cobriria N meses." |
 | sobra boa **e** reserva ok | "Reserva tá de boa. Dá pra investir/curtir parte da sobra." |
 
-Essa ordem (reserva → investir → curtir) é responsável e educativa, e diferencia o Quibo de apps que empurram investimento cedo demais.
+Essa ordem (reserva → investir → curtir) é responsável e educativa, e diferencia o Gestão de Contabilidade de apps que empurram investimento cedo demais.
 
 ---
 
@@ -338,7 +338,7 @@ O motor (doc 06 §10) prioriza e mostra no máximo 1–3. A IA redige (doc 04 §
 
 Reforço dos limites (cruzando doc 04 §13):
 
-- **Nunca** apresentar o Quibo como consultor de investimentos. Disclaimer leve e honesto na seção: "O Quibo organiza e mostra opções. As decisões e os riscos são seus."
+- **Nunca** apresentar o Gestão de Contabilidade como consultor de investimentos. Disclaimer leve e honesto na seção: "O Gestão de Contabilidade organiza e mostra opções. As decisões e os riscos são seus."
 - **Nunca** projetar retorno futuro como certeza. Rentabilidade passada é histórico, não promessa.
 - **Nunca** indicar produto específico de instituição.
 - **IA fala em opções**, não em ordens. Validação de saída (doc 04 §13) garante que números citados batem com os calculados.

@@ -1,6 +1,6 @@
-# Quibo — Ideias de Melhoria & Roadmap
+# Gestão de Contabilidade — Ideias de Melhoria & Roadmap
 
-> O futuro do Quibo: licença, fases de entrega, backlog priorizado, ideias de produto que valem a pena, riscos consolidados e o que deliberadamente NÃO fazer. Pré-requisitos: todos os documentos anteriores (00–07).
+> O futuro do Gestão de Contabilidade: licença, fases de entrega, backlog priorizado, ideias de produto que valem a pena, riscos consolidados e o que deliberadamente NÃO fazer. Pré-requisitos: todos os documentos anteriores (00–07).
 
 ---
 
@@ -26,7 +26,7 @@
 
 ## 1. Como ler este documento
 
-Este é um documento **vivo de direção**, não um compromisso. Como o Quibo é ferramenta pessoal (00 §7), o roadmap serve ao autor: o que fazer primeiro para abandonar o Excel, e o que guardar para depois sem inflar o v1.
+Este é um documento **vivo de direção**, não um compromisso. Como o Gestão de Contabilidade é ferramenta pessoal (00 §7), o roadmap serve ao autor: o que fazer primeiro para abandonar o Excel, e o que guardar para depois sem inflar o v1.
 
 Prioridade-mãe: **o v1 enxuto e excelente** (00 §11). Toda ideia aqui é avaliada por uma régua: *isso ajuda o autor a largar a planilha, ou é vaidade de feature?*
 
@@ -44,7 +44,7 @@ O repositório é público desde o início (00 §6). Duas decisões: **qual lice
 | **AGPL-3.0** | copyleft forte; quem hospedar como serviço deve abrir o código | protege contra alguém transformar em SaaS fechado |
 | **Apache-2.0** | permissiva + patente | como MIT, com cláusula de patente |
 
-**Recomendação:** como há uma *possibilidade* remota de um dia oferecer versão hospedada (mesmo que improvável), **AGPL-3.0** protege essa porta sem custo para o uso pessoal/self-host. Se o objetivo for puramente "doar e que façam o que quiserem", **MIT**. Para o Quibo (pessoal, mas com a fresta de futuro), **AGPL** é o default prudente. Decisão final é do autor (§13).
+**Recomendação:** como há uma *possibilidade* remota de um dia oferecer versão hospedada (mesmo que improvável), **AGPL-3.0** protege essa porta sem custo para o uso pessoal/self-host. Se o objetivo for puramente "doar e que façam o que quiserem", **MIT**. Para o Gestão de Contabilidade (pessoal, mas com a fresta de futuro), **AGPL** é o default prudente. Decisão final é do autor (§13).
 
 ### Postura de suporte: "source-available sem garantia"
 
@@ -65,7 +65,7 @@ O repositório é público desde o início (00 §6). Duas decisões: **qual lice
 
 ### v1 — "Largar o Excel" (núcleo)
 
-Objetivo: o autor gerencia tudo no Quibo, sem planilha.
+Objetivo: o autor gerencia tudo no Gestão de Contabilidade, sem planilha.
 
 - Home "Mês" (estados positivo/apertado/vermelho).
 - Compromissos: Salário, Custo de Vida, Dívida, Cartão (cadastro + confirmação).
@@ -292,7 +292,7 @@ Pessoais, não de negócio (00 §14):
 5. O autor **confia nos números** (nunca confere na mão).
 6. Quem instalou (técnico) **roda sem ajuda**.
 
-Sinais de alerta (anti-métricas): se o autor voltar ao Excel para "algo que o Quibo não faz bem", isso é um bug de produto a investigar — não uma feature faltando.
+Sinais de alerta (anti-métricas): se o autor voltar ao Excel para "algo que o Gestão de Contabilidade não faz bem", isso é um bug de produto a investigar — não uma feature faltando.
 
 ---
 
@@ -315,7 +315,7 @@ Decisões que ainda dependem do autor:
 
 ## 14. Anti-roadmap: o que NÃO fazer
 
-Tão importante quanto o roadmap. O Quibo **não** vai:
+Tão importante quanto o roadmap. O Gestão de Contabilidade **não** vai:
 
 - Virar **SaaS** hospedado por nós (custo, responsabilidade, contradiz local-first).
 - Guardar **dado de terceiros** num servidor nosso.
@@ -334,7 +334,7 @@ Tão importante quanto o roadmap. O Quibo **não** vai:
 
 ## 15. Marcos sugeridos
 
-Uma sequência realista, do zero ao Quibo útil.
+Uma sequência realista, do zero ao Gestão de Contabilidade útil.
 
 ```
 Marco 1 — Esqueleto
@@ -363,8 +363,8 @@ Marco 7 — Profundidade (v2)
   investimentos + metas + backup e2e
 ```
 
-O **Marco 4** é a linha de chegada do que importa: a partir dele, o Quibo cumpre sua razão de existir. Tudo depois é melhoria.
+O **Marco 4** é a linha de chegada do que importa: a partir dele, o Gestão de Contabilidade cumpre sua razão de existir. Tudo depois é melhoria.
 
 ---
 
-*Fim do documento 08 e do pacote de contexto do Quibo. Anterior: [07 — Design System & UX](./07-design-system-ux.md). Índice: [00 — Visão Geral](./00-visao-geral-produto.md).*
+*Fim do documento 08 e do pacote de contexto do Gestão de Contabilidade. Anterior: [07 — Design System & UX](./07-design-system-ux.md). Índice: [00 — Visão Geral](./00-visao-geral-produto.md).*

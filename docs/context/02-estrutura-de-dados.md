@@ -1,4 +1,4 @@
-# Quibo — Estrutura de Dados
+# Gestão de Contabilidade — Estrutura de Dados
 
 > Como o dado é modelado, armazenado e mantido íntegro. Define o modelo conceitual (compromisso × lançamento), o schema SQLite/Drizzle, as regras de integridade, os cálculos derivados e a reconciliação esperado×realizado. Pré-requisitos: [00 — Visão Geral](./00-visao-geral-produto.md) e [01 — Arquitetura](./01-arquitetura-desktop.md).
 
@@ -27,7 +27,7 @@
 
 ## 1. Filosofia do modelo
 
-O sistema antigo do Quibo tinha um problema central: **conceitos demais**. Onze entidades e, principalmente, **quatro formas diferentes de responder "isso está pago?"** — `Transaction.status`, `Invoice.status`, `DebtInstallment.status` e `MonthlyPaymentRecord.isPaid`. Os sintomas estavam documentados: lógica anti-duplicata na geração de transações, sincronização manual entre registro de pagamento e transação de fatura, limpeza manual de registros órfãos.
+O sistema antigo do Gestão de Contabilidade tinha um problema central: **conceitos demais**. Onze entidades e, principalmente, **quatro formas diferentes de responder "isso está pago?"** — `Transaction.status`, `Invoice.status`, `DebtInstallment.status` e `MonthlyPaymentRecord.isPaid`. Os sintomas estavam documentados: lógica anti-duplicata na geração de transações, sincronização manual entre registro de pagamento e transação de fatura, limpeza manual de registros órfãos.
 
 O novo modelo resolve isso com duas ideias:
 
@@ -275,7 +275,7 @@ Compromisso com terceiros. Quatro tipos.
 
 **Ciclo de fechamento ≠ mês civil:** com `closingDay=10`, a fatura de março cobre 11/02→10/03. O cálculo do total da fatura por ciclo é derivado dos `entries` do cartão naquela janela (ver §11).
 
-> **Decisão de simplificação (vs sistema antigo):** no antigo, `Invoice` e transações de cartão coexistiam **sem sincronização** (fonte de bug). No Quibo, a **fatura é preferencialmente derivada** dos entries do ciclo; `invoices` materializadas existem só quando o usuário quer registrar um total manual. A regra: derivar por padrão, materializar por exceção.
+> **Decisão de simplificação (vs sistema antigo):** no antigo, `Invoice` e transações de cartão coexistiam **sem sincronização** (fonte de bug). No Gestão de Contabilidade, a **fatura é preferencialmente derivada** dos entries do ciclo; `invoices` materializadas existem só quando o usuário quer registrar um total manual. A regra: derivar por padrão, materializar por exceção.
 
 ### 4.5 Lançamento (`entries`) — a tabela central
 
@@ -385,7 +385,7 @@ Quando o usuário conecta a Pluggy (documento 03), o app guarda referências loc
 | `connectorName` | TEXT | nome do banco |
 | `status` | TEXT | estado da conexão |
 | `lastSyncedAt` | TEXT? | |
-| `accountMapJson` | TEXT? | mapeamento conta Pluggy → conta Quibo |
+| `accountMapJson` | TEXT? | mapeamento conta Pluggy → conta Gestão de Contabilidade |
 
 ### 6.2 Transações importadas
 

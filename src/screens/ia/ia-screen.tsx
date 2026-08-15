@@ -9,7 +9,7 @@ import {
   aiObterIntegracao,
 } from "@/core/ipc/ai";
 
-// ─── Tela Quibo IA ────────────────────────────────────────────────────────────
+// ─── Tela IA ──────────────────────────────────────────────────────────────────
 //
 // Chat com o modelo que o usuário configurou (BYOK). Não há nada simulado aqui:
 // ou existe uma chave configurada e a conversa funciona de verdade, ou a tela
@@ -208,7 +208,7 @@ export function IaScreen() {
       </div>
 
       <p className="mt-2 text-xs text-ink-muted">
-        A IA narra os números que o Quibo calculou — ela não recalcula nada. Confira sempre no Extrato.
+        A IA narra os números que o Gestão de Contabilidade calculou — ela não recalcula nada. Confira sempre no Extrato.
       </p>
     </div>
   );
@@ -269,7 +269,7 @@ function SemChaveConfigurada() {
         </div>
         <p className="text-[15px] font-semibold text-ink">Nenhuma IA configurada</p>
         <p className="text-sm text-ink-secondary max-w-md">
-          O Quibo IA usa a sua própria chave — Anthropic, OpenAI, Google ou OpenRouter.
+          A IA usa a sua própria chave — Anthropic, OpenAI, Google ou OpenRouter.
           Ela fica só no seu computador e é usada apenas para responder às suas perguntas.
         </p>
         <Link

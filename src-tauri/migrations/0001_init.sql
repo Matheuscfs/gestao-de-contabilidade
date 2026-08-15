@@ -1,4 +1,4 @@
--- Schema unificado do Quibo
+-- Schema unificado do Gestão de Contabilidade
 -- Em desenvolvimento: `make clear` reinicia o banco com este schema do zero.
 -- Em produção: criar nova migração numerada; nunca editar este arquivo.
 

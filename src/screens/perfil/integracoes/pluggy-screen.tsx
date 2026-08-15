@@ -223,7 +223,7 @@ function ModalRemoverBanco({
         </div>
 
         <p style={{ fontWeight: 500, fontSize: "14px", color: "#3A3F4A", lineHeight: 1.6, marginBottom: "16px" }}>
-          Isso vai remover <strong style={{ fontWeight: 700 }}>{nome}</strong> e apagar permanentemente do Quibo:
+          Isso vai remover <strong style={{ fontWeight: 700 }}>{nome}</strong> e apagar permanentemente do Gestão de Contabilidade:
         </p>
 
         <ul style={{ margin: "0 0 18px 0", padding: "0 0 0 20px", display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -343,7 +343,7 @@ function ModalAdicionarBanco({
         {fase === "inicial" && (
           <>
             <p style={{ fontSize: "14px", fontWeight: 500, color: "#5B616E", lineHeight: 1.55, marginBottom: "20px" }}>
-              Clique abaixo para abrir o MeuPluggy no seu browser. Faça login, conecte o banco e o Quibo detecta automaticamente.
+              Clique abaixo para abrir o MeuPluggy no seu browser. Faça login, conecte o banco e o Gestão de Contabilidade detecta automaticamente.
             </p>
             <button
               onClick={handleConectarMeuPluggy}
@@ -368,7 +368,7 @@ function ModalAdicionarBanco({
               Aguardando conexão no MeuPluggy…
             </p>
             <p style={{ fontSize: "13px", fontWeight: 500, color: "#5B616E", lineHeight: 1.5 }}>
-              O browser abriu com o MeuPluggy. Faça login, escolha o banco e autorize a leitura. O Quibo detecta quando concluir (até 5 min).
+              O browser abriu com o MeuPluggy. Faça login, escolha o banco e autorize a leitura. O Gestão de Contabilidade detecta quando concluir (até 5 min).
             </p>
             <button
               onClick={() => setFase("manual")}
@@ -622,7 +622,7 @@ function ModalGerenciar({
         </div>
 
         <p style={{ fontWeight: 500, fontSize: "14px", color: "#5B616E", lineHeight: 1.55, marginBottom: "22px" }}>
-          Desconectar remove as chaves de API deste computador. Os lançamentos já importados permanecem no Quibo.
+          Desconectar remove as chaves de API deste computador. Os lançamentos já importados permanecem no Gestão de Contabilidade.
           Para revogar o acesso bancário, vá ao <a href="#" onClick={(e) => { e.preventDefault(); open("https://meu.pluggy.ai"); }} style={{ color: "#4078E6", fontWeight: 600, textDecoration: "none" }}>MeuPluggy</a>.
         </p>
 
@@ -799,7 +799,7 @@ function ViewNaoConfigurado({ onConectar }: { onConectar: () => void }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <PluggyLogo />
         <div style={{ fontWeight: 500, fontSize: "13px", color: "#5B616E", marginTop: "5px" }}>
-          conecte seus bancos uma vez e o Quibo lê sozinho, todo dia
+          conecte seus bancos uma vez e o Gestão de Contabilidade lê sozinho, todo dia
         </div>
       </div>
       <button
@@ -879,7 +879,7 @@ function ViewConectado({
           <IcoEscudo />
         </div>
         <div style={{ fontWeight: 500, fontSize: "13.5px", color: "#1F3D7A", lineHeight: 1.5 }}>
-          Você conecta seus bancos no <strong style={{ fontWeight: 700 }}>MeuPluggy</strong> — um app gratuito da Pluggy, onde você controla e revoga o acesso quando quiser. O Quibo só lê. Nada vai pra fora deste computador.
+          Você conecta seus bancos no <strong style={{ fontWeight: 700 }}>MeuPluggy</strong> — um app gratuito da Pluggy, onde você controla e revoga o acesso quando quiser. O Gestão de Contabilidade só lê. Nada vai pra fora deste computador.
         </div>
       </div>
 
@@ -1144,8 +1144,8 @@ export function PluggyIntegracaoScreen() {
         </div>
         <div style={{ fontWeight: 500, fontSize: "15px", color: "#5B616E", marginTop: "6px" }}>
           {estadoTela === "configurado"
-            ? "O Quibo lê seus lançamentos reais pelo MeuPluggy — você só confirma. A gente nunca move seu dinheiro."
-            : "O Quibo lê seus lançamentos reais pelo MeuPluggy — você só confirma."}
+            ? "O Gestão de Contabilidade lê seus lançamentos reais pelo MeuPluggy — você só confirma. A gente nunca move seu dinheiro."
+            : "O Gestão de Contabilidade lê seus lançamentos reais pelo MeuPluggy — você só confirma."}
         </div>
       </div>
 

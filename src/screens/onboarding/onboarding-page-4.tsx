@@ -172,7 +172,7 @@ export function OnboardingMetaScreen() {
         </h1>
 
         <p className="font-medium text-[15px] text-[#5B616E] mt-[10px] leading-relaxed">
-          Pode marcar mais de um — o Quibo vai destacar o que mais importa pra você.
+          Pode marcar mais de um — o Gestão de Contabilidade vai destacar o que mais importa pra você.
         </p>
 
         <div className="w-full mt-[22px] flex flex-col gap-[10px]">

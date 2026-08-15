@@ -67,7 +67,7 @@ pub async fn buscar_recorrentes_de_contas(
 // ─── Enriquecimento de Transação ─────────────────────────────────────────────
 
 /// Enriquece uma transação com merchant, categoria e descrição melhorada.
-/// Reduz trabalho manual de categorização no Quibo.
+/// Reduz trabalho manual de categorização no Gestão de Contabilidade.
 pub async fn enriquecer_transacao(
     estado: &EstadoAuth,
     transaction_id: &str,

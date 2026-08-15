@@ -54,7 +54,7 @@ export function ConfiguracoesScreen() {
       acao: () => navigate("/perfil"),
     },
     {
-      label: "Sobre o Quibo",
+      label: "Sobre o Gestão de Contabilidade",
       desc: "Versão, licença e informações técnicas",
       acao: () => setSobreAberto((v) => !v),
     },
@@ -91,7 +91,7 @@ export function ConfiguracoesScreen() {
                   strokeLinejoin="round"
                   className={[
                     "text-ink-muted group-hover:text-ink transition-transform shrink-0",
-                    label === "Sobre o Quibo" && sobreAberto ? "rotate-90" : "",
+                    label === "Sobre o Gestão de Contabilidade" && sobreAberto ? "rotate-90" : "",
                   ].join(" ")}
                 >
                   <path d="m9 18 6-6-6-6" />
@@ -103,7 +103,7 @@ export function ConfiguracoesScreen() {
               )}
             </button>
 
-            {label === "Sobre o Quibo" && sobreAberto && (
+            {label === "Sobre o Gestão de Contabilidade" && sobreAberto && (
               <div className="mt-2 bg-surface border border-border rounded-xl px-5 py-4 space-y-3">
                 <Linha rotulo="Versão" valor={versao ?? "—"} />
                 <Linha rotulo="Licença" valor="Uso pessoal" />

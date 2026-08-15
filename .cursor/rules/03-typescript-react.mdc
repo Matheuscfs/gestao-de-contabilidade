@@ -1,10 +1,10 @@
 ---
-description: Padrão de código TypeScript e React para o Quibo
+description: Padrão de código TypeScript e React para o Gestão de Contabilidade
 globs: **/*.{ts,tsx}
 alwaysApply: false
 ---
 
-# TypeScript & React — Quibo
+# TypeScript & React — Gestão de Contabilidade
 
 ## Naming conventions
 

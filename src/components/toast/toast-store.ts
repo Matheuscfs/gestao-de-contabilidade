@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 /**
- * Store de toasts do Quibo.
+ * Store de toasts do Gestão de Contabilidade.
  *
  * Vive fora da árvore React (zustand) de propósito: assim qualquer camada —
  * inclusive o tratamento centralizado de erros (`@/core/errors`) e código que

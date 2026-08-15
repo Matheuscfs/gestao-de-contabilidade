@@ -1,6 +1,6 @@
-# Quibo — Motor de Insights com IA
+# Gestão de Contabilidade — Motor de Insights com IA
 
-> Como o Quibo decide a coisa certa para dizer a cada mês. Define a máquina de estados do "clima financeiro", o catálogo de movimentos por estado, a divisão entre cálculo determinístico e redação por IA, e os prompts certeiros. Pré-requisitos: [00](./00-visao-geral-produto.md), [02](./02-estrutura-de-dados.md), [04](./04-integracao-ia-byok.md), [05](./05-investimentos.md).
+> Como o Gestão de Contabilidade decide a coisa certa para dizer a cada mês. Define a máquina de estados do "clima financeiro", o catálogo de movimentos por estado, a divisão entre cálculo determinístico e redação por IA, e os prompts certeiros. Pré-requisitos: [00](./00-visao-geral-produto.md), [02](./02-estrutura-de-dados.md), [04](./04-integracao-ia-byok.md), [05](./05-investimentos.md).
 
 ---
 
@@ -65,7 +65,7 @@ Isso mantém a promessa de simplicidade (P1): o app diz **a coisa certa**, não 
 
 ### Por que não um painel
 
-Apps financeiros costumam jogar dez gráficos na cara do usuário e deixá-lo decidir o que fazer. Isso é carga cognitiva, não ajuda. O Quibo faz o trabalho de **curadoria**: olha tudo, e mostra só o que importa **agora**, dado o clima.
+Apps financeiros costumam jogar dez gráficos na cara do usuário e deixá-lo decidir o que fazer. Isso é carga cognitiva, não ajuda. O Gestão de Contabilidade faz o trabalho de **curadoria**: olha tudo, e mostra só o que importa **agora**, dado o clima.
 
 ### Princípios do motor
 
@@ -375,7 +375,7 @@ Não force insight. Uma linha leve ou nada. Ex.: "Mês ainda no começo — sem 
 
 ## 13. O ritual de fechar o mês
 
-O momento em que o motor mais brilha — e que diferencia o Quibo de uma planilha (que nunca "fecha").
+O momento em que o motor mais brilha — e que diferencia o Gestão de Contabilidade de uma planilha (que nunca "fecha").
 
 ### O fluxo
 
@@ -414,7 +414,7 @@ Tudo isso é **regra simples e local** (ajuste de prioridade, flags), não um mo
 
 ### O movimento "permitir um gosto" como assinatura emocional
 
-Vale destacar: a maioria dos apps financeiros só sabe cortar e poupar — gera culpa. O Quibo **abençoa o prazer quando dá** ("sobrou bem, pode curtir"). Isso é um diferencial emocional real e deve ser tratado com carinho na redação e na priorização.
+Vale destacar: a maioria dos apps financeiros só sabe cortar e poupar — gera culpa. O Gestão de Contabilidade **abençoa o prazer quando dá** ("sobrou bem, pode curtir"). Isso é um diferencial emocional real e deve ser tratado com carinho na redação e na priorização.
 
 ---
 

@@ -267,7 +267,7 @@ async fn conversar_openai_compat(
         // O OpenRouter usa esses cabeçalhos só para atribuição do app.
         req = req
             .header("HTTP-Referer", "https://quibo.app")
-            .header("X-Title", "Quibo");
+            .header("X-Title", "Gestão de Contabilidade");
     }
 
     let resp = req.send().await.map_err(|e| erro_rede(provedor, e))?;

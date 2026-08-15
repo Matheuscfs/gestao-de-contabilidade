@@ -63,7 +63,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: "Quibo ${{ github.ref_name }}"
+          releaseName: "Gestão de Contabilidade ${{ github.ref_name }}"
           releaseBody: |
             Veja os [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) para detalhes.
           releaseDraft: true

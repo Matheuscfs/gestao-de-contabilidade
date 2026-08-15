@@ -63,5 +63,5 @@ pub fn run() {
             commands::ai::ai_conversar,
         ])
         .run(tauri::generate_context!())
-        .expect("Erro ao iniciar o Quibo");
+        .expect("Erro ao iniciar o Gestão de Contabilidade");
 }

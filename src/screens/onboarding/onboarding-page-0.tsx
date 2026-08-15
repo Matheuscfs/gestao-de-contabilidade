@@ -9,12 +9,12 @@ export function OnboardingBoasVindasScreen() {
       <div className="w-full max-w-[440px] flex flex-col items-center text-center">
         <img
           src={quiboMark}
-          alt="Quibo"
+          alt="Gestão de Contabilidade"
           className="w-[72px] h-[72px] object-contain"
         />
 
         <h1 className="font-bold text-[34px] leading-tight tracking-[-0.02em] text-ink mt-6">
-          Oi! Bem-vindo ao Quibo.
+          Oi! Bem-vindo ao Gestão de Contabilidade.
         </h1>
 
         <p className="font-medium text-base text-[#5B616E] mt-3 leading-relaxed">

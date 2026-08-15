@@ -1,10 +1,10 @@
 ---
-description: Design tokens de cor, tipografia e espaçamento do Quibo — nunca use valores arbitrários de cor
+description: Design tokens de cor, tipografia e espaçamento do Gestão de Contabilidade — nunca use valores arbitrários de cor
 globs: **/*.{ts,tsx,css,html}
 alwaysApply: false
 ---
 
-# Design Tokens — Quibo
+# Design Tokens — Gestão de Contabilidade
 
 Use sempre tokens semânticos. Valores arbitrários de cor (`#abc123`, `rgb(...)`) são proibidos no código de UI.
 

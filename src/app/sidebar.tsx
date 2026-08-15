@@ -133,7 +133,7 @@ const NAV = [
   },
   { to: "/analise", id: "analise", label: "Análise", icon: "bar-chart" },
   { to: "/empresas", id: "empresas", label: "Empresas", icon: "building" },
-  { to: "/ia", id: "ia", label: "Quibo IA", icon: "sparkles" },
+  { to: "/ia", id: "ia", label: "IA", icon: "sparkles" },
 ] as const;
 
 export function Sidebar() {
@@ -145,7 +145,7 @@ export function Sidebar() {
     <aside className="drag-region shrink-0 w-[68px] flex flex-col items-center bg-surface border border-border rounded-[22px] py-3.5 shadow-xs">
       {/* Logo */}
       <div className="no-drag mb-3.5">
-        <img src={quiboMark} alt="Quibo" className="w-9 h-9 object-contain" />
+        <img src={quiboMark} alt="Gestão de Contabilidade" className="w-9 h-9 object-contain" />
       </div>
 
       {/* Navegação */}

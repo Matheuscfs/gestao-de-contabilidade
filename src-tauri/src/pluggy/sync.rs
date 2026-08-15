@@ -17,7 +17,7 @@ use super::products;
 
 // ─── Catálogo de categorias ───────────────────────────────────────────────────
 
-/// Índice nome → id das categorias do Quibo, carregado uma vez por sincronização.
+/// Índice nome → id das categorias do Gestão de Contabilidade, carregado uma vez por sincronização.
 /// O de-para em `categorias.rs` devolve o *nome* da categoria; é aqui que ele
 /// vira a chave estrangeira gravada em `transactions.category_id`.
 struct CatalogoCategorias(std::collections::HashMap<String, String>);
@@ -833,7 +833,7 @@ fn upsert_investimentos(
     Ok(total)
 }
 
-/// Espelha os empréstimos/financiamentos da Pluggy como dívidas do Quibo
+/// Espelha os empréstimos/financiamentos da Pluggy como dívidas do Gestão de Contabilidade
 /// (`type='DEBT'`, `is_template = 1`), que é o formato que a tela de Dívidas lê.
 ///
 /// Importante: estas dívidas **não geram parcelas automáticas**. O pagamento da

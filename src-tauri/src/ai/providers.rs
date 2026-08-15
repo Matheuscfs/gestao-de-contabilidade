@@ -52,7 +52,7 @@ fn erro_status(status: reqwest::StatusCode, corpo: &str) -> AppError {
 
 /// Heurística por nome: identifica modelos que NÃO servem para insights de texto
 /// (geração de imagem/vídeo/áudio, TTS, embeddings, transcrição, etc.).
-/// O Quibo só precisa de modelos de chat/raciocínio que produzem texto.
+/// O Gestão de Contabilidade só precisa de modelos de chat/raciocínio que produzem texto.
 /// Observação: "vision" NÃO é filtrado — entrada de imagem ajuda na análise.
 fn parece_nao_textual(nome: &str) -> bool {
     let n = nome.to_lowercase();

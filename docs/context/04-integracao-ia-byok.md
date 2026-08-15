@@ -1,6 +1,6 @@
-# Quibo — Integração com IA (BYOK)
+# Gestão de Contabilidade — Integração com IA (BYOK)
 
-> Como o Quibo usa modelos de IA (OpenAI, Anthropic, locais) com a chave do próprio usuário, mantendo a regra de ouro: **a IA é a voz, nunca a calculadora**. Define a abstração de provedores, o que a IA recebe (e o que nunca recebe), privacidade, custo, guardrails e configuração. Pré-requisitos: [00](./00-visao-geral-produto.md), [01](./01-arquitetura-desktop.md), [02](./02-estrutura-de-dados.md).
+> Como o Gestão de Contabilidade usa modelos de IA (OpenAI, Anthropic, locais) com a chave do próprio usuário, mantendo a regra de ouro: **a IA é a voz, nunca a calculadora**. Define a abstração de provedores, o que a IA recebe (e o que nunca recebe), privacidade, custo, guardrails e configuração. Pré-requisitos: [00](./00-visao-geral-produto.md), [01](./01-arquitetura-desktop.md), [02](./02-estrutura-de-dados.md).
 
 ---
 
@@ -13,7 +13,7 @@
 5. [O contrato de dados: o que a IA recebe](#5-o-contrato-de-dados-o-que-a-ia-recebe)
 6. [Casos de uso](#6-casos-de-uso)
 7. [Engenharia de contexto](#7-engenharia-de-contexto)
-8. [A persona e a voz da IA do Quibo](#8-a-persona-e-a-voz-da-ia-do-quibo)
+8. [A persona e a voz da IA do Gestão de Contabilidade](#8-a-persona-e-a-voz-da-ia-do-quibo)
 9. [Privacidade e minimização de dados](#9-privacidade-e-minimização-de-dados)
 10. [Modelo local (Ollama)](#10-modelo-local-ollama)
 11. [Custo e tokens](#11-custo-e-tokens)
@@ -87,7 +87,7 @@ O usuário pluga a **própria chave** do provedor de IA. Consequências (coerent
 
 ### A IA é opcional
 
-Todo o Quibo funciona **sem IA**. O motor de insights determinístico (doc 06) já entrega o essencial em linguagem-template. A IA **eleva** a narrativa e habilita perguntas livres, mas não é dependência.
+Todo o Gestão de Contabilidade funciona **sem IA**. O motor de insights determinístico (doc 06) já entrega o essencial em linguagem-template. A IA **eleva** a narrativa e habilita perguntas livres, mas não é dependência.
 
 ---
 
@@ -107,7 +107,7 @@ interface AIProvider {
 }
 
 interface AIRequest {
-  system: string;              // persona/voz do Quibo
+  system: string;              // persona/voz do Gestão de Contabilidade
   facts: FinancialFacts;       // fatos JÁ calculados (nunca dado bruto)
   userMessage?: string;        // pergunta livre, se houver
   model: string;
@@ -249,7 +249,7 @@ Como montar a chamada para respostas boas, baratas e seguras.
 ### Estrutura da mensagem
 
 ```
-[system]  persona + regras + formato + voz do Quibo
+[system]  persona + regras + formato + voz do Gestão de Contabilidade
 [facts]   JSON de FinancialFacts (mínimo necessário)
 [user]    pergunta livre (opcional)
 ```
@@ -280,14 +280,14 @@ Para a narrativa do mês, 1–2 exemplos no system prompt fixam o tom (curto, hu
 
 ---
 
-## 8. A persona e a voz da IA do Quibo
+## 8. A persona e a voz da IA do Gestão de Contabilidade
 
-A IA fala com a **voz do Quibo** (P4, P6): calorosa, curta, brasileira, sem jargão, sem pânico.
+A IA fala com a **voz do Gestão de Contabilidade** (P4, P6): calorosa, curta, brasileira, sem jargão, sem pânico.
 
 ### System prompt (esboço)
 
 ```
-Você é o assistente do Quibo, um app de finanças pessoais brasileiro.
+Você é o assistente do Gestão de Contabilidade, um app de finanças pessoais brasileiro.
 Sua função é TRADUZIR fatos financeiros já calculados em linguagem humana,
 calorosa e curta — nunca calcular nada.
 
@@ -327,7 +327,7 @@ A tensão central: **mandar dado financeiro para uma API de terceiro contradiz "
 
 ### O contrato de transparência (texto exemplo)
 
-> "Para escrever os resumos, o Quibo envia ao provedor que **você** escolheu apenas números agregados do mês (quanto entrou, saiu, sobrou, e categorias) — nunca seu extrato completo. Prefere que nada saia do computador? Use um modelo local."
+> "Para escrever os resumos, o Gestão de Contabilidade envia ao provedor que **você** escolheu apenas números agregados do mês (quanto entrou, saiu, sobrou, e categorias) — nunca seu extrato completo. Prefere que nada saia do computador? Use um modelo local."
 
 ---
 
@@ -338,7 +338,7 @@ A rota de **privacidade total** e a mais coerente com local-first.
 ### Como funciona
 
 - O usuário instala o **Ollama** (ou similar) e baixa um modelo (ex.: Llama, Qwen, etc.).
-- O Quibo chama `http://localhost:11434` — **o dado nunca sai da máquina**.
+- O Gestão de Contabilidade chama `http://localhost:11434` — **o dado nunca sai da máquina**.
 - Sem chave, sem custo por token, sem nuvem.
 
 ### Trade-offs
@@ -351,7 +351,7 @@ A rota de **privacidade total** e a mais coerente com local-first.
 | Hardware | nenhum | precisa de RAM/GPU decente |
 | Setup | colar chave | instalar Ollama + baixar modelo |
 
-### Posição do Quibo
+### Posição do Gestão de Contabilidade
 
 Suportar Ollama é **prioridade de design**, não enfeite — é o que torna a IA compatível com a promessa de privacidade. A interface de provedor (§3) trata local e nuvem igual.
 

@@ -52,7 +52,7 @@ pub async fn buscar_item(estado: &EstadoAuth, item_id: &str) -> Result<Item, App
 }
 
 /// Remove um Item — apaga a conexão e todos os dados associados na Pluggy.
-/// O Quibo mantém os entries já importados localmente.
+/// O Gestão de Contabilidade mantém os entries já importados localmente.
 pub async fn deletar_item(estado: &EstadoAuth, item_id: &str) -> Result<(), AppError> {
     let path = format!("/items/{item_id}");
     estado
@@ -105,7 +105,7 @@ pub async fn checar_status_http(
     if status.as_u16() == 410 {
         return Err(AppError::Integration(format!(
             "O endpoint {path} foi descontinuado pela Pluggy. \
-             O Quibo precisa ser atualizado para a nova versão da API."
+             O Gestão de Contabilidade precisa ser atualizado para a nova versão da API."
         )));
     }
     Err(AppError::Integration(format!(

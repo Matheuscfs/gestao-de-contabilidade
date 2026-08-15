@@ -1,6 +1,6 @@
-# Quibo — Design System & UX
+# Gestão de Contabilidade — Design System & UX
 
-> A linguagem visual e de interação do Quibo, consolidada. Tokens, voz, o shell desktop (sidebar-trilho + header solto), a home "Mês", o gesto de confirmar, os componentes e as telas por categoria. É a fonte da verdade do que se constrói no Claude Design e se implementa em Next.js/Tailwind. Pré-requisitos: [00](./00-visao-geral-produto.md), [02](./02-estrutura-de-dados.md), [06](./06-motor-de-insights.md).
+> A linguagem visual e de interação do Gestão de Contabilidade, consolidada. Tokens, voz, o shell desktop (sidebar-trilho + header solto), a home "Mês", o gesto de confirmar, os componentes e as telas por categoria. É a fonte da verdade do que se constrói no Claude Design e se implementa em Next.js/Tailwind. Pré-requisitos: [00](./00-visao-geral-produto.md), [02](./02-estrutura-de-dados.md), [06](./06-motor-de-insights.md).
 
 ---
 

@@ -1,4 +1,4 @@
-//! De-para entre a taxonomia de categorias da Pluggy e as categorias do Quibo.
+//! De-para entre a taxonomia de categorias da Pluggy e as categorias do Gestão de Contabilidade.
 //!
 //! A Pluggy classifica cada transação com um código hierárquico de 8 dígitos
 //! (`categoryId`), onde os 2 primeiros dígitos são a categoria de topo e os
@@ -78,7 +78,7 @@ const MAPA: &[(&str, &str)] = &[
     ("99", "Outros"),
 ];
 
-/// Resolve o nome da categoria Quibo a partir do `categoryId` da Pluggy.
+/// Resolve o nome da categoria Gestão de Contabilidade a partir do `categoryId` da Pluggy.
 /// Retorna `None` quando a Pluggy não classificou a transação — nesse caso o
 /// sync deixa `category_id` nulo em vez de chutar uma categoria errada.
 pub fn categoria_quibo(codigo: Option<&str>) -> Option<&'static str> {
@@ -200,7 +200,7 @@ mod testes {
         use super::e_movimentacao_interna;
 
         // As 22 categorias de topo do catálogo /categories precisam ter destino:
-        // ou uma categoria do Quibo, ou o tratamento de movimentação interna
+        // ou uma categoria do Gestão de Contabilidade, ou o tratamento de movimentação interna
         // (04 Same person transfer, que fica sem categoria de propósito).
         for topo in [
             "01000000", "02000000", "03000000", "04000000", "05000000", "06000000",

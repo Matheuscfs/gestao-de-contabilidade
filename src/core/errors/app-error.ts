@@ -1,5 +1,5 @@
 /**
- * Erro de domínio do Quibo.
+ * Erro de domínio do Gestão de Contabilidade.
  *
  * Carrega uma mensagem amigável (para o usuário, em português) separada da
  * causa técnica original (para log/diagnóstico). Use sempre que quiser que o

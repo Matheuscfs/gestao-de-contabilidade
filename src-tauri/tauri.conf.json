@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/schema.json",
-  "productName": "Quibo",
+  "productName": "Gestão de Contabilidade",
   "version": "0.1.0",
   "identifier": "app.quibo",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Quibo",
+        "title": "Gestão de Contabilidade",
         "width": 1280,
         "height": 800,
         "minWidth": 960,

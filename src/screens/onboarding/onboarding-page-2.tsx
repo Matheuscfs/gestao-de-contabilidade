@@ -80,7 +80,7 @@ export function OnboardingIAScreen() {
         </p>
 
         <h1 className="font-bold text-[28px] leading-tight tracking-[-0.02em] text-ink mt-[10px]">
-          Quibo tem IA integrada
+          Gestão de Contabilidade tem IA integrada
         </h1>
 
         <p className="font-medium text-[14px] text-[#5B616E] mt-[8px] leading-relaxed">
