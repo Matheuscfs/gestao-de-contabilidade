@@ -29,6 +29,16 @@ function tipoLabel(tipo: TipoConta): string {
   return TIPOS.find((t) => t.id === tipo)?.label ?? tipo;
 }
 
+/**
+ * Nome do banco que resolve o logo da conta. Contas importadas guardam o
+ * conector em `bank` (ex: "Sicredi") e deixam `icon` no default genérico, então
+ * `bank` tem prioridade; sem ele, vale o `icon` escolhido à mão.
+ */
+function bancoDaConta(conta: Conta): string {
+  const doSync = bancoPorNome(conta.bank) ?? reconhecerBanco(conta.bank ?? "");
+  return doSync?.name ?? conta.icon;
+}
+
 // ─── Paleta de cores (10 opções) ──────────────────────────────────────────────
 
 const CORES: { valor: string; tint: string; label: string }[] = [
@@ -79,6 +89,9 @@ export function ContasScreen() {
 
   const { setOnAdicionar } = useHeaderActionsStore();
 
+  // Conta vinda do Open Finance: saldo e identificação são mantidos pelo sync.
+  const contaImportada = editando?.source === "PLUGGY";
+
   const totalCentavos = contas.reduce((soma, c) => soma + c.balanceCents, 0);
 
   // ── Carregamento ─────────────────────────────────────────────────────────────
@@ -127,7 +140,7 @@ export function ContasScreen() {
     setNome(conta.name);
     setTipo(conta.type);
     setCor(conta.color);
-    setBanco(bancoPorNome(conta.icon)?.name ?? null);
+    setBanco(bancoPorNome(bancoDaConta(conta))?.name ?? null);
     setBancoTocado(true); // não auto-reconhece por cima de uma conta existente
     setPersonaId(conta.personaId);
     setIsPrimary(conta.isPrimary);
@@ -180,12 +193,15 @@ export function ContasScreen() {
         icon: banco ?? "",
         personaId,
         isPrimary,
-        balanceCents: saldoCentavos,
       };
       if (editando) {
-        await editarConta(editando.id, dados);
+        // Em conta importada o saldo é do sync: não vai no update.
+        await editarConta(
+          editando.id,
+          contaImportada ? dados : { ...dados, balanceCents: saldoCentavos }
+        );
       } else {
-        await criarConta(dados);
+        await criarConta({ ...dados, balanceCents: saldoCentavos });
       }
       await carregarContas();
       setModalAberto(false);
@@ -270,7 +286,7 @@ export function ContasScreen() {
                   onClick={() => abrirModalEditar(conta)}
                   className="w-full flex items-center gap-[14px] px-5 py-[18px] text-left hover:bg-surface-subtle transition-colors"
                 >
-                  <ContaAvatar icon={conta.icon} cor={conta.color} size={40} />
+                  <ContaAvatar icon={bancoDaConta(conta)} cor={conta.color} size={40} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-[15px] font-semibold text-ink">{conta.name}</p>
@@ -346,13 +362,30 @@ export function ContasScreen() {
                     </svg>
                   </button>
                 </div>
-                <div className="rounded-2xl p-4 mb-6" style={{ background: "#FFF8F8", border: "1px solid #FECACA" }}>
+                <div
+                  className={`rounded-2xl p-4 ${contaImportada ? "mb-3" : "mb-6"}`}
+                  style={{ background: "#FFF8F8", border: "1px solid #FECACA" }}
+                >
                   <p className="text-[14px] font-semibold text-[#991B1B]">Isso não pode ser desfeito</p>
                   <p className="text-[13px] text-[#7F1D1D] mt-1">
                     A conta <strong>{editando?.name}</strong> será removida. Seus lançamentos
                     deixam de estar vinculados a ela, mas não são apagados.
                   </p>
                 </div>
+
+                {/* Excluir conta importada não resolve: o sync a recria do zero */}
+                {contaImportada && (
+                  <div className="rounded-2xl p-4 mb-6" style={{ background: "#FCF1DF", border: "1px solid #F2C879" }}>
+                    <p className="text-[14px] font-semibold" style={{ color: "#B4690E" }}>
+                      Esta conta vem do banco
+                    </p>
+                    <p className="text-[13px] mt-1" style={{ color: "#B4690E" }}>
+                      O próximo sync vai recriá-la com um id novo, e o histórico atual
+                      fica desvinculado para sempre. Para parar de importar de vez,
+                      remova o banco em Integrações.
+                    </p>
+                  </div>
+                )}
                 <div className="flex gap-2.5">
                   <button
                     onClick={() => setConfirmandoExclusao(false)}
@@ -563,6 +596,29 @@ export function ContasScreen() {
                     />
                   </button>
                 </div>
+
+                {/* Saldo de conta importada: exibido, nunca editável aqui */}
+                {contaImportada && (
+                  <div
+                    className="flex items-center justify-between rounded-xl px-4 py-3 mb-5"
+                    style={{ background: "#FCF1DF", border: "1px solid #F2C879" }}
+                  >
+                    <div className="min-w-0 pr-3">
+                      <p className="text-[14px] font-semibold" style={{ color: "#B4690E" }}>
+                        Saldo do banco
+                      </p>
+                      <p className="text-[12px] font-medium mt-0.5" style={{ color: "#B4690E" }}>
+                        vem do Open Finance e é atualizado a cada sync
+                      </p>
+                    </div>
+                    <p
+                      className="text-[17px] font-semibold tabular-nums shrink-0"
+                      style={{ color: "#B4690E" }}
+                    >
+                      {formatarBRL(saldoCentavos)}
+                    </p>
+                  </div>
+                )}
 
                 <div className="mb-6" />
 

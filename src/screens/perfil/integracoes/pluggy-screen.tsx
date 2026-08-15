@@ -1086,14 +1086,23 @@ export function PluggyIntegracaoScreen() {
           { descricao: `${res.length} banco${res.length === 1 ? "" : "s"} sincronizado${res.length === 1 ? "" : "s"}` }
         );
       } else {
+        // Mostra o motivo real da falha, não só o nome do banco: sem isso um
+        // sync quebrado vira "com problema" e não há por onde começar a
+        // investigar (o erro fica só no log da integração).
+        const motivos = comErro
+          .map((r) => {
+            const banco = r.connectorName ?? r.pluggyItemId;
+            return r.erro ? `${banco}: ${r.erro}` : banco;
+          })
+          .join(" · ");
+
         toast.aviso(
           `${res.length - comErro.length} de ${res.length} banco${res.length === 1 ? "" : "s"} atualizado${res.length - comErro.length === 1 ? "" : "s"}`,
-          {
-            descricao: comErro
-              .map((r) => r.connectorName ?? r.pluggyItemId)
-              .join(", ") + " com problema",
-          }
+          { descricao: motivos }
         );
+        comErro.forEach((r) => {
+          if (r.erro) console.error(`[pluggy] ${r.connectorName ?? r.pluggyItemId}: ${r.erro}`);
+        });
       }
     } catch (e) {
       toast.erro("Falha ao sincronizar", {

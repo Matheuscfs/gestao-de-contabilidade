@@ -1,8 +1,10 @@
-use chrono::Utc;
+use chrono::{Datelike, Local, Utc};
 use rusqlite::{params, Connection};
 use serde::Serialize;
 use tauri::AppHandle;
 
+use crate::ai::chat::{self, MensagemChat};
+use crate::ai::contexto::{self, Permissoes};
 use crate::ai::providers::{self, ModeloDisponivel, Provider};
 use crate::db;
 
@@ -40,6 +42,10 @@ pub struct AiIntegracao {
     pub model: Option<String>,
     /// modelos disponíveis salvos na última verificação
     pub modelos: Vec<ModeloDisponivel>,
+    /// Permite enviar ao modelo os totais do mês e gastos por categoria.
+    pub pode_ler_mes: bool,
+    /// Permite enviar saldo das contas, custo de vida, dívidas e metas.
+    pub pode_usar_contexto_de_vida: bool,
 }
 
 /// Retorna a integração de IA ativa (sem expor a chave), ou null.
@@ -49,17 +55,24 @@ pub fn ai_obter_integracao(app: AppHandle) -> Result<Option<AiIntegracao>, Strin
 
     let row = conn
         .query_row(
-            "SELECT ai_provider, ai_model
+            "SELECT ai_provider, ai_model, ai_can_read_monthly, ai_can_use_life_context
                FROM integrations
               WHERE type = 'AI' AND is_active = 1
               ORDER BY updated_at DESC
               LIMIT 1",
             [],
-            |r| Ok((r.get::<_, Option<String>>(0)?, r.get::<_, Option<String>>(1)?)),
+            |r| {
+                Ok((
+                    r.get::<_, Option<String>>(0)?,
+                    r.get::<_, Option<String>>(1)?,
+                    r.get::<_, i64>(2)? != 0,
+                    r.get::<_, i64>(3)? != 0,
+                ))
+            },
         )
         .ok();
 
-    let Some((Some(provider), model)) = row else {
+    let Some((Some(provider), model, pode_ler_mes, pode_usar_contexto_de_vida)) = row else {
         return Ok(None);
     };
 
@@ -79,7 +92,40 @@ pub fn ai_obter_integracao(app: AppHandle) -> Result<Option<AiIntegracao>, Strin
         provider,
         model,
         modelos,
+        pode_ler_mes,
+        pode_usar_contexto_de_vida,
     }))
+}
+
+/// Atualiza o que a IA pode ler do banco local.
+///
+/// Os flags já existiam na tabela e já eram respeitados na montagem do contexto,
+/// mas nada no app conseguia mudá-los: na prática a IA sempre recebia tudo, o
+/// que contradiz a promessa de opt-in explícito do produto.
+#[tauri::command]
+pub fn ai_atualizar_permissoes(
+    app: AppHandle,
+    pode_ler_mes: bool,
+    pode_usar_contexto_de_vida: bool,
+) -> Result<(), String> {
+    let conn = abrir_conexao(&app)?;
+    let agora = chrono::Utc::now().to_rfc3339();
+
+    conn.execute(
+        "UPDATE integrations
+            SET ai_can_read_monthly     = ?1,
+                ai_can_use_life_context = ?2,
+                updated_at              = ?3
+          WHERE type = 'AI' AND is_active = 1",
+        params![
+            i64::from(pode_ler_mes),
+            i64::from(pode_usar_contexto_de_vida),
+            agora
+        ],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 // ─── Salvar ──────────────────────────────────────────────────────────────────
@@ -160,4 +206,155 @@ pub fn ai_remover_integracao(app: AppHandle) -> Result<(), String> {
     )
     .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+// ─── Conversa ─────────────────────────────────────────────────────────────────
+
+/// Resposta de uma rodada de conversa.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RespostaConversa {
+    /// Texto devolvido pelo modelo.
+    pub texto: String,
+    /// Modelo que respondeu (para exibir na tela).
+    pub modelo: String,
+    /// true quando o resumo financeiro foi anexado ao pedido.
+    pub contexto_incluido: bool,
+}
+
+/// Dados que precisam sair do banco ANTES de qualquer `await` — a conexão do
+/// rusqlite não atravessa ponto de suspensão.
+struct PreparoConversa {
+    provider: Provider,
+    modelo: String,
+    api_key: String,
+    sistema: String,
+    contexto_incluido: bool,
+}
+
+/// Lê a integração ativa e monta o prompt de sistema (com o contexto autorizado).
+fn preparar(app: &AppHandle, mes: i32, ano: i32) -> Result<PreparoConversa, String> {
+    let conn = abrir_conexao(app)?;
+
+    let linha = conn
+        .query_row(
+            "SELECT ai_provider, ai_model, ai_key_ref,
+                    COALESCE(ai_can_read_monthly, 1),
+                    COALESCE(ai_can_use_life_context, 1)
+               FROM integrations
+              WHERE type = 'AI' AND is_active = 1
+              ORDER BY updated_at DESC
+              LIMIT 1",
+            [],
+            |r| {
+                Ok((
+                    r.get::<_, Option<String>>(0)?,
+                    r.get::<_, Option<String>>(1)?,
+                    r.get::<_, Option<String>>(2)?,
+                    r.get::<_, i64>(3)?,
+                    r.get::<_, i64>(4)?,
+                ))
+            },
+        )
+        .ok();
+
+    let Some((Some(provider), Some(modelo), Some(api_key), ler_mes, contexto_vida)) = linha else {
+        return Err("Nenhuma IA configurada. Vá em Perfil → Integrações → IA.".into());
+    };
+
+    let provider = Provider::from_str(&provider).map_err(|e| e.to_string())?;
+
+    let permissoes = Permissoes {
+        ler_mes: ler_mes != 0,
+        usar_contexto_de_vida: contexto_vida != 0,
+    };
+
+    let resumo = contexto::montar(&conn, mes, ano, permissoes).map_err(|e| e.to_string())?;
+    let contexto_incluido = resumo.is_some();
+    let sistema = montar_prompt_sistema(mes, ano, resumo.as_deref());
+
+    Ok(PreparoConversa {
+        provider,
+        modelo,
+        api_key,
+        sistema,
+        contexto_incluido,
+    })
+}
+
+/// Prompt de sistema. Princípio P8: a IA é a voz, não a calculadora — ela narra
+/// os números que já vieram somados daqui e não inventa nenhum outro.
+fn montar_prompt_sistema(mes: i32, ano: i32, resumo: Option<&str>) -> String {
+    let mut p = String::from(
+        "Você é o Quibo IA, o assistente financeiro do app Quibo — um app de finanças \
+         pessoais local-first, em português do Brasil.\n\n\
+         Como responder:\n\
+         - Escreva em português do Brasil, direto ao ponto, em texto corrido curto. \
+         Sem cabeçalhos nem listas longas quando uma ou duas frases bastam.\n\
+         - Use SOMENTE os números do contexto abaixo. Nunca invente, estime, \
+         projete ou recalcule valores — você é a voz, não a calculadora.\n\
+         - Se o dado necessário não estiver no contexto, diga isso com franqueza e \
+         indique em qual tela do app ele aparece (Mês, Extrato, Cartões, Dívidas, Contas).\n\
+         - Não repita o contexto inteiro: cite só o que sustenta a resposta.\n\
+         - Valores estão em reais (R$). \"Sobra do mês\" é entrou menos saiu.\n\
+         - Não dê recomendação de investimento específica nem promessa de retorno.\n\n",
+    );
+
+    match resumo {
+        Some(texto) => {
+            p.push_str(&format!(
+                "Contexto financeiro real do usuário (competência em foco: {mes:02}/{ano}):\n\n{texto}\n"
+            ));
+        }
+        None => {
+            p.push_str(
+                "O usuário NÃO autorizou o acesso aos dados financeiros dele. Você não tem \
+                 nenhum número deste app. Responda apenas com orientação geral e avise que, \
+                 para análises com os dados reais, é preciso liberar as permissões em \
+                 Perfil → Integrações → IA.\n",
+            );
+        }
+    }
+
+    p
+}
+
+/// Envia a conversa ao modelo configurado e devolve a resposta.
+///
+/// `mensagens` é o histórico completo da conversa (papel "user" ou "assistant").
+/// `mes`/`ano` definem a competência do contexto; sem eles, usa o mês corrente.
+#[tauri::command]
+pub async fn ai_conversar(
+    app: AppHandle,
+    mensagens: Vec<MensagemChat>,
+    mes: Option<i32>,
+    ano: Option<i32>,
+) -> Result<RespostaConversa, String> {
+    // Fallback só para quando a UI não mandar a competência. Usa fuso LOCAL de
+    // propósito: aqui "mês" é o mês do calendário do usuário, o mesmo que o
+    // seletor da tela usa (app/mes-store.ts). Não é timestamp — timestamps
+    // gravados no banco continuam em UTC, como no resto do projeto.
+    let agora = Local::now();
+    let mes = mes.unwrap_or_else(|| agora.month() as i32);
+    let ano = ano.unwrap_or_else(|| agora.year());
+
+    // A conexão do rusqlite não é `Send`: ela nasce e morre dentro de `preparar`,
+    // antes de qualquer `await`.
+    let preparo = preparar(&app, mes, ano)?;
+
+    let texto = chat::conversar(
+        preparo.provider,
+        &preparo.api_key,
+        &preparo.modelo,
+        &preparo.sistema,
+        &mensagens,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    Ok(RespostaConversa {
+        texto,
+        modelo: preparo.modelo,
+        contexto_incluido: preparo.contexto_incluido,
+    })
 }

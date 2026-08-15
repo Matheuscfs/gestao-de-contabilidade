@@ -40,11 +40,30 @@ const ICONS: Record<string, SvgPart[]> = {
     ["path", { d: "M7 6h1v4" }],
     ["path", { d: "m16.71 13.88.7.71-2.82 2.82" }],
   ],
+  "piggy-bank": [
+    [
+      "path",
+      {
+        d: "M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z",
+      },
+    ],
+    ["path", { d: "M2 9v1c0 1.1.9 2 2 2h1" }],
+    ["path", { d: "M16 11h.01" }],
+  ],
   "bar-chart": [
     ["path", { d: "M3 3v18h18" }],
     ["path", { d: "M18 17V9" }],
     ["path", { d: "M13 17V5" }],
     ["path", { d: "M8 17v-3" }],
+  ],
+  building: [
+    ["path", { d: "M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" }],
+    ["path", { d: "M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" }],
+    ["path", { d: "M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" }],
+    ["path", { d: "M10 6h4" }],
+    ["path", { d: "M10 10h4" }],
+    ["path", { d: "M10 14h4" }],
+    ["path", { d: "M10 18h4" }],
   ],
   list: [
     ["line", { x1: 8, x2: 21, y1: 6, y2: 6 }],
@@ -106,7 +125,14 @@ const NAV = [
   },
   { to: "/cartoes", id: "cartoes", label: "Cartões", icon: "credit-card" },
   { to: "/dividas", id: "dividas", label: "Dívidas", icon: "coins" },
+  {
+    to: "/investimentos",
+    id: "investimentos",
+    label: "Investimentos",
+    icon: "piggy-bank",
+  },
   { to: "/analise", id: "analise", label: "Análise", icon: "bar-chart" },
+  { to: "/empresas", id: "empresas", label: "Empresas", icon: "building" },
   { to: "/ia", id: "ia", label: "Quibo IA", icon: "sparkles" },
 ] as const;
 

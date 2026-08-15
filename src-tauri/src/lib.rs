@@ -57,7 +57,10 @@ pub fn run() {
             commands::ai::ai_obter_integracao,
             commands::ai::ai_salvar_integracao,
             commands::ai::ai_atualizar_modelo,
+            commands::ai::ai_atualizar_permissoes,
             commands::ai::ai_remover_integracao,
+            // IA — conversa
+            commands::ai::ai_conversar,
         ])
         .run(tauri::generate_context!())
         .expect("Erro ao iniciar o Quibo");

@@ -70,6 +70,16 @@ function valorExibicao(m: MovimentoExtrato): { texto: string; cor: string } {
   return { texto: v, cor: "#5B616E" };
 }
 
+/**
+ * Fatura gerada pelo sync (agregado). O sync da Pluggy cria UMA transação
+ * `INVOICE` por competência cujo valor é a soma dos `EXPENSE` daquele cartão no
+ * mês — somá-la junto contaria o mesmo dinheiro duas vezes. Faturas `MANUAL`
+ * não têm `EXPENSE` individuais por trás, então continuam contando.
+ */
+function ehFaturaAgregada(m: MovimentoExtrato): boolean {
+  return m.type === "INVOICE" && m.source === "PLUGGY";
+}
+
 function parseTags(tags: string | null): string[] {
   if (!tags) return [];
   return tags
@@ -560,12 +570,23 @@ export function ExtratoScreen() {
   const stats = useMemo(() => {
     let entradas = 0;
     let saidas = 0;
+    // Faturas agregadas do sync ficam de fora do somatório (mas seguem na lista).
+    let agregadas = 0;
     for (const m of filtrados) {
       const dir = infoTipo(m.type).dir;
       if (dir === "entrada") entradas += m.amountCents;
-      else if (dir === "saida") saidas += m.amountCents;
+      else if (dir === "saida") {
+        if (ehFaturaAgregada(m)) agregadas++;
+        else saidas += m.amountCents;
+      }
     }
-    return { total: filtrados.length, entradas, saidas, saldo: entradas - saidas };
+    return {
+      total: filtrados.length,
+      entradas,
+      saidas,
+      agregadas,
+      saldo: entradas - saidas,
+    };
   }, [filtrados]);
 
   const filtrosAtivos =
@@ -606,11 +627,24 @@ export function ExtratoScreen() {
             {carregando ? "—" : `+ ${formatarBRL(stats.entradas)}`}
           </p>
         </div>
-        <div className="flex-1 px-5 py-4 border-r border-border-subtle">
+        <div
+          className="flex-1 px-5 py-4 border-r border-border-subtle"
+          title={
+            stats.agregadas > 0
+              ? "As faturas importadas do banco não entram neste total: elas já são a soma das despesas do cartão no mês."
+              : undefined
+          }
+        >
           <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">saídas</p>
           <p className="text-[22px] font-bold tabular-nums mt-1 text-ink">
             {carregando ? "—" : `− ${formatarBRL(stats.saidas)}`}
           </p>
+          {!carregando && stats.agregadas > 0 && (
+            <p className="text-[11px] font-medium text-ink-placeholder mt-0.5">
+              sem {stats.agregadas} {stats.agregadas === 1 ? "fatura" : "faturas"} do
+              banco (já somadas nas despesas)
+            </p>
+          )}
         </div>
         <div className="flex-1 px-5 py-4">
           <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">saldo</p>
@@ -773,6 +807,18 @@ export function ExtratoScreen() {
                         <span style={{ color: t.cor }}>{t.label}</span>
                         <span className="text-ink-placeholder">·</span>
                         <span style={{ color: st.cor }}>{st.label}</span>
+                        {m.pluggyStatus === "PENDING" && (
+                          <>
+                            <span className="text-ink-placeholder">·</span>
+                            <span
+                              className="text-[11px] font-semibold rounded-full px-1.5 py-px"
+                              style={{ background: "#FCF1DF", color: "#A8740F" }}
+                              title="O banco ainda não liquidou este lançamento — o valor pode mudar ou ser estornado."
+                            >
+                              pendente no banco
+                            </span>
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>

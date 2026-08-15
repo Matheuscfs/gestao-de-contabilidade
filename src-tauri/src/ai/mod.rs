@@ -11,6 +11,15 @@
 ///   - ai_verificar_chave   → valida a chave e devolve os modelos disponíveis
 ///   - ai_obter_integracao  → estado atual (provedor, modelo, modelos salvos)
 ///   - ai_salvar_integracao → grava provedor + chave + modelo escolhido
+///   - ai_atualizar_modelo  → troca só o modelo, sem mexer na chave
 ///   - ai_remover_integracao
+///   - ai_conversar         → manda a conversa ao modelo e devolve a resposta
+///
+/// Módulos:
+///   - providers → abstração de provedor + verificação de chave/listagem de modelos
+///   - chat      → motor de inferência (envia a conversa, devolve o texto)
+///   - contexto  → resumo financeiro compacto, respeitando as permissões
 
+pub mod chat;
+pub mod contexto;
 pub mod providers;

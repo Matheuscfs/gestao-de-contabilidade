@@ -1,7 +1,10 @@
 use chrono::Utc;
 use serde::Serialize;
 
-use super::models::{Account, Investment, SubtipoConta, TipoConta, TipoInvestimento, TipoTransacao, Transaction};
+use super::models::{
+    Account, Investment, StatusTransacao, SubtipoConta, TipoConta, TipoInvestimento, TipoTransacao,
+    Transaction,
+};
 
 // ─── Conversão monetária ──────────────────────────────────────────────────────
 
@@ -23,14 +26,23 @@ pub struct EntryImportado {
     /// Em centavos inteiros, sempre positivo. O tipo (INCOME/EXPENSE) carrega o sinal.
     pub amount_cents: i64,
     pub tipo: TipoEntrada,
-    /// "CONFIRMADO" — transações importadas já ocorreram.
+    /// PREVISTO quando a Pluggy ainda marca a transação como PENDING numa conta
+    /// bancária; CONFIRMADO quando já liquidou (ou quando é compra no cartão).
+    /// Ver `resolver_status`.
     pub status: &'static str,
+    /// Status original da Pluggy (POSTED | PENDING), preservado para a UI poder
+    /// sinalizar "pendente" sem interferir nos totais.
+    pub status_pluggy: &'static str,
     pub date: String,
     pub month: i32,
     pub year: i32,
     pub account_id: Option<String>,
     pub credit_card_id: Option<String>,
+    /// Rótulo original da Pluggy, preservado em `tags` para rastreabilidade.
     pub category_pluggy: Option<String>,
+    /// Nome da categoria Quibo resolvida pelo de-para (`categorias::categoria_quibo`).
+    /// O sync converte este nome no `category_id` correspondente.
+    pub categoria_quibo: Option<&'static str>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -40,13 +52,17 @@ pub struct EntryImportado {
 pub enum TipoEntrada {
     Income,
     Expense,
+    /// Movimentação entre contas do próprio usuário e pagamento de fatura —
+    /// neutro, não conta como gasto nem como receita.
+    Transfer,
 }
 
 impl TipoEntrada {
     pub fn to_str(&self) -> &'static str {
         match self {
-            TipoEntrada::Income  => "INCOME",
-            TipoEntrada::Expense => "EXPENSE",
+            TipoEntrada::Income   => "INCOME",
+            TipoEntrada::Expense  => "EXPENSE",
+            TipoEntrada::Transfer => "TRANSFER",
         }
     }
 }
@@ -137,19 +153,55 @@ pub fn transacao_para_entry(
         description: tx.description.clone(),
         amount_cents,
         tipo,
-        status: "CONFIRMADO",
+        status: resolver_status(tx, e_conta_credito),
+        status_pluggy: match tx.status {
+            StatusTransacao::Pending => "PENDING",
+            StatusTransacao::Posted => "POSTED",
+            StatusTransacao::Outro => "DESCONHECIDO",
+        },
         date: data_str,
         month: mes,
         year: ano,
         account_id: account_id_quibo.map(String::from),
         credit_card_id: credit_card_id_quibo.map(String::from),
         category_pluggy: tx.category.clone(),
+        categoria_quibo: super::categorias::categoria_quibo(tx.category_id.as_deref()),
         created_at: agora.clone(),
         updated_at: agora,
     }
 }
 
+/// Traduz o `status` da Pluggy (POSTED | PENDING) para o status do Quibo.
+///
+/// A distinção entre conta e cartão é essencial, porque "pendente" significa
+/// coisas diferentes nos dois casos:
+///
+/// - **Conta bancária**: PENDING é um débito autorizado que ainda não saiu do
+///   saldo. Vira `PREVISTO` — o dinheiro ainda não é fato, e o lançamento
+///   aparece na tela de Lançamentos para o usuário confirmar quando liquidar.
+///
+/// - **Cartão de crédito**: PENDING só quer dizer que a fatura ainda não
+///   fechou; a compra aconteceu e vai ser cobrada de qualquer forma. Vira
+///   `CONFIRMADO`. Tratá-la como prevista esconderia quase todo o gasto do
+///   cartão dos totais do mês — num extrato real chega a 172 de 173 compras.
+fn resolver_status(tx: &Transaction, e_conta_credito: bool) -> &'static str {
+    if e_conta_credito {
+        return "CONFIRMADO";
+    }
+
+    match tx.status {
+        StatusTransacao::Pending => "PREVISTO",
+        StatusTransacao::Posted | StatusTransacao::Outro => "CONFIRMADO",
+    }
+}
+
 fn resolver_tipo_entrada(tx: &Transaction, e_conta_credito: bool) -> TipoEntrada {
+    // Dinheiro que só mudou de lugar (conta própria, pagamento de fatura) não é
+    // gasto nem receita — precede a regra de sinal.
+    if super::categorias::e_movimentacao_interna(tx.category_id.as_deref()) {
+        return TipoEntrada::Transfer;
+    }
+
     if e_conta_credito {
         // Cartão: positivo = gasto, negativo = pagamento de fatura
         if tx.amount >= 0.0 {
@@ -285,4 +337,48 @@ fn uuid_novo() -> String {
         .unwrap_or_default()
         .as_nanos();
     format!("{:032x}", ts)
+}
+
+#[cfg(test)]
+mod testes {
+    use super::*;
+
+    fn transacao(status: StatusTransacao) -> Transaction {
+        Transaction {
+            id: "tx".into(),
+            account_id: "acc".into(),
+            description: "compra".into(),
+            amount: -10.0,
+            date: Utc::now(),
+            balance: None,
+            category: None,
+            category_id: None,
+            tipo: TipoTransacao::Debit,
+            status,
+            currency_code: "BRL".into(),
+            provider_code: None,
+            payment_data: None,
+            merchant: None,
+        }
+    }
+
+    #[test]
+    fn pendente_em_conta_bancaria_fica_previsto() {
+        assert_eq!(resolver_status(&transacao(StatusTransacao::Pending), false), "PREVISTO");
+        assert_eq!(resolver_status(&transacao(StatusTransacao::Posted), false), "CONFIRMADO");
+    }
+
+    #[test]
+    fn pendente_no_cartao_conta_como_confirmado() {
+        // No cartão, PENDING só significa "fatura ainda não fechou" — a compra
+        // já aconteceu. Tratar como previsto sumiria com o gasto do mês.
+        assert_eq!(resolver_status(&transacao(StatusTransacao::Pending), true), "CONFIRMADO");
+        assert_eq!(resolver_status(&transacao(StatusTransacao::Posted), true), "CONFIRMADO");
+    }
+
+    #[test]
+    fn status_desconhecido_nao_bloqueia_o_lancamento() {
+        // Um status novo da Pluggy não pode fazer a transação sumir dos totais.
+        assert_eq!(resolver_status(&transacao(StatusTransacao::Outro), false), "CONFIRMADO");
+    }
 }

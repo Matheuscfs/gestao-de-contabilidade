@@ -26,6 +26,12 @@ export type MovimentoExtrato = {
   source: string;
   pluggyId: string | null;
   pluggySyncedAt: string | null;
+  /**
+   * Status como o banco informa: POSTED (liquidada) | PENDING (autorizada, mas
+   * a fatura ainda não fechou). null em lançamento manual. É diferente de
+   * `status`: uma compra de cartão pendente conta nos totais e continua pendente.
+   */
+  pluggyStatus: string | null;
   createdAt: string;
   updatedAt: string;
 
@@ -70,6 +76,7 @@ type ExtratoRow = {
   source: string;
   pluggy_id: string | null;
   pluggy_synced_at: string | null;
+  pluggy_status: string | null;
   created_at: string;
   updated_at: string;
 
@@ -114,6 +121,7 @@ function mapearLinha(r: ExtratoRow): MovimentoExtrato {
     source: r.source,
     pluggyId: r.pluggy_id ?? null,
     pluggySyncedAt: r.pluggy_synced_at ?? null,
+    pluggyStatus: r.pluggy_status ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
 
@@ -191,7 +199,7 @@ export async function listarExtrato(): Promise<MovimentoExtrato[]> {
         t.due_date, t.paid_at, t.paid_cents,
         t.date, t.month, t.year,
         t.notes, t.tags, t.income_modality, t.source,
-        t.pluggy_id, t.pluggy_synced_at, t.created_at, t.updated_at,
+        t.pluggy_id, t.pluggy_synced_at, t.pluggy_status, t.created_at, t.updated_at,
         t.account_id,     a.name  AS account_name,  a.color AS account_color,
                           a.type  AS account_type,  a.bank  AS account_bank,
         t.credit_card_id, cc.name AS card_name,     cc.brand AS card_brand,

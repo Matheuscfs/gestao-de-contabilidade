@@ -75,6 +75,11 @@ fn aplicar_migracoes(conn: &Connection) -> Result<(), AppError> {
         (include_str!("../../migrations/0004_add_persona_self.sql"), 4),
         (include_str!("../../migrations/0005_add_income_modality.sql"), 5),
         (include_str!("../../migrations/0006_add_raw_json.sql"), 6),
+        (include_str!("../../migrations/0007_add_pluggy_tx_status.sql"), 7),
+        (include_str!("../../migrations/0008_contabil_base.sql"), 8),
+        (include_str!("../../migrations/0009_obrigacoes.sql"), 9),
+        (include_str!("../../migrations/0010_receitas_empresa.sql"), 10),
+        (include_str!("../../migrations/0011_processos.sql"), 11),
     ];
 
     for (sql, versao) in migracoes {

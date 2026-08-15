@@ -34,6 +34,13 @@ export const CATEGORIAS_PADRAO: Array<{
   { name: "Pets", type: "EXPENSE", icon: "paw", color: "#CA8A04" },
   { name: "Beleza & Cuidados", type: "EXPENSE", icon: "scissors", color: "#E11D8F" },
   { name: "Impostos & Taxas", type: "EXPENSE", icon: "landmark", color: "#64748B" },
+  // Destino das transações que a Pluggy classifica em "Loans and financing"
+  // (financiamento imobiliário/veicular, crédito estudantil, empréstimos).
+  { name: "Empréstimos & Financiamentos", type: "EXPENSE", icon: "landmark", color: "#9333EA" },
+  // PIX/TED/boleto para terceiros vindos do Open Finance: é dinheiro que saiu
+  // de fato, mas sem finalidade declarada. Transferência entre contas do próprio
+  // usuário não vem para cá — aquela vira type='TRANSFER' e não conta como gasto.
+  { name: "Transferências", type: "EXPENSE", icon: "rotate-ccw", color: "#0891B2" },
   { name: "Outros", type: "EXPENSE", icon: "dots", color: "#8C95A6" },
 ];
 

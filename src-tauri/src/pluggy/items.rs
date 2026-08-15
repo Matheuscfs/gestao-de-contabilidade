@@ -92,6 +92,22 @@ pub async fn checar_status_http(
             "Limite de requisições Pluggy atingido. Tente mais tarde.".into(),
         ));
     }
+    // 403 com credenciais válidas = o produto não está liberado para a aplicação.
+    // Acontece com recursos de plano superior (recorrentes, enriquecimento).
+    if status.as_u16() == 403 {
+        return Err(AppError::Integration(format!(
+            "A Pluggy não liberou {path} para a sua aplicação — \
+             esse recurso costuma exigir um plano superior."
+        )));
+    }
+    // 410 = endpoint descontinuado. Mensagem explícita para não virar um
+    // "retornou 410" genérico: já perdemos tempo com isso em /transactions.
+    if status.as_u16() == 410 {
+        return Err(AppError::Integration(format!(
+            "O endpoint {path} foi descontinuado pela Pluggy. \
+             O Quibo precisa ser atualizado para a nova versão da API."
+        )));
+    }
     Err(AppError::Integration(format!(
         "Pluggy {path} retornou {status}"
     )))

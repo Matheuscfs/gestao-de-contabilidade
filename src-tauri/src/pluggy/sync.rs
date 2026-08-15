@@ -12,8 +12,78 @@ use super::map::{
     cartao_pluggy_para_quibo, conta_pluggy_para_quibo, decimal_para_centavos, e_cartao_de_credito,
     investimento_pluggy_para_quibo, transacao_para_entry,
 };
-use super::models::{Account, SubtipoConta};
+use super::models::{Account, Loan, SubtipoConta};
 use super::products;
+
+// ─── Catálogo de categorias ───────────────────────────────────────────────────
+
+/// Índice nome → id das categorias do Quibo, carregado uma vez por sincronização.
+/// O de-para em `categorias.rs` devolve o *nome* da categoria; é aqui que ele
+/// vira a chave estrangeira gravada em `transactions.category_id`.
+struct CatalogoCategorias(std::collections::HashMap<String, String>);
+
+impl CatalogoCategorias {
+    fn carregar(conn: &Connection) -> Result<Self, AppError> {
+        let mut stmt = conn.prepare("SELECT name, id FROM categories WHERE archived = 0")?;
+        let pares = stmt
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+        Ok(Self(pares))
+    }
+
+    /// `None` quando a Pluggy não classificou a transação ou quando o usuário
+    /// apagou/renomeou a categoria padrão correspondente.
+    fn id_de(&self, nome: Option<&str>) -> Option<&str> {
+        self.0.get(nome?).map(String::as_str)
+    }
+}
+
+/// Extrai `(ano, mês)` de uma data "YYYY-MM-DD". Cai no mês corrente se a data
+/// vier num formato inesperado, para nunca gravar competência nula.
+fn competencia_de(data: &str) -> (i32, i32) {
+    let mut partes = data.split('-');
+    let ano = partes.next().and_then(|a| a.parse::<i32>().ok());
+    let mes = partes
+        .next()
+        .and_then(|m| m.parse::<i32>().ok())
+        .filter(|m| (1..=12).contains(m));
+
+    match (ano, mes) {
+        (Some(a), Some(m)) => (a, m),
+        _ => {
+            let hoje = Utc::now();
+            (
+                hoje.format("%Y").to_string().parse().unwrap_or(2026),
+                hoje.format("%m").to_string().parse().unwrap_or(1),
+            )
+        }
+    }
+}
+
+/// Persona dona da conta ou do cartão — herdada pelas transações importadas,
+/// para que os recortes por persona incluam o que veio do Open Finance.
+fn persona_da_origem(
+    conn: &Connection,
+    account_id: Option<&str>,
+    credit_card_id: Option<&str>,
+) -> Option<String> {
+    let (tabela, id) = match (account_id, credit_card_id) {
+        (Some(id), _) => ("accounts", id),
+        (_, Some(id)) => ("credit_cards", id),
+        _ => return None,
+    };
+
+    conn.query_row(
+        &format!("SELECT persona_id FROM {tabela} WHERE id = ?1"),
+        params![id],
+        |row| row.get::<_, Option<String>>(0),
+    )
+    .ok()
+    .flatten()
+}
 
 // ─── Resultado de sincronização ───────────────────────────────────────────────
 
@@ -69,18 +139,32 @@ pub async fn sincronizar_item(
 
     match sincronizar_item_interno(app, estado, pluggy_item_id, forcar).await {
         Ok(resultado) => resultado,
-        Err(e) => ResultadoSync {
-            pluggy_item_id: pluggy_item_id.into(),
-            connector_name: None,
-            status: "ERROR".into(),
-            entries_importados: 0,
-            entries_atualizados: 0,
-            investimentos_sincronizados: 0,
-            faturas_sincronizadas: 0,
-            erro: Some(e.to_string()),
-            synced_at,
-            proximo_sync: None,
-        },
+        Err(e) => {
+            let mensagem = e.to_string();
+            eprintln!("[pluggy] sync de {pluggy_item_id} falhou: {mensagem}");
+
+            // Registra a falha em integration_sync_log. Antes o log só era
+            // gravado no caminho de sucesso, então uma sincronização quebrada
+            // não deixava rastro nenhum para diagnóstico.
+            if let Ok(caminho) = db::caminho_banco(app) {
+                if let Ok(conn) = Connection::open(&caminho) {
+                    let _ = gravar_log_sync(&conn, pluggy_item_id, "ERROR", 0, Some(&mensagem));
+                }
+            }
+
+            ResultadoSync {
+                pluggy_item_id: pluggy_item_id.into(),
+                connector_name: None,
+                status: "ERROR".into(),
+                entries_importados: 0,
+                entries_atualizados: 0,
+                investimentos_sincronizados: 0,
+                faturas_sincronizadas: 0,
+                erro: Some(mensagem),
+                synced_at,
+                proximo_sync: None,
+            }
+        }
     }
 }
 
@@ -165,6 +249,7 @@ async fn sincronizar_item_interno(
     let mut total_faturas = 0u32;
 
     let desde = last_synced_at.and_then(|s| s.parse::<DateTime<Utc>>().ok());
+    let catalogo = CatalogoCategorias::carregar(&conn)?;
 
     for (conta, conta_raw) in &contas {
         // Espelha a conta no banco local (accounts ou credit_cards), guardando o
@@ -177,12 +262,20 @@ async fn sincronizar_item_interno(
         let e_credito = e_cartao_de_credito(conta);
         let transacoes = products::buscar_transacoes_raw(estado, &conta.id, desde).await?;
 
+        let persona_id = persona_da_origem(
+            &conn,
+            account_id_local.as_deref(),
+            credit_card_id_local.as_deref(),
+        );
+
         let (importados, atualizados) = upsert_transacoes(
             &conn,
             &transacoes,
             account_id_local.as_deref(),
             credit_card_id_local.as_deref(),
             e_credito,
+            &catalogo,
+            persona_id.as_deref(),
         )?;
 
         total_importados += importados;
@@ -204,6 +297,18 @@ async fn sincronizar_item_interno(
 
     let investimentos = products::buscar_investimentos_raw(estado, pluggy_item_id).await?;
     let total_inv = upsert_investimentos(&conn, &investimentos)?;
+
+    // Empréstimos e financiamentos alimentam a tela de Dívidas. Falha aqui não
+    // derruba a sincronização: nem todo banco expõe o produto `/loans`, e o que
+    // já foi importado de contas e transações continua valendo.
+    match products::buscar_emprestimos(estado, pluggy_item_id).await {
+        Ok(emprestimos) => {
+            if let Err(e) = upsert_emprestimos(&conn, &emprestimos) {
+                eprintln!("[pluggy] falha ao gravar empréstimos de {pluggy_item_id}: {e}");
+            }
+        }
+        Err(e) => eprintln!("[pluggy] /loans indisponível para {pluggy_item_id}: {e}"),
+    }
 
     let agora = Utc::now().to_rfc3339();
     conn.execute(
@@ -325,6 +430,26 @@ fn atualizar_status_item(
     Ok(())
 }
 
+/// Nome da instituição a exibir na conta.
+///
+/// No modelo MeuPluggy o `connector` é sempre o proxy — literalmente
+/// "MeuPluggy" — e não o banco de onde o dado veio. Usar isso como rótulo faz
+/// toda conta importada aparecer com a mesma marca e perder o logo. O nome da
+/// conta, por outro lado, carrega a instituição real ("Sicredi", "Nu Pagamentos
+/// S.A. ..."), então ele é a melhor fonte nesse caso.
+fn nome_do_banco<'a>(connector_name: Option<&'a str>, nome_conta: &'a str) -> &'a str {
+    match connector_name {
+        Some(c) if !c.trim().is_empty() && !c.eq_ignore_ascii_case("meupluggy") => c,
+        _ => nome_conta,
+    }
+}
+
+/// Persona a atribuir ao que vem do banco: a principal (o dono do app).
+/// Sem isso os recortes por persona ignoram tudo que foi importado — era o
+/// caso antes, com 100% das transações sincronizadas sem persona.
+const PERSONA_PRINCIPAL: &str =
+    "(SELECT id FROM personas WHERE is_self = 1 AND archived = 0 LIMIT 1)";
+
 /// Upsert de uma conta Pluggy diretamente em `accounts` ou `credit_cards`.
 /// Cartão de crédito (SubtipoConta::CreditCard) → `credit_cards`
 /// Demais subtipos → `accounts`
@@ -345,14 +470,16 @@ fn upsert_conta_pluggy(
             // ON CONFLICT não funciona com índice parcial — INSERT OR IGNORE + UPDATE explícito.
             let cartao = cartao_pluggy_para_quibo(conta);
             conn.execute(
-                "INSERT OR IGNORE INTO credit_cards (
-                     id, name, brand, limit_cents, closing_day, due_day,
-                     source, pluggy_id, pluggy_synced_at, raw,
-                     is_active, created_at, updated_at
-                 ) VALUES (
-                     ?1, ?2, COALESCE(?3,'OTHER'), ?4, COALESCE(?5,1), COALESCE(?6,10),
-                     'PLUGGY', ?7, ?8, ?9, 1, ?8, ?8
-                 )",
+                &format!(
+                    "INSERT OR IGNORE INTO credit_cards (
+                         id, name, brand, limit_cents, closing_day, due_day,
+                         persona_id, source, pluggy_id, pluggy_synced_at, raw,
+                         is_active, created_at, updated_at
+                     ) VALUES (
+                         ?1, ?2, COALESCE(?3,'OTHER'), ?4, COALESCE(?5,1), COALESCE(?6,10),
+                         {PERSONA_PRINCIPAL}, 'PLUGGY', ?7, ?8, ?9, 1, ?8, ?8
+                     )"
+                ),
                 params![
                     id,
                     conta.name,
@@ -366,16 +493,19 @@ fn upsert_conta_pluggy(
                 ],
             )?;
             conn.execute(
-                "UPDATE credit_cards SET
-                     name             = ?1,
-                     brand            = COALESCE(?2, brand),
-                     limit_cents      = ?3,
-                     closing_day      = COALESCE(?4, closing_day),
-                     due_day          = COALESCE(?5, due_day),
-                     pluggy_synced_at = ?6,
-                     raw              = ?7,
-                     updated_at       = ?6
-                 WHERE pluggy_id = ?8",
+                &format!(
+                    "UPDATE credit_cards SET
+                         name             = ?1,
+                         brand            = COALESCE(?2, brand),
+                         limit_cents      = ?3,
+                         closing_day      = COALESCE(?4, closing_day),
+                         due_day          = COALESCE(?5, due_day),
+                         persona_id       = COALESCE(persona_id, {PERSONA_PRINCIPAL}),
+                         pluggy_synced_at = ?6,
+                         raw              = ?7,
+                         updated_at       = ?6
+                     WHERE pluggy_id = ?8"
+                ),
                 params![
                     conta.name,
                     cartao.brand,
@@ -395,17 +525,20 @@ fn upsert_conta_pluggy(
                 SubtipoConta::Investment      => "INVESTMENT",
                 _                             => "OTHER",
             };
+            let banco = nome_do_banco(connector_name, &conta.name);
             conn.execute(
-                "INSERT OR IGNORE INTO accounts (
-                     id, name, type, bank,
-                     balance_cents, source, pluggy_id, pluggy_synced_at, raw,
-                     is_active, created_at, updated_at
-                 ) VALUES (?1,?2,?3,?4,?5,'PLUGGY',?6,?7,?9,1,?8,?8)",
+                &format!(
+                    "INSERT OR IGNORE INTO accounts (
+                         id, name, type, bank, persona_id,
+                         balance_cents, source, pluggy_id, pluggy_synced_at, raw,
+                         is_active, created_at, updated_at
+                     ) VALUES (?1,?2,?3,?4,{PERSONA_PRINCIPAL},?5,'PLUGGY',?6,?7,?9,1,?8,?8)"
+                ),
                 params![
                     id,
                     conta.name,
                     tipo_str,
-                    connector_name,
+                    banco,
                     balance_cents,
                     conta.id,
                     agora,
@@ -413,14 +546,21 @@ fn upsert_conta_pluggy(
                     raw_str,
                 ],
             )?;
+            // `bank` e saldo são propriedade do sync (o UPDATE corrige contas já
+            // importadas com o rótulo errado do proxy). A persona usa COALESCE:
+            // preenche se estiver vazia, mas respeita quem o usuário escolheu.
             conn.execute(
-                "UPDATE accounts SET
-                     balance_cents    = ?1,
-                     pluggy_synced_at = ?2,
-                     raw              = ?3,
-                     updated_at       = ?2
-                 WHERE pluggy_id = ?4",
-                params![balance_cents, agora, raw_str, conta.id],
+                &format!(
+                    "UPDATE accounts SET
+                         balance_cents    = ?1,
+                         bank             = ?5,
+                         persona_id       = COALESCE(persona_id, {PERSONA_PRINCIPAL}),
+                         pluggy_synced_at = ?2,
+                         raw              = ?3,
+                         updated_at       = ?2
+                     WHERE pluggy_id = ?4"
+                ),
+                params![balance_cents, agora, raw_str, conta.id, banco],
             )?;
         }
     }
@@ -461,6 +601,8 @@ fn upsert_transacoes(
     account_id: Option<&str>,
     credit_card_id: Option<&str>,
     e_credito: bool,
+    catalogo: &CatalogoCategorias,
+    persona_id: Option<&str>,
 ) -> Result<(u32, u32), AppError> {
     let mut novos = 0u32;
     let mut atualizados = 0u32;
@@ -469,6 +611,7 @@ fn upsert_transacoes(
     for (tx, tx_raw) in transacoes {
         let entry = transacao_para_entry(tx, account_id, credit_card_id, e_credito);
         let raw_str = serde_json::to_string(tx_raw).unwrap_or_default();
+        let category_id = catalogo.id_de(entry.categoria_quibo);
 
         // ON CONFLICT não funciona com índice parcial — INSERT OR IGNORE + UPDATE explícito.
         // conn.changes() == 1 indica linha nova; 0 indica que já existia.
@@ -477,9 +620,9 @@ fn upsert_transacoes(
                 id, pluggy_id, source, pluggy_synced_at,
                 description, amount_cents, type, status,
                 date, month, year,
-                account_id, credit_card_id,
-                tags, raw, created_at, updated_at
-             ) VALUES (?1,?2,'PLUGGY',?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)",
+                account_id, credit_card_id, category_id, persona_id,
+                tags, raw, pluggy_status, created_at, updated_at
+             ) VALUES (?1,?2,'PLUGGY',?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?19,?17,?18)",
             params![
                 entry.id,
                 entry.pluggy_transaction_id,
@@ -493,14 +636,23 @@ fn upsert_transacoes(
                 entry.year,
                 entry.account_id,
                 entry.credit_card_id,
+                category_id,
+                persona_id,
                 entry.category_pluggy,
                 raw_str,
                 entry.created_at,
                 entry.updated_at,
+                entry.status_pluggy,
             ],
         )?;
         let inserido = conn.changes() == 1;
 
+        // `COALESCE` em category_id/persona_id: se o usuário recategorizou ou
+        // atribuiu a persona manualmente, a escolha dele sobrevive ao próximo sync.
+        //
+        // O status só avança de PREVISTO para CONFIRMADO — é a liquidação de um
+        // lançamento que estava pendente no banco. Nunca volta atrás nem mexe em
+        // linha que o usuário já confirmou, pagou ou cancelou à mão.
         conn.execute(
             "UPDATE transactions SET
                 description      = ?1,
@@ -508,6 +660,14 @@ fn upsert_transacoes(
                 type             = ?3,
                 pluggy_synced_at = ?4,
                 raw              = ?5,
+                category_id      = COALESCE(category_id, ?7),
+                persona_id       = COALESCE(persona_id, ?8),
+                status           = CASE
+                                     WHEN status = 'PREVISTO' AND ?9 = 'CONFIRMADO'
+                                       THEN 'CONFIRMADO'
+                                     ELSE status
+                                   END,
+                pluggy_status    = ?10,
                 updated_at       = ?4
              WHERE pluggy_id = ?6",
             params![
@@ -517,6 +677,10 @@ fn upsert_transacoes(
                 agora,
                 raw_str,
                 entry.pluggy_transaction_id,
+                category_id,
+                persona_id,
+                entry.status,
+                entry.status_pluggy,
             ],
         )?;
 
@@ -625,33 +789,108 @@ fn upsert_investimentos(
         let agora = Utc::now().to_rfc3339();
         let sub_type_str = mapeado.tipo.to_str();
         let raw_str = serde_json::to_string(inv_raw).unwrap_or_default();
-        let purchase_date = inv
+        let data = inv
             .due_date
             .map(|d| d.format("%Y-%m-%d").to_string())
             .unwrap_or_else(|| Utc::now().format("%Y-%m-%d").to_string());
 
+        // Sem month/year o investimento escapa de todo filtro por competência —
+        // derivamos a competência da própria data de referência.
+        let (ano, mes) = competencia_de(&data);
+
         conn.execute(
             "INSERT INTO transactions (
                 id, type, status, source,
-                description, amount_cents, date,
+                description, amount_cents, date, month, year,
                 inv_sub_type, inv_ticker, inv_quantity,
                 inv_current_price_cents, raw,
                 created_at, updated_at
-             ) VALUES (?1,'INVESTMENT','CONFIRMADO','PLUGGY',?2,?3,?4,?5,?6,1.0,?7,?9,?8,?8)
+             ) VALUES (?1,'INVESTMENT','CONFIRMADO','PLUGGY',?2,?3,?4,?10,?11,?5,?6,1.0,?7,?9,?8,?8)
              ON CONFLICT(id) DO UPDATE SET
                 inv_current_price_cents = excluded.inv_current_price_cents,
+                month                   = excluded.month,
+                year                    = excluded.year,
                 raw                     = excluded.raw,
                 updated_at              = excluded.updated_at",
             params![
                 mapeado.pluggy_investment_id,
                 mapeado.name,
                 mapeado.purchase_price_cents,
-                purchase_date,
+                data,
                 sub_type_str,
                 mapeado.ticker,
                 mapeado.balance_cents,
                 agora,
                 raw_str,
+                mes,
+                ano,
+            ],
+        )?;
+
+        total += 1;
+    }
+
+    Ok(total)
+}
+
+/// Espelha os empréstimos/financiamentos da Pluggy como dívidas do Quibo
+/// (`type='DEBT'`, `is_template = 1`), que é o formato que a tela de Dívidas lê.
+///
+/// Importante: estas dívidas **não geram parcelas automáticas**. O pagamento da
+/// parcela já chega como transação normal do banco (a Pluggy classifica em
+/// "Loans and financing"); gerar também uma `DEBT_INSTALLMENT` contaria o mesmo
+/// dinheiro duas vezes. Aqui a dívida serve para mostrar saldo devedor e
+/// parcelas restantes — o realizado vem pelo extrato.
+fn upsert_emprestimos(conn: &Connection, emprestimos: &[Loan]) -> Result<u32, AppError> {
+    let agora = Utc::now().to_rfc3339();
+    let mut total = 0u32;
+
+    for loan in emprestimos {
+        let id = format!("dbt_{}", loan.id);
+        let descricao = loan
+            .tipo
+            .clone()
+            .unwrap_or_else(|| "Empréstimo".to_string());
+
+        let parcela_cents = loan.installment_value.map(decimal_para_centavos);
+        let restantes = match (loan.total_installments, loan.paid_installments) {
+            (Some(total), Some(pagas)) => Some((total - pagas).max(0)),
+            (Some(total), None) => Some(total),
+            _ => None,
+        };
+        let dia_parcela = loan
+            .due_date
+            .map(|d| d.format("%d").to_string())
+            .and_then(|d| d.parse::<i32>().ok())
+            .filter(|d| (1..=31).contains(d));
+
+        // `COALESCE` nos campos editáveis: o usuário pode ajustar descrição e
+        // dia de vencimento sem que o próximo sync desfaça a alteração.
+        conn.execute(
+            "INSERT INTO transactions (
+                 id, type, status, source, pluggy_id, pluggy_synced_at,
+                 description, amount_cents,
+                 dbt_total_cents, dbt_total_installments, dbt_remaining_installments,
+                 dbt_installment_day, is_template, is_recurring,
+                 created_at, updated_at
+             ) VALUES (?1,'DEBT','ATIVO','PLUGGY',?2,?3,?4,?5,?6,?7,?8,?9,1,1,?3,?3)
+             ON CONFLICT(id) DO UPDATE SET
+                 amount_cents               = excluded.amount_cents,
+                 dbt_total_cents            = excluded.dbt_total_cents,
+                 dbt_remaining_installments = excluded.dbt_remaining_installments,
+                 dbt_installment_day        = COALESCE(dbt_installment_day, excluded.dbt_installment_day),
+                 pluggy_synced_at           = excluded.pluggy_synced_at,
+                 updated_at                 = excluded.updated_at",
+            params![
+                id,
+                loan.id,
+                agora,
+                descricao,
+                parcela_cents,
+                decimal_para_centavos(loan.contracted_amount),
+                loan.total_installments,
+                restantes,
+                dia_parcela,
             ],
         )?;
 
@@ -802,4 +1041,37 @@ pub fn remover_item_completo(
     )?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod testes {
+    use super::{competencia_de, nome_do_banco};
+
+    #[test]
+    fn proxy_meupluggy_nao_vira_nome_de_banco() {
+        // Via MeuPluggy o conector é sempre o proxy: o banco real está no nome
+        // da conta. Sem isso toda conta importada ficava rotulada "MeuPluggy".
+        assert_eq!(nome_do_banco(Some("MeuPluggy"), "Sicredi"), "Sicredi");
+        assert_eq!(nome_do_banco(Some("meupluggy"), "Nu Pagamentos S.A."), "Nu Pagamentos S.A.");
+        assert_eq!(nome_do_banco(None, "Sicredi"), "Sicredi");
+        assert_eq!(nome_do_banco(Some("  "), "Sicredi"), "Sicredi");
+    }
+
+    #[test]
+    fn conector_real_tem_prioridade_sobre_o_nome_da_conta() {
+        // No caminho de conector direto, o conector é a instituição de fato.
+        assert_eq!(nome_do_banco(Some("Nubank"), "Conta de pagamento"), "Nubank");
+    }
+
+    #[test]
+    fn competencia_sai_da_data_e_cai_no_mes_atual_quando_invalida() {
+        assert_eq!(competencia_de("2026-07-15"), (2026, 7));
+        assert_eq!(competencia_de("2025-12-01"), (2025, 12));
+        // Formato inesperado não pode gravar competência nula.
+        let (ano, mes) = competencia_de("sem-data");
+        assert!(ano >= 2024 && (1..=12).contains(&mes));
+        // Mês fora de faixa também cai no fallback.
+        let (_, m) = competencia_de("2026-13-01");
+        assert!((1..=12).contains(&m));
+    }
 }

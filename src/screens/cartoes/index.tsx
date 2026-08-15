@@ -674,12 +674,14 @@ export function CartoesCreditoScreen() {
         dueDay: diaVencimento,
         color: cor,
         isActive: ativo ? 1 : 0,
-        source: "MANUAL",
       };
       if (cartaoEditando) {
+        // Não mexe no `source`: marcar um cartão importado como MANUAL não tira
+        // o `pluggy_id`, então o próximo sync casaria por ele e sobrescreveria a
+        // edição — o campo fica oscilando entre PLUGGY e MANUAL.
         await atualizarCartao(cartaoEditando.id, dados);
       } else {
-        await criarCartao(dados);
+        await criarCartao({ ...dados, source: "MANUAL" });
       }
       await carregarCartoes();
       fecharModal();
@@ -943,6 +945,22 @@ export function CartoesCreditoScreen() {
                 </svg>
               </button>
             </div>
+
+            {/* Aviso: cartão importado é regravado pelo sync */}
+            {cartaoEditando?.source === "PLUGGY" && (
+              <div
+                className="flex items-start gap-2 rounded-xl px-4 py-3 mb-5 text-[12.5px] font-medium"
+                style={{ background: "#FCF1DF", color: "#B4690E", border: "1px solid #F2C879" }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
+                  <circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" />
+                </svg>
+                <span>
+                  Este cartão vem do banco. Nome, limite e dias podem ser
+                  substituídos pelos dados oficiais no próximo sync.
+                </span>
+              </div>
+            )}
 
             {/* Nome */}
             <label className="block mb-5">

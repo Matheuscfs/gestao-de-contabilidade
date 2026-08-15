@@ -9,11 +9,13 @@ import {
   type AiProvider,
   type ModeloDisponivel,
   aiAtualizarModelo,
+  aiAtualizarPermissoes,
   aiObterIntegracao,
   aiRemoverIntegracao,
   aiSalvarIntegracao,
   aiVerificarChave,
 } from "@/core/ipc/ai";
+import { toast } from "@/components/toast";
 
 // ─── Metadados dos provedores ──────────────────────────────────────────────────
 
@@ -610,6 +612,118 @@ function ModalGerenciar({
   );
 }
 
+// ─── Painel de permissões ─────────────────────────────────────────────────────
+//
+// O que sai daqui é o único dado seu que chega ao provedor de IA. Os dois flags
+// já existiam no banco e já eram respeitados na montagem do contexto, mas nada
+// no app conseguia alterá-los — na prática a IA sempre recebia tudo.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PainelPermissoes({
+  integracao,
+  onAtualizado,
+}: {
+  integracao: AiIntegracao;
+  onAtualizado: (nova: AiIntegracao) => void;
+}) {
+  const [salvando, setSalvando] = useState(false);
+
+  async function alternar(campo: "podeLerMes" | "podeUsarContextoDeVida") {
+    const nova = { ...integracao, [campo]: !integracao[campo] };
+    setSalvando(true);
+    // Otimista: o toggle responde na hora e volta ao estado anterior se falhar.
+    onAtualizado(nova);
+    try {
+      await aiAtualizarPermissoes(nova.podeLerMes, nova.podeUsarContextoDeVida);
+    } catch (e) {
+      onAtualizado(integracao);
+      toast.erro("Não deu para salvar a permissão", {
+        descricao: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  const semContexto = !integracao.podeLerMes && !integracao.podeUsarContextoDeVida;
+
+  return (
+    <div className="bg-surface border border-border rounded-2xl px-6 py-5 mt-3">
+      <p className="text-[15px] font-bold text-ink">O que a IA pode ler</p>
+      <p className="text-[13px] font-medium text-ink-secondary mt-1 leading-relaxed">
+        Só o que estiver ligado aqui é enviado ao provedor, e apenas como um
+        resumo — nunca o seu extrato inteiro.
+      </p>
+
+      <div className="mt-4 space-y-2.5">
+        <ChaveDePermissao
+          titulo="Resumo do mês"
+          descricao="Total que entrou e saiu, e os gastos por categoria."
+          ligado={integracao.podeLerMes}
+          desabilitado={salvando}
+          onAlternar={() => alternar("podeLerMes")}
+        />
+        <ChaveDePermissao
+          titulo="Contexto de vida"
+          descricao="Saldo das contas, custo de vida fixo, dívidas e metas."
+          ligado={integracao.podeUsarContextoDeVida}
+          desabilitado={salvando}
+          onAlternar={() => alternar("podeUsarContextoDeVida")}
+        />
+      </div>
+
+      {semContexto && (
+        <p className="text-[13px] font-medium text-ink-muted mt-4 bg-surface-subtle border border-border-subtle rounded-xl px-4 py-3">
+          Com as duas desligadas a IA responde sem receber nenhum número seu —
+          ela ainda conversa, mas não consegue analisar suas finanças.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ChaveDePermissao({
+  titulo,
+  descricao,
+  ligado,
+  desabilitado,
+  onAlternar,
+}: {
+  titulo: string;
+  descricao: string;
+  ligado: boolean;
+  desabilitado: boolean;
+  onAlternar: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-4 bg-surface-subtle border border-border-subtle rounded-xl px-4 py-3">
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-semibold text-ink">{titulo}</p>
+        <p className="text-[12.5px] font-medium text-ink-muted mt-0.5">{descricao}</p>
+      </div>
+      <button
+        role="switch"
+        aria-checked={ligado}
+        aria-label={titulo}
+        disabled={desabilitado}
+        onClick={onAlternar}
+        className={[
+          "w-[46px] h-[26px] rounded-full transition-colors shrink-0 relative",
+          ligado ? "bg-brand" : "bg-border-strong",
+          desabilitado ? "opacity-60 cursor-default" : "cursor-pointer",
+        ].join(" ")}
+      >
+        <span
+          className={[
+            "absolute top-[3px] w-5 h-5 rounded-full bg-white transition-all",
+            ligado ? "left-[23px]" : "left-[3px]",
+          ].join(" ")}
+        />
+      </button>
+    </div>
+  );
+}
+
 // ─── Tela principal ─────────────────────────────────────────────────────────--
 
 type Estado = "carregando" | "nao-configurado" | "configurado";
@@ -718,6 +832,8 @@ export function IaIntegracaoScreen() {
               Gerenciar
             </button>
           </div>
+
+          <PainelPermissoes integracao={integracao} onAtualizado={setIntegracao} />
 
           <div className="bg-surface border border-border rounded-2xl px-6 py-4 mt-3 flex items-center justify-between">
             <span className="text-[13px] font-medium text-ink-muted">

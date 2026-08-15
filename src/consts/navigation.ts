@@ -16,6 +16,7 @@ export const TITULOS_PAGINA: Record<string, string> = {
   "/categorias": "Categorias",
   "/personas": "Personas",
   "/analise": "Análise",
+  "/empresas": "Empresas",
   "/ia": "Quibo IA",
   "/perfil": "Perfil",
   "/investimentos": "Investimentos",

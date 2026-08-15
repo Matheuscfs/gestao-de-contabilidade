@@ -33,6 +33,17 @@ pub struct Paginado<T> {
     pub total_pages: u32,
 }
 
+/// Envelope da paginação por cursor (`GET /v2/transactions`).
+/// `next` é a URL completa da próxima página — o cursor vem no parâmetro `after`.
+/// Quando `None`, a listagem acabou.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PaginadoCursor<T> {
+    pub results: Vec<T>,
+    #[serde(default)]
+    pub next: Option<String>,
+}
+
 // ─── Item ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -237,6 +248,10 @@ pub struct Transaction {
     pub balance: Option<f64>,
     #[serde(default)]
     pub category: Option<String>,
+    /// Código hierárquico de 8 dígitos da taxonomia Pluggy (ex.: "19010000").
+    /// Os 2 primeiros dígitos identificam a categoria de topo.
+    #[serde(default)]
+    pub category_id: Option<String>,
     #[serde(rename = "type")]
     pub tipo: TipoTransacao,
     pub status: StatusTransacao,

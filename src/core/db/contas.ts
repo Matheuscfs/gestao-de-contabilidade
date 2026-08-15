@@ -11,6 +11,8 @@ export type Conta = {
   type: TipoConta;
   color: string;
   icon: string;
+  /** Nome do banco preenchido pelo sync (ex: "Sicredi") ou null em contas manuais. */
+  bank: string | null;
   /** Persona vinculada (opcional) ou null. */
   personaId: string | null;
   isPrimary: boolean;
@@ -30,12 +32,22 @@ export type NovaConta = {
   balanceCents: number;
 };
 
+/**
+ * Dados aceitos na edição. `balanceCents` é opcional: em contas importadas
+ * (`source = 'PLUGGY'`) o saldo pertence ao sync e não deve ser regravado com o
+ * valor que estava no formulário.
+ */
+export type EdicaoConta = Omit<NovaConta, "balanceCents"> & {
+  balanceCents?: number;
+};
+
 type ContaRow = {
   id: string;
   name: string;
   type: string;
   color: string;
   icon: string;
+  bank: string | null;
   persona_id: string | null;
   is_primary: number;
   is_active: number;
@@ -51,6 +63,7 @@ function mapearLinha(r: ContaRow): Conta {
     type: r.type as TipoConta,
     color: r.color,
     icon: r.icon,
+    bank: r.bank ?? null,
     personaId: r.persona_id ?? null,
     isPrimary: r.is_primary === 1,
     isActive: r.is_active === 1,
@@ -65,7 +78,7 @@ function mapearLinha(r: ContaRow): Conta {
 export async function listarContas(): Promise<Conta[]> {
   const sqlite = await getSqlite();
   const rows = await sqlite.select<ContaRow[]>(
-    `SELECT id, name, type, color, icon, persona_id, is_primary, is_active, balance_cents, source, created_at
+    `SELECT id, name, type, color, icon, bank, persona_id, is_primary, is_active, balance_cents, source, created_at
      FROM accounts
      WHERE archived = 0
      ORDER BY is_primary DESC, created_at ASC`
@@ -123,7 +136,7 @@ export async function criarConta(dados: NovaConta): Promise<void> {
   );
 }
 
-export async function editarConta(id: string, dados: NovaConta): Promise<void> {
+export async function editarConta(id: string, dados: EdicaoConta): Promise<void> {
   const sqlite = await getSqlite();
   if (dados.isPrimary) {
     await sqlite.execute(
@@ -131,21 +144,25 @@ export async function editarConta(id: string, dados: NovaConta): Promise<void> {
       [id]
     );
   }
+  // O saldo só é gravado quando informado — em contas importadas ele é
+  // propriedade do sync e seria sobrescrito por um valor velho do formulário.
+  const gravaSaldo = dados.balanceCents != null;
+  const params: unknown[] = [
+    dados.name.trim(),
+    dados.type,
+    dados.color,
+    dados.icon,
+    dados.personaId,
+    dados.isPrimary ? 1 : 0,
+  ];
+  if (gravaSaldo) params.push(dados.balanceCents);
+  params.push(agora(), id);
   await sqlite.execute(
     `UPDATE accounts
-     SET name = ?, type = ?, color = ?, icon = ?, persona_id = ?, is_primary = ?, balance_cents = ?, updated_at = ?
+     SET name = ?, type = ?, color = ?, icon = ?, persona_id = ?, is_primary = ?,
+         ${gravaSaldo ? "balance_cents = ?," : ""} updated_at = ?
      WHERE id = ?`,
-    [
-      dados.name.trim(),
-      dados.type,
-      dados.color,
-      dados.icon,
-      dados.personaId,
-      dados.isPrimary ? 1 : 0,
-      dados.balanceCents,
-      agora(),
-      id,
-    ]
+    params
   );
 }
 

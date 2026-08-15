@@ -188,6 +188,12 @@ export const transactions = sqliteTable(
     /** ID da transação na Pluggy (chave de idempotência) */
     pluggyId: text("pluggy_id"),
     pluggySyncedAt: text("pluggy_synced_at"),
+    /**
+     * Status como o banco informa: POSTED (liquidada) | PENDING (autorizada,
+     * fatura ainda aberta). Separado de `status`, que diz se o valor conta nos
+     * totais — uma compra de cartão pendente conta, mas continua pendente.
+     */
+    pluggyStatus: text("pluggy_status"),
     /** Payload JSON cru da Pluggy, exatamente como recebido. NULL = manual. */
     raw: text("raw"),
 
@@ -306,6 +312,231 @@ export const appSettings = sqliteTable("app_settings", {
   updatedAt: text("updated_at").notNull(),
 });
 
+// ─── Módulo contábil — Empresas ───────────────────────────────────────────────
+export const empresas = sqliteTable(
+  "empresas",
+  {
+    id: text("id").primaryKey(),
+    razaoSocial: text("razao_social").notNull(),
+    nomeFantasia: text("nome_fantasia"),
+    /** Só dígitos (14). */
+    cnpj: text("cnpj").notNull(),
+    inscricaoEstadual: text("inscricao_estadual"),
+    inscricaoMunicipal: text("inscricao_municipal"),
+    /** ISO YYYY-MM-DD */
+    dataAbertura: text("data_abertura"),
+    cnaePrincipal: text("cnae_principal"),
+    /** JSON array serializado: string[] */
+    cnaesSecundarios: text("cnaes_secundarios"),
+    uf: text("uf"),
+    municipio: text("municipio"),
+    /** MEI | SIMPLES | PRESUMIDO | REAL */
+    regimeTributario: text("regime_tributario").notNull(),
+    /** Anexo do Simples (I–V); NULL fora do Simples */
+    anexoSimples: text("anexo_simples"),
+    /** Reforma tributária: REGULAR | SIMPLES_DAS | SIMPLES_HIBRIDO; NULL = não definida */
+    regimeIbsCbs: text("regime_ibs_cbs"),
+    /** Presunção do Lucro Presumido: COMERCIO_INDUSTRIA | TRANSPORTE_PASSAGEIROS | SERVICOS */
+    atividadePresumido: text("atividade_presumido"),
+    /** ATIVA | INATIVA | BAIXADA */
+    status: text("status").notNull().default("ATIVA"),
+    /** Flag declarativa para o motor de obrigações (Fase 2). */
+    temFuncionarios: integer("tem_funcionarios").notNull().default(0),
+    notes: text("notes"),
+    archived: integer("archived").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    uqCnpj: uniqueIndex("uq_empresa_cnpj").on(t.cnpj),
+  })
+);
+
+// ─── Módulo contábil — Sócios (cadastro global) ───────────────────────────────
+export const socios = sqliteTable(
+  "socios",
+  {
+    id: text("id").primaryKey(),
+    nome: text("nome").notNull(),
+    /** Só dígitos (11). */
+    cpf: text("cpf"),
+    email: text("email"),
+    telefone: text("telefone"),
+    archived: integer("archived").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    uqCpf: uniqueIndex("uq_socio_cpf").on(t.cpf),
+  })
+);
+
+// ─── Módulo contábil — Vínculo societário (N:N) ───────────────────────────────
+export const empresaSocios = sqliteTable(
+  "empresa_socios",
+  {
+    id: text("id").primaryKey(),
+    empresaId: text("empresa_id")
+      .notNull()
+      .references(() => empresas.id, { onDelete: "cascade" }),
+    socioId: text("socio_id")
+      .notNull()
+      .references(() => socios.id, { onDelete: "cascade" }),
+    /** Participação societária em centésimos de % (5000 = 50,00%). */
+    participacaoCentesimos: integer("participacao_centesimos").notNull().default(0),
+    isAdministrador: integer("is_administrador").notNull().default(0),
+    /** Pró-labore mensal em centavos; 0 = não retira pró-labore. */
+    proLaboreCents: integer("pro_labore_cents").notNull().default(0),
+    recebeDistribuicao: integer("recebe_distribuicao").notNull().default(1),
+    dataEntrada: text("data_entrada"),
+    /** Preenchida = sócio retirado da sociedade. */
+    dataSaida: text("data_saida"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    uqEmpresaSocio: uniqueIndex("uq_empresa_socio").on(t.empresaId, t.socioId),
+    byEmpresa: index("ix_empresa_socios_empresa").on(t.empresaId),
+    bySocio: index("ix_empresa_socios_socio").on(t.socioId),
+  })
+);
+
+// ─── Módulo contábil — Funcionários ───────────────────────────────────────────
+export const funcionarios = sqliteTable(
+  "funcionarios",
+  {
+    id: text("id").primaryKey(),
+    empresaId: text("empresa_id")
+      .notNull()
+      .references(() => empresas.id, { onDelete: "cascade" }),
+    nome: text("nome").notNull(),
+    /** Só dígitos (11). */
+    cpf: text("cpf"),
+    cargo: text("cargo"),
+    /** CLT | ESTAGIO | APRENDIZ | TEMPORARIO | OUTRO */
+    vinculo: text("vinculo").notNull().default("CLT"),
+    salarioCents: integer("salario_cents").notNull().default(0),
+    dataAdmissao: text("data_admissao"),
+    /** Preenchida = desligado. */
+    dataDemissao: text("data_demissao"),
+    archived: integer("archived").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    byEmpresa: index("ix_funcionarios_empresa").on(t.empresaId),
+  })
+);
+
+// ─── Módulo contábil — Receitas mensais por empresa ───────────────────────────
+export const empresaReceitas = sqliteTable(
+  "empresa_receitas",
+  {
+    id: text("id").primaryKey(),
+    empresaId: text("empresa_id")
+      .notNull()
+      .references(() => empresas.id, { onDelete: "cascade" }),
+    mes: integer("mes").notNull(),
+    ano: integer("ano").notNull(),
+    receitaCents: integer("receita_cents").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    uqCompetencia: uniqueIndex("uq_empresa_receita").on(t.empresaId, t.mes, t.ano),
+  })
+);
+
+// ─── Módulo contábil — Ocorrências de obrigações ──────────────────────────────
+// O catálogo de obrigações vive em código (`src/consts/obrigacoes.ts`).
+export const obrigacoesOcorrencias = sqliteTable(
+  "obrigacoes_ocorrencias",
+  {
+    id: text("id").primaryKey(),
+    empresaId: text("empresa_id")
+      .notNull()
+      .references(() => empresas.id, { onDelete: "cascade" }),
+    /** Código do catálogo (ex.: 'DAS', 'PGDAS_D', 'ESOCIAL_FOLHA'). */
+    obrigacaoCodigo: text("obrigacao_codigo").notNull(),
+    /** Mensal = mês de apuração; trimestral = último mês do trimestre; anual = 12. */
+    competenciaMes: integer("competencia_mes").notNull(),
+    competenciaAno: integer("competencia_ano").notNull(),
+    /** ISO YYYY-MM-DD, já ajustado para dia útil. */
+    vencimento: text("vencimento").notNull(),
+    /** PENDENTE | ENTREGUE | PAGA | DISPENSADA — "atrasada" é derivada. */
+    status: text("status").notNull().default("PENDENTE"),
+    /** Valor da guia em centavos, quando houver. */
+    valorCents: integer("valor_cents"),
+    concluidaEm: text("concluida_em"),
+    notes: text("notes"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    uqOcorrencia: uniqueIndex("uq_obrigacao_ocorrencia").on(
+      t.empresaId,
+      t.obrigacaoCodigo,
+      t.competenciaMes,
+      t.competenciaAno
+    ),
+    byEmpresa: index("ix_obrigacoes_empresa").on(t.empresaId, t.vencimento),
+  })
+);
+
+// ─── Módulo contábil — Obrigações desativadas por empresa ─────────────────────
+export const obrigacoesDesativadas = sqliteTable("obrigacoes_desativadas", {
+  empresaId: text("empresa_id")
+    .notNull()
+    .references(() => empresas.id, { onDelete: "cascade" }),
+  obrigacaoCodigo: text("obrigacao_codigo").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+// ─── Módulo contábil — Processos ──────────────────────────────────────────────
+export const processos = sqliteTable(
+  "processos",
+  {
+    id: text("id").primaryKey(),
+    empresaId: text("empresa_id")
+      .notNull()
+      .references(() => empresas.id, { onDelete: "cascade" }),
+    titulo: text("titulo").notNull(),
+    /** ABERTURA | ALTERACAO | PARCELAMENTO | CERTIDAO | DEFESA | REGULARIZACAO | BAIXA | OUTRO */
+    tipo: text("tipo").notNull(),
+    descricao: text("descricao"),
+    /** ISO YYYY-MM-DD, opcional. */
+    prazo: text("prazo"),
+    /** EM_ANDAMENTO | AGUARDANDO | CONCLUIDO | CANCELADO — "atrasado" é derivado. */
+    status: text("status").notNull().default("EM_ANDAMENTO"),
+    concluidoEm: text("concluido_em"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    byEmpresa: index("ix_processos_empresa").on(t.empresaId, t.status),
+  })
+);
+
+// ─── Módulo contábil — Etapas de processo (checklist) ─────────────────────────
+export const processoEtapas = sqliteTable(
+  "processo_etapas",
+  {
+    id: text("id").primaryKey(),
+    processoId: text("processo_id")
+      .notNull()
+      .references(() => processos.id, { onDelete: "cascade" }),
+    descricao: text("descricao").notNull(),
+    ordem: integer("ordem").notNull().default(0),
+    concluida: integer("concluida").notNull().default(0),
+    concluidaEm: text("concluida_em"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    byProcesso: index("ix_etapas_processo").on(t.processoId, t.ordem),
+  })
+);
+
 // ─── Controle de migrações ────────────────────────────────────────────────────
 export const schemaMigrations = sqliteTable("schema_migrations", {
   version: integer("version").primaryKey(),
@@ -336,3 +567,15 @@ export type NewIntegration = typeof integrations.$inferInsert;
 
 export type IntegrationSyncLog = typeof integrationSyncLog.$inferSelect;
 export type NewIntegrationSyncLog = typeof integrationSyncLog.$inferInsert;
+
+export type EmpresaRowDrizzle = typeof empresas.$inferSelect;
+export type NewEmpresa = typeof empresas.$inferInsert;
+
+export type SocioRowDrizzle = typeof socios.$inferSelect;
+export type NewSocio = typeof socios.$inferInsert;
+
+export type EmpresaSocioRowDrizzle = typeof empresaSocios.$inferSelect;
+export type NewEmpresaSocio = typeof empresaSocios.$inferInsert;
+
+export type FuncionarioRowDrizzle = typeof funcionarios.$inferSelect;
+export type NewFuncionario = typeof funcionarios.$inferInsert;

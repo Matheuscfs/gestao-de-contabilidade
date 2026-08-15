@@ -4,11 +4,11 @@ use crate::errors::AppError;
 
 use super::auth::EstadoAuth;
 use super::items::checar_status_http;
-use super::models::{Account, Identity, Investment, Loan, Paginado, Transaction};
+use super::models::{
+    Account, Identity, Investment, Loan, Paginado, PaginadoCursor, Transaction,
+};
 
 const PLUGGY_API: &str = "https://api.pluggy.ai";
-/// Pluggy retorna até 500 transações por página.
-const PAGE_SIZE: u32 = 500;
 
 /// Converte uma lista de `Value` em pares `(T, Value)`, descartando os itens que
 /// não desserializam para `T` — mantém o sync resiliente a campos novos/ausentes.
@@ -69,7 +69,7 @@ pub async fn buscar_contas(
 // ─── Transações (paginadas) ───────────────────────────────────────────────────
 
 /// Busca transações de uma conta com o JSON cru de cada transação ao lado do
-/// modelo tipado (para persistir em `raw`). Paginação completa.
+/// modelo tipado (para persistir em `raw`). Percorre todas as páginas do cursor.
 /// `desde`: se `None`, busca o histórico disponível (~12 meses).
 pub async fn buscar_transacoes_raw(
     estado: &EstadoAuth,
@@ -77,20 +77,63 @@ pub async fn buscar_transacoes_raw(
     desde: Option<DateTime<Utc>>,
 ) -> Result<Vec<(Transaction, serde_json::Value)>, AppError> {
     let mut todas: Vec<(Transaction, serde_json::Value)> = Vec::new();
-    let mut pagina = 1u32;
+    let mut cursor: Option<String> = None;
 
     loop {
-        let lote = buscar_pagina_transacoes(estado, account_id, desde, pagina).await?;
-        let total_paginas = lote.total_pages;
+        let lote = buscar_pagina_transacoes(estado, account_id, desde, cursor.as_deref()).await?;
         todas.extend(emparelhar_raw::<Transaction>(lote.results));
 
-        if pagina >= total_paginas || total_paginas == 0 {
-            break;
+        match lote.next.as_deref().and_then(extrair_cursor) {
+            Some(proximo) => cursor = Some(proximo),
+            None => break,
         }
-        pagina += 1;
     }
 
     Ok(todas)
+}
+
+/// A Pluggy devolve `next` como a URL completa da próxima página; o cursor é o
+/// valor do parâmetro `after`. Retorna `None` se a URL não trouxer o parâmetro.
+fn extrair_cursor(next: &str) -> Option<String> {
+    let query = next.split_once('?').map(|(_, q)| q)?;
+    query.split('&').find_map(|par| {
+        par.strip_prefix("after=")
+            .map(|v| percent_decode(v))
+            .filter(|v| !v.is_empty())
+    })
+}
+
+/// Decodifica percent-encoding em um valor de query string (`%XX` e `+`).
+fn percent_decode(valor: &str) -> String {
+    let bytes = valor.as_bytes();
+    let mut saida = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'%' if i + 2 < bytes.len() => {
+                let hex = std::str::from_utf8(&bytes[i + 1..i + 3]).ok();
+                match hex.and_then(|h| u8::from_str_radix(h, 16).ok()) {
+                    Some(b) => {
+                        saida.push(b);
+                        i += 3;
+                    }
+                    None => {
+                        saida.push(bytes[i]);
+                        i += 1;
+                    }
+                }
+            }
+            b'+' => {
+                saida.push(b' ');
+                i += 1;
+            }
+            b => {
+                saida.push(b);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&saida).into_owned()
 }
 
 /// Busca transações de uma conta (somente tipado).
@@ -106,41 +149,43 @@ pub async fn buscar_transacoes(
         .collect())
 }
 
+/// Uma página de `GET /v2/transactions`. O endpoint antigo (`/transactions`,
+/// paginado por `page`/`pageSize`) foi descontinuado e responde 410.
+/// A v2 não aceita parâmetro de tamanho de página — o servidor define o lote.
 async fn buscar_pagina_transacoes(
     estado: &EstadoAuth,
     account_id: &str,
     desde: Option<DateTime<Utc>>,
-    pagina: u32,
-) -> Result<Paginado<serde_json::Value>, AppError> {
+    cursor: Option<&str>,
+) -> Result<PaginadoCursor<serde_json::Value>, AppError> {
     estado
         .com_retry(|api_key| {
             let account_id = account_id.to_string();
+            let cursor = cursor.map(str::to_string);
             async move {
                 let mut req = reqwest::Client::new()
-                    .get(format!("{PLUGGY_API}/transactions"))
-                    .query(&[
-                        ("accountId", account_id.as_str()),
-                        ("pageSize", &PAGE_SIZE.to_string()),
-                        ("page", &pagina.to_string()),
-                    ])
+                    .get(format!("{PLUGGY_API}/v2/transactions"))
+                    .query(&[("accountId", account_id.as_str())])
                     .header("X-API-KEY", &api_key);
 
                 if let Some(data) = desde {
-                    // Pluggy aceita ISO 8601 no parâmetro `from`
-                    req = req.query(&[("from", data.format("%Y-%m-%d").to_string())]);
+                    req = req.query(&[("dateFrom", data.format("%Y-%m-%d").to_string())]);
                 }
 
-                let resp = req
-                    .send()
-                    .await
-                    .map_err(|e| AppError::Integration(format!("GET /transactions falhou: {e}")))?;
+                if let Some(ref c) = cursor {
+                    req = req.query(&[("after", c.as_str())]);
+                }
 
-                checar_status_http(&resp, "/transactions").await?;
+                let resp = req.send().await.map_err(|e| {
+                    AppError::Integration(format!("GET /v2/transactions falhou: {e}"))
+                })?;
 
-                resp.json::<Paginado<serde_json::Value>>()
+                checar_status_http(&resp, "/v2/transactions").await?;
+
+                resp.json::<PaginadoCursor<serde_json::Value>>()
                     .await
                     .map_err(|e| {
-                        AppError::Integration(format!("JSON /transactions inválido: {e}"))
+                        AppError::Integration(format!("JSON /v2/transactions inválido: {e}"))
                     })
             }
         })
@@ -282,4 +327,28 @@ pub async fn buscar_emprestimos(
             }
         })
         .await
+}
+
+#[cfg(test)]
+mod testes {
+    use super::extrair_cursor;
+
+    #[test]
+    fn extrai_cursor_da_url_next() {
+        let next = "https://api.pluggy.ai/v2/transactions?accountId=abc&after=eyJpZCI6IjEyMyJ9";
+        assert_eq!(extrair_cursor(next).as_deref(), Some("eyJpZCI6IjEyMyJ9"));
+    }
+
+    #[test]
+    fn decodifica_percent_encoding_no_cursor() {
+        let next = "https://api.pluggy.ai/v2/transactions?after=a%2Bb%3Dc&accountId=x";
+        assert_eq!(extrair_cursor(next).as_deref(), Some("a+b=c"));
+    }
+
+    #[test]
+    fn sem_parametro_after_encerra_a_paginacao() {
+        assert_eq!(extrair_cursor("https://api.pluggy.ai/v2/transactions?accountId=x"), None);
+        assert_eq!(extrair_cursor("https://api.pluggy.ai/v2/transactions"), None);
+        assert_eq!(extrair_cursor("https://api.pluggy.ai/v2/transactions?after="), None);
+    }
 }

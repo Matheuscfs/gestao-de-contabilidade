@@ -4,6 +4,8 @@ import { CartoesCreditoScreen } from "@/screens/cartoes";
 import { CategoriasScreen } from "@/screens/categorias/categorias-screen";
 import { CustoDeVidaScreen } from "@/screens/custo-de-vida";
 import { DividasScreen } from "@/screens/dividas";
+import { EmpresasScreen } from "@/screens/empresas";
+import { EmpresaDetalheScreen } from "@/screens/empresas/empresa-detalhe";
 import { ExtratoScreen } from "@/screens/extrato/extrato-screen";
 import { IaScreen } from "@/screens/ia/ia-screen";
 import { InvestimentosScreen } from "@/screens/investimentos/investimentos-screen";
@@ -49,6 +51,8 @@ export const router = createBrowserRouter([
       { path: "categorias", element: <CategoriasScreen /> },
       { path: "personas", element: <PersonasScreen /> },
       { path: "analise", element: <AnaliseScreen /> },
+      { path: "empresas", element: <EmpresasScreen /> },
+      { path: "empresas/:id", element: <EmpresaDetalheScreen /> },
       { path: "ia", element: <IaScreen /> },
       { path: "perfil", element: <PerfilScreen /> },
       { path: "investimentos", element: <InvestimentosScreen /> },

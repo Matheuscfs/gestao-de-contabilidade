@@ -90,6 +90,11 @@ export async function criarCartao(dados: {
   );
 }
 
+/**
+ * Atualiza só os campos presentes em `dados` — o que não vier fica intacto.
+ * Vale principalmente para `source`: omiti-lo preserva a origem do cartão, para
+ * que editar um cartão importado (`PLUGGY`) não o converta em `MANUAL`.
+ */
 export async function atualizarCartao(
   id: string,
   dados: Partial<{

@@ -103,14 +103,27 @@ pub async fn pluggy_descobrir_items(
     app: AppHandle,
     estado: State<'_, EstadoAuth>,
 ) -> Result<Vec<ItemResumo>, String> {
-    let items_api = items::listar_items(&estado)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    eprintln!("[pluggy] descobrir_items: {} item(s) na API", items_api.len());
-
     let caminho = db::caminho_banco(&app).map_err(|e| e.to_string())?;
     let conn = Connection::open(&caminho).map_err(|e| e.to_string())?;
+
+    // No modelo MeuPluggy, `GET /items` costuma ser negado à aplicação do
+    // usuário (401/403) mesmo com credenciais válidas — a autenticação em si
+    // já passou para chegar até aqui, e `GET /items/{id}` continua funcionando.
+    // Nesse caso a descoberta automática simplesmente não está disponível:
+    // devolvemos o que já está registrado localmente em vez de derrubar a tela,
+    // e o usuário adiciona bancos pelo item ID.
+    let items_api = match items::listar_items(&estado).await {
+        Ok(items) => items,
+        Err(e) => {
+            eprintln!(
+                "[pluggy] descoberta automática indisponível ({e}); \
+                 mantendo os bancos já registrados"
+            );
+            return query_items_db(&conn).map_err(|e| e.to_string());
+        }
+    };
+
+    eprintln!("[pluggy] descobrir_items: {} item(s) na API", items_api.len());
 
     for item in &items_api {
         let connector_name = item.connector.as_ref().map(|c| c.name.clone());

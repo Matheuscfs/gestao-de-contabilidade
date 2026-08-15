@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { useNavigate } from "react-router-dom";
+import { useMesStore } from "@/app/mes-store";
 import { AnimatedMoney } from "@/components/motion/animated-money";
 import { Cascade, CascadeItem } from "@/components/motion/cascade";
 import { TiltCard } from "@/components/motion/tilt-card";
 import { listarContas, type Conta } from "@/core/db/contas";
 import { listarPersonas, type PersonaComTotais } from "@/core/db/personas";
+import { resumoDoMes, type ResumoMes } from "@/core/db/mes";
 import {
   pluggyListarItems,
   pluggyStatusCredenciais,
@@ -84,6 +86,29 @@ function tempoRelativo(iso: string | null): string {
   if (d < 30) return `há ${d} dias`;
   const m = Math.floor(d / 30);
   return m === 1 ? "há 1 mês" : `há ${m} meses`;
+}
+
+/**
+ * Veredito do mês em uma frase — o tom leve do app traduzindo a sobra.
+ * Sem movimento confirmado ainda, não dá pra opinar.
+ */
+function vereditoDoMes(saldoCents: number, temMovimento: boolean): string {
+  if (!temMovimento) return "Mês ainda em branco. Nada confirmado por aqui.";
+  if (saldoCents > 0) return "Tá tranquilo. Dá pra respirar.";
+  if (saldoCents === 0) return "Empatou na trave. Nem sobrou, nem faltou.";
+  return "Saiu mais do que entrou. Bora dar uma olhada?";
+}
+
+/** Cor do número herói: verde sobrando, vermelho no vermelho, neutro no zero. */
+function corDaSobra(saldoCents: number, temMovimento: boolean): string {
+  if (!temMovimento || saldoCents === 0) return "text-ink";
+  return saldoCents > 0 ? "text-positive" : "text-negative";
+}
+
+/** Largura da barra proporcional ao maior dos dois lados (entrou × saiu). */
+function larguraBarra(valorCents: number, maiorCents: number): string {
+  if (maiorCents <= 0) return "0%";
+  return `${(valorCents / maiorCents) * 100}%`;
 }
 
 /** Status agregado dos items conectados → cor + rótulo do indicador. */
@@ -363,6 +388,37 @@ function WidgetPersonas() {
 
 export function MesScreen() {
   const reduzido = useReducedMotion();
+  const { mes, ano } = useMesStore();
+
+  const [resumo, setResumo] = useState<ResumoMes>({
+    entrouCents: 0,
+    saiuCents: 0,
+    saldoCents: 0,
+    total: 0,
+  });
+  const [carregandoResumo, setCarregandoResumo] = useState(true);
+
+  // O herói acompanha o seletor de mês do topo: troca de competência, recarrega.
+  useEffect(() => {
+    let ativo = true;
+    setCarregandoResumo(true);
+    resumoDoMes(mes, ano)
+      .then((r) => {
+        if (ativo) setResumo(r);
+      })
+      .catch(() => {
+        if (ativo) setResumo({ entrouCents: 0, saiuCents: 0, saldoCents: 0, total: 0 });
+      })
+      .finally(() => {
+        if (ativo) setCarregandoResumo(false);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [mes, ano]);
+
+  const temMovimento = resumo.total > 0;
+  const maior = Math.max(resumo.entrouCents, resumo.saiuCents);
 
   return (
     <div>
@@ -375,15 +431,18 @@ export function MesScreen() {
       >
         <p className="text-sm font-semibold text-ink-secondary">sobra esse mês</p>
         <motion.p
-          className="text-6xl font-bold tabular-nums text-positive mt-2 tracking-tight"
+          className={`text-6xl font-bold tabular-nums mt-2 tracking-tight ${corDaSobra(
+            resumo.saldoCents,
+            temMovimento
+          )}`}
           initial={reduzido ? false : { scale: 0.92 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.1 }}
         >
-          R$ —
+          {carregandoResumo ? "R$ —" : <AnimatedMoney cents={resumo.saldoCents} />}
         </motion.p>
         <p className="text-base font-semibold text-ink mt-3">
-          Tá tranquilo. Dá pra respirar.
+          {carregandoResumo ? "Fazendo as contas…" : vereditoDoMes(resumo.saldoCents, temMovimento)}
         </p>
       </motion.div>
 
@@ -396,13 +455,17 @@ export function MesScreen() {
                 <span className="w-2.5 h-2.5 rounded-full bg-positive" />
                 <span className="text-sm font-semibold text-ink-secondary">Entrou</span>
               </div>
-              <span className="text-base font-semibold text-ink tabular-nums">R$ —</span>
+              <span className="text-base font-semibold text-ink tabular-nums">
+                {carregandoResumo ? "R$ —" : formatarBRL(resumo.entrouCents)}
+              </span>
             </div>
             <div className="h-2 rounded-full bg-border-subtle overflow-hidden mb-5">
               <motion.div
                 className="h-full bg-positive rounded-full"
                 initial={{ width: 0 }}
-                animate={{ width: "100%" }}
+                animate={{
+                  width: carregandoResumo ? "0%" : larguraBarra(resumo.entrouCents, maior),
+                }}
                 transition={{ type: "spring", stiffness: 120, damping: 20, delay: 0.25 }}
               />
             </div>
@@ -412,13 +475,17 @@ export function MesScreen() {
                 <span className="w-2.5 h-2.5 rounded-full bg-negative" />
                 <span className="text-sm font-semibold text-ink-secondary">Saiu</span>
               </div>
-              <span className="text-base font-semibold text-ink tabular-nums">R$ —</span>
+              <span className="text-base font-semibold text-ink tabular-nums">
+                {carregandoResumo ? "R$ —" : formatarBRL(resumo.saiuCents)}
+              </span>
             </div>
             <div className="h-2 rounded-full bg-border-subtle overflow-hidden">
               <motion.div
                 className="h-full bg-negative rounded-full"
                 initial={{ width: 0 }}
-                animate={{ width: "0%" }}
+                animate={{
+                  width: carregandoResumo ? "0%" : larguraBarra(resumo.saiuCents, maior),
+                }}
                 transition={{ type: "spring", stiffness: 120, damping: 20, delay: 0.3 }}
               />
             </div>
