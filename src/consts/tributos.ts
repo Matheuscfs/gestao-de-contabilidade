@@ -14,14 +14,16 @@
  * substituem a apuração oficial (PGDAS-D, DCTFWeb etc.).
  */
 
+import { ANO_FISCAL } from "./ano-fiscal";
 import {
   calcularIRRFCents,
+  FGTS_ALIQUOTA,
   IRRF_FAIXAS,
   IRRF_DESCONTO_SIMPLIFICADO_CENTS,
 } from "./clt";
 import type { AnexoSimples, AtividadePresumido } from "@/core/db/empresas";
 
-export const TRIBUTOS_ANO_REFERENCIA = "2026";
+export const TRIBUTOS_ANO_REFERENCIA = ANO_FISCAL;
 
 // ─── Parâmetros 2026 ──────────────────────────────────────────────────────────
 
@@ -36,6 +38,13 @@ export const INSS_PRO_LABORE_ALIQUOTA = 0.11;
 
 /** CPP patronal sobre o pró-labore (Presumido, Real e Simples Anexo IV). */
 export const CPP_PATRONAL_ALIQUOTA = 0.2;
+
+/**
+ * FGTS depositado pelo empregador — entra no numerador do Fator R. Reusa a
+ * alíquota de `clt.ts` em vez de repetir o 0,08: é o mesmo depósito, visto de
+ * outro ângulo. Não incide sobre pró-labore, que não é vínculo celetista.
+ */
+export const FGTS_ALIQUOTA_PATRONAL = FGTS_ALIQUOTA;
 
 // Redutor do IRRF (Lei 15.270/2025): isenção efetiva até R$ 5.000/mês e
 // redução decrescente até R$ 7.350 → redutor = 978,62 − 13,3145% do rendimento.
@@ -152,7 +161,100 @@ export function calcularFatorR(
   return { fatorR, anexoIndicado: fatorR >= 0.28 ? "III" : "V" };
 }
 
+/** Fator R a partir do qual a empresa cai no Anexo III. */
+export const FATOR_R_CORTE = 0.28;
+
+/**
+ * Janela em torno do corte em que vale planejar a folha: subir a retirada
+ * pode valer muito mais do que custa. Abaixo de 25% a distância costuma ser
+ * grande demais para compensar; acima de 31% a margem já é confortável.
+ */
+export const FATOR_R_FRONTEIRA = { de: 0.25, ate: 0.31 };
+
+export type ComposicaoFolha = {
+  /** Soma dos pró-labores mensais vigentes. */
+  proLaboreMensalCents: number;
+  /** Soma dos salários mensais dos funcionários ativos. */
+  salariosMensalCents: number;
+  /**
+   * A CPP patronal é recolhida por fora do DAS? Verdadeiro no Anexo IV, no
+   * Presumido e no Real. Nos Anexos I–III e V ela está embutida no DAS e,
+   * como a lei fala em contribuição "efetivamente recolhida", não entra.
+   */
+  cppForaDoDas: boolean;
+};
+
+export type ResultadoFolha12m = {
+  /** 12 meses de pró-labore + salários. */
+  remuneracoesCents: number;
+  /** 13º salário — uma remuneração a mais no período. */
+  decimoTerceiroCents: number;
+  /** Terço constitucional de férias (só sobre salários; pró-labore não tem). */
+  tercoFeriasCents: number;
+  /** FGTS 8% sobre salários, 13º e terço de férias. */
+  fgtsCents: number;
+  /** CPP patronal, quando recolhida por fora do DAS. */
+  cppCents: number;
+  totalCents: number;
+};
+
+/**
+ * Estimativa da folha de 12 meses para o Fator R.
+ *
+ * A LC 123 art. 18 §24 define a folha como as remunerações pagas nos 12 meses
+ * anteriores — pró-labore incluído — acrescidas da CPP efetivamente recolhida
+ * e do FGTS. A conta anterior do app multiplicava só as remunerações atuais
+ * por 12 e subestimava a folha em torno de 16%, o que empurra empresas de
+ * fronteira para o Anexo V (15,5%) quando caberiam no III (6%).
+ *
+ * Continua sendo estimativa: projeta os valores de hoje para trás, porque o
+ * app ainda não guarda o histórico mensal de folha. Quem reajustou salário ou
+ * começou a retirar pró-labore no meio do período verá um número otimista —
+ * por isso a tela mostra a composição aberta em vez de só o percentual.
+ */
+export function estimarFolha12m(c: ComposicaoFolha): ResultadoFolha12m {
+  const mensalCents = c.proLaboreMensalCents + c.salariosMensalCents;
+
+  const remuneracoesCents = mensalCents * 12;
+  const decimoTerceiroCents = mensalCents;
+  // Férias não somam um mês extra: o salário do mês de férias já está nos 12.
+  // O que acresce é o terço constitucional, e só para quem é celetista.
+  const tercoFeriasCents = Math.round(c.salariosMensalCents / 3);
+
+  const baseFgtsCents =
+    c.salariosMensalCents * 13 + tercoFeriasCents;
+  const fgtsCents = Math.round(baseFgtsCents * FGTS_ALIQUOTA_PATRONAL);
+
+  const cppCents = c.cppForaDoDas
+    ? Math.round((mensalCents * 13 + tercoFeriasCents) * CPP_PATRONAL_ALIQUOTA)
+    : 0;
+
+  return {
+    remuneracoesCents,
+    decimoTerceiroCents,
+    tercoFeriasCents,
+    fgtsCents,
+    cppCents,
+    totalCents:
+      remuneracoesCents +
+      decimoTerceiroCents +
+      tercoFeriasCents +
+      fgtsCents +
+      cppCents,
+  };
+}
+
 // ─── Pró-labore (2026) ────────────────────────────────────────────────────────
+
+/**
+ * Piso do pró-labore: um salário mínimo.
+ *
+ * Sócio-administrador que trabalha na empresa deve retirar ao menos isso;
+ * valor abaixo do piso é infração sujeita a autuação. Retirada zero é caso
+ * diferente e legítimo — sócio que só investe, sem atuar na gestão, não retira
+ * pró-labore e recebe apenas distribuição de lucros.
+ */
+export const PRO_LABORE_MINIMO_CENTS = SALARIO_MINIMO_CENTS;
 
 export type ResultadoProLabore = {
   brutoCents: number;
@@ -163,6 +265,11 @@ export type ResultadoProLabore = {
   liquidoCents: number;
   /** CPP 20% da empresa (0 quando a CPP está dentro do DAS). */
   cppEmpresaCents: number;
+  /**
+   * Retirada positiva porém abaixo do salário mínimo. Zero não acusa: é a
+   * ausência de pró-labore, não um valor irregular.
+   */
+  abaixoDoMinimo: boolean;
 };
 
 /** Redutor do IRRF 2026: zera até R$ 5.000 e decresce até R$ 7.350. */
@@ -204,6 +311,7 @@ export function calcularProLabore(
     cppEmpresaCents: comCppPatronal
       ? Math.round(brutoCents * CPP_PATRONAL_ALIQUOTA)
       : 0,
+    abaixoDoMinimo: brutoCents > 0 && brutoCents < PRO_LABORE_MINIMO_CENTS,
   };
 }
 

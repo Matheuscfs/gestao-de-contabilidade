@@ -30,7 +30,11 @@ import {
   calcularPresumidoMes,
   calcularPresumidoTrimestre,
   calcularProLabore,
+  PRO_LABORE_MINIMO_CENTS,
   calcularSimples,
+  estimarFolha12m,
+  FATOR_R_CORTE,
+  FATOR_R_FRONTEIRA,
   LABEL_ATIVIDADE_PRESUMIDO,
   MEI_ICMS_CENTS,
   MEI_INSS_CENTS,
@@ -225,20 +229,27 @@ export function AbaTributos({
     .slice(0, 12)
     .reduce((acc, r) => acc + r.receitaCents, 0);
 
-  // Folha aproximada: pró-labores vigentes + salários de funcionários ativos.
   const proLaboreMensalCents = socios
     .filter((s) => s.dataSaida == null)
     .reduce((acc, s) => acc + s.proLaboreCents, 0);
   const salariosMensalCents = funcionarios
     .filter((f) => f.dataDemissao == null)
     .reduce((acc, f) => acc + f.salarioCents, 0);
-  const folha12mCents = (proLaboreMensalCents + salariosMensalCents) * 12;
 
   const regime = empresa.regimeTributario;
   const comCppPatronal =
     regime === "PRESUMIDO" ||
     regime === "REAL" ||
     (regime === "SIMPLES" && empresa.anexoSimples === "IV");
+
+  // Folha do Fator R: remunerações + 13º + terço de férias + FGTS + CPP
+  // recolhida por fora do DAS, como manda a LC 123 art. 18 §24.
+  const folha = estimarFolha12m({
+    proLaboreMensalCents,
+    salariosMensalCents,
+    cppForaDoDas: comCppPatronal,
+  });
+  const folha12mCents = folha.totalCents;
   const sociosComProLabore = socios.filter(
     (s) => s.dataSaida == null && s.proLaboreCents > 0
   );
@@ -341,11 +352,41 @@ export function AbaTributos({
                       {fatorR.anexoIndicado !== empresa.anexoSimples &&
                         ` — o cadastro está como Anexo ${empresa.anexoSimples}`}
                     </p>
-                    <p className="text-[12px] text-ink-muted mt-0.5">
-                      Folha aproximada de 12 meses ({formatarBRL(folha12mCents)}
-                      {" = "}pró-labores + salários atuais × 12) ÷ RBT12. Aumentar o
-                      pró-labore pode mudar o anexo.
+                    <p className="text-[12px] text-ink-muted mt-1">
+                      Folha estimada de 12 meses ÷ RBT12. Composição:{" "}
+                      {formatarBRL(folha.remuneracoesCents)} de remunerações
+                      {" + "}
+                      {formatarBRL(folha.decimoTerceiroCents)} de 13º
+                      {folha.tercoFeriasCents > 0 &&
+                        ` + ${formatarBRL(folha.tercoFeriasCents)} de terço de férias`}
+                      {folha.fgtsCents > 0 &&
+                        ` + ${formatarBRL(folha.fgtsCents)} de FGTS`}
+                      {folha.cppCents > 0 &&
+                        ` + ${formatarBRL(folha.cppCents)} de CPP`}
+                      {" = "}
+                      <strong className="text-ink-secondary">
+                        {formatarBRL(folha12mCents)}
+                      </strong>
+                      .
                     </p>
+                    <p className="text-[12px] text-ink-muted mt-1">
+                      Projeta os valores de hoje para trás — quem reajustou
+                      salário ou começou a retirar pró-labore no meio do período
+                      verá um número otimista.
+                    </p>
+
+                    {fatorR.fatorR >= FATOR_R_FRONTEIRA.de &&
+                      fatorR.fatorR <= FATOR_R_FRONTEIRA.ate && (
+                        <p
+                          className="text-[12.5px] font-semibold mt-2 pt-2 border-t"
+                          style={{ color: "#B9791C", borderColor: "#F0E3C6" }}
+                        >
+                          Fator R na fronteira dos{" "}
+                          {formatarPercent(FATOR_R_CORTE)}. Aqui vale simular:
+                          subir a folha pode custar menos do que a diferença
+                          entre os Anexos V e III.
+                        </p>
+                      )}
                   </div>
                 )}
                 {simples.acimaDoSublimite && (
@@ -534,6 +575,17 @@ export function AbaTributos({
                       </span>
                     )}
                   </div>
+
+                  {calc.abaixoDoMinimo && (
+                    <p
+                      className="text-[12.5px] font-medium mt-2 pt-2 border-t"
+                      style={{ color: "#B9791C", borderColor: "#F0E3C6" }}
+                    >
+                      Abaixo do salário mínimo ({formatarBRL(PRO_LABORE_MINIMO_CENTS)}).
+                      Sócio que atua na empresa precisa retirar ao menos o piso —
+                      valor menor é passível de autuação.
+                    </p>
+                  )}
                 </div>
               );
             })}

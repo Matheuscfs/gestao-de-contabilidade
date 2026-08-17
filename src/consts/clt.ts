@@ -1,16 +1,22 @@
 /**
- * Parâmetros e cálculos de remuneração CLT no Brasil — tabelas vigentes em 2025.
+ * Parâmetros e cálculos de remuneração CLT no Brasil — tabelas vigentes em 2026.
  *
- * Fontes: tabela progressiva do INSS (a partir de jan/2025, salário mínimo
- * R$ 1.518,00) e tabela progressiva do IRRF (a partir de maio/2025, com faixa
- * de isenção de R$ 2.259,20 e desconto simplificado de R$ 564,80).
+ * Fontes: tabela progressiva do INSS de 2026 (salário mínimo R$ 1.621,00, teto
+ * R$ 8.475,55) e tabela progressiva do IRRF de 2026 (isenção até R$ 2.428,80 e
+ * desconto simplificado de R$ 607,20).
+ *
+ * Estas tabelas não servem só à folha CLT: `tributos.ts` reaproveita o cálculo
+ * de IRRF daqui para o pró-labore do sócio. Por isso o ano vem de
+ * `ano-fiscal.ts` — as duas pontas precisam virar de ano juntas.
  *
  * Todos os valores monetários são em CENTAVOS (inteiros) para evitar erros de
  * ponto flutuante. As estimativas são uma aproximação para dar uma noção do
  * líquido — não substituem o cálculo da folha (que pode ter outras verbas).
  */
 
-export const CLT_ANO_REFERENCIA = "2025";
+import { ANO_FISCAL } from "./ano-fiscal";
+
+export const CLT_ANO_REFERENCIA = ANO_FISCAL;
 
 // ─── Modalidade ────────────────────────────────────────────────────────────────
 
@@ -26,16 +32,16 @@ export const MODALIDADE_LABEL: Record<Modalidade, string> = {
 
 /** Faixas do INSS: alíquota aplicada à parcela do salário dentro da faixa. */
 export const INSS_FAIXAS: readonly { ateCents: number; aliquota: number }[] = [
-  { ateCents: 151_800, aliquota: 0.075 }, // até R$ 1.518,00
-  { ateCents: 279_388, aliquota: 0.09 }, // até R$ 2.793,88
-  { ateCents: 419_083, aliquota: 0.12 }, // até R$ 4.190,83
-  { ateCents: 815_741, aliquota: 0.14 }, // teto: R$ 8.157,41
+  { ateCents: 162_100, aliquota: 0.075 }, // até R$ 1.621,00 (salário mínimo)
+  { ateCents: 290_284, aliquota: 0.09 }, // até R$ 2.902,84
+  { ateCents: 435_427, aliquota: 0.12 }, // até R$ 4.354,27
+  { ateCents: 847_555, aliquota: 0.14 }, // teto: R$ 8.475,55
 ];
 
 /** Teto de contribuição do INSS (salário base máximo). */
-export const INSS_TETO_BASE_CENTS = 815_741;
+export const INSS_TETO_BASE_CENTS = 847_555;
 
-// ─── IRRF — imposto de renda retido na fonte (tabela mensal 2025) ───────────────
+// ─── IRRF — imposto de renda retido na fonte (tabela mensal 2026) ───────────────
 
 /** Faixas do IRRF: aplica `aliquota` sobre a base e subtrai a `parcelaDeduzir`. */
 export const IRRF_FAIXAS: readonly {
@@ -43,18 +49,21 @@ export const IRRF_FAIXAS: readonly {
   aliquota: number;
   parcelaDeduzirCents: number;
 }[] = [
-  { ateCents: 225_920, aliquota: 0, parcelaDeduzirCents: 0 }, // isento até R$ 2.259,20
-  { ateCents: 282_665, aliquota: 0.075, parcelaDeduzirCents: 16_944 },
-  { ateCents: 375_105, aliquota: 0.15, parcelaDeduzirCents: 38_144 },
-  { ateCents: 466_468, aliquota: 0.225, parcelaDeduzirCents: 66_277 },
-  { ateCents: Number.POSITIVE_INFINITY, aliquota: 0.275, parcelaDeduzirCents: 89_600 },
+  { ateCents: 242_880, aliquota: 0, parcelaDeduzirCents: 0 }, // isento até R$ 2.428,80
+  { ateCents: 282_665, aliquota: 0.075, parcelaDeduzirCents: 18_216 },
+  { ateCents: 375_105, aliquota: 0.15, parcelaDeduzirCents: 39_416 },
+  { ateCents: 466_468, aliquota: 0.225, parcelaDeduzirCents: 67_549 },
+  { ateCents: Number.POSITIVE_INFINITY, aliquota: 0.275, parcelaDeduzirCents: 90_873 },
 ];
 
 /** Dedução mensal por dependente no IRRF. */
 export const IRRF_DEDUCAO_DEPENDENTE_CENTS = 18_959;
 
-/** Desconto simplificado mensal do IRRF (alternativa às deduções legais). */
-export const IRRF_DESCONTO_SIMPLIFICADO_CENTS = 56_480;
+/**
+ * Desconto simplificado mensal do IRRF (alternativa às deduções legais).
+ * Equivale a 25% do teto da faixa de isenção — sobe junto com ela.
+ */
+export const IRRF_DESCONTO_SIMPLIFICADO_CENTS = 60_720;
 
 // ─── FGTS — depósito do empregador (NÃO é descontado do salário) ────────────────
 
