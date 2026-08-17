@@ -15,9 +15,15 @@ import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
 import {
   definirAtividadePresumido,
+  definirRegimeTributario,
+  definirSujeitoFatorR,
+  LABEL_REGIME,
+  type AnexoSimples,
   type AtividadePresumido,
   type Empresa,
+  type RegimeTributario,
 } from "@/core/db/empresas";
+import { definirAnexoSimples } from "@/core/db/pendencias-cadastro";
 import type { SocioDaEmpresa } from "@/core/db/socios";
 import type { Funcionario } from "@/core/db/funcionarios";
 import {
@@ -98,6 +104,198 @@ function TituloSecao({ children }: { children: React.ReactNode }) {
     <div className="flex items-center gap-3 mb-2.5 px-0.5">
       <span className="text-[13px] font-semibold text-ink-muted">{children}</span>
       <span className="flex-1 h-px bg-border-subtle" />
+    </div>
+  );
+}
+
+// ─── Seletor de regime ────────────────────────────────────────────────────────
+
+const REGIMES: RegimeTributario[] = ["MEI", "SIMPLES", "PRESUMIDO", "REAL"];
+
+const ANEXOS: { valor: AnexoSimples; dica: string }[] = [
+  { valor: "I", dica: "Comércio" },
+  { valor: "II", dica: "Indústria" },
+  { valor: "III", dica: "Serviços em geral" },
+  { valor: "IV", dica: "Construção, advocacia, limpeza, vigilância" },
+  { valor: "V", dica: "Serviços do §5º-D com folha < 28%" },
+];
+
+function Chip({
+  ativo,
+  onClick,
+  disabled,
+  title,
+  children,
+}: {
+  ativo: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  title?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className="h-[34px] px-3.5 rounded-full font-semibold text-[13px] transition-colors disabled:opacity-50"
+      style={
+        ativo
+          ? { border: "1px solid #87BBF8", background: "#EAF1FD", color: "#2F63C9" }
+          : { border: "1px solid #E3E6EC", background: "#fff", color: "#5B616E" }
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * Enquadramento da empresa, editável aqui mesmo.
+ *
+ * Regime, anexo e Fator R também existem no cadastro, mas é nesta tela que a
+ * consequência deles aparece — trocar o regime e ver o DAS virar IRPJ/CSLL na
+ * mesma tela é a razão de o controle morar aqui e não só no formulário.
+ *
+ * Toda mudança grava na hora e pede o recarregamento da empresa: os cálculos
+ * abaixo leem `empresa`, então estado local que divergisse do banco mostraria
+ * imposto de um enquadramento que não foi salvo.
+ */
+function SeletorRegime({
+  empresa,
+  onRecarregar,
+}: {
+  empresa: Empresa;
+  onRecarregar: () => void;
+}) {
+  const [salvando, setSalvando] = useState(false);
+
+  async function executar(acao: () => Promise<void>, contexto: string, ok: string) {
+    setSalvando(true);
+    try {
+      await acao();
+      onRecarregar();
+      toast.sucesso(ok);
+    } catch (e) {
+      tratarErro(e, {
+        contexto,
+        mensagemUsuario: `Não foi possível ${contexto}.`,
+      });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  const noSimples = empresa.regimeTributario === "SIMPLES";
+  const anexo = empresa.anexoSimples;
+
+  return (
+    <div>
+      <TituloSecao>Enquadramento</TituloSecao>
+      <div
+        className="bg-surface border rounded-2xl px-4 py-3.5 flex flex-col gap-3.5"
+        style={ESTILO_CARD}
+      >
+        <div>
+          <p className="text-[12.5px] font-semibold text-ink-secondary mb-2">
+            Regime tributário
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {REGIMES.map((r) => (
+              <Chip
+                key={r}
+                ativo={empresa.regimeTributario === r}
+                disabled={salvando}
+                onClick={() => {
+                  if (empresa.regimeTributario === r) return;
+                  void executar(
+                    () => definirRegimeTributario(empresa.id, r),
+                    "trocar o regime",
+                    `Regime alterado para ${LABEL_REGIME[r]}`
+                  );
+                }}
+              >
+                {LABEL_REGIME[r]}
+              </Chip>
+            ))}
+          </div>
+        </div>
+
+        {noSimples && (
+          <div>
+            <p className="text-[12.5px] font-semibold text-ink-secondary mb-2">
+              Anexo do Simples Nacional
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {ANEXOS.map((a) => (
+                <Chip
+                  key={a.valor}
+                  ativo={anexo === a.valor}
+                  disabled={salvando}
+                  title={a.dica}
+                  onClick={() => {
+                    if (anexo === a.valor) return;
+                    void executar(
+                      () => definirAnexoSimples(empresa.id, a.valor),
+                      "definir o anexo",
+                      `Anexo ${a.valor}`
+                    );
+                  }}
+                >
+                  Anexo {a.valor}
+                  <span className="font-normal text-ink-muted"> · {a.dica}</span>
+                </Chip>
+              ))}
+            </div>
+            {!anexo && (
+              <p className="text-[12px] mt-2" style={{ color: "#B9791C" }}>
+                Sem o anexo não dá para calcular o DAS — escolha um acima.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* O Anexo III tem duas origens e elas levam a contas diferentes: pelo
+            Fator R (§5º-D) ou pela atividade (§5º-B e residual do §5º-F). */}
+        {noSimples && (anexo === "III" || anexo === "V") && (
+          <button
+            onClick={() =>
+              void executar(
+                () => definirSujeitoFatorR(empresa.id, !empresa.sujeitoFatorR),
+                "alterar o Fator R",
+                empresa.sujeitoFatorR
+                  ? "Fator R desligado — Anexo III pela atividade"
+                  : "Fator R ligado"
+              )
+            }
+            disabled={salvando}
+            className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-left transition-colors disabled:opacity-50"
+            style={{ border: "1px solid #E3E6EC", background: "#F7F9FC" }}
+          >
+            <span>
+              <span className="block text-[13px] font-semibold text-ink">
+                Atividade sujeita ao Fator R
+              </span>
+              <span className="block text-[11.5px] text-ink-muted mt-0.5 leading-snug">
+                {empresa.sujeitoFatorR
+                  ? "Folha ≥ 28% da receita leva ao Anexo III; abaixo disso, Anexo V (LC 123 art. 18 §5º-D)."
+                  : "Anexo III pela atividade — contabilidade, ensino, agência de viagem, manutenção e demais serviços do §5º-B/§5º-F não passam pelo teste de folha."}
+              </span>
+            </span>
+            <span
+              className="shrink-0 ml-3 w-[42px] h-[24px] rounded-full p-[3px] transition-colors"
+              style={{ background: empresa.sujeitoFatorR ? "#4078E6" : "#D4D8E0" }}
+            >
+              <span
+                className="block w-[18px] h-[18px] rounded-full bg-white transition-transform"
+                style={{
+                  transform: empresa.sujeitoFatorR ? "translateX(18px)" : "translateX(0)",
+                }}
+              />
+            </span>
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -306,6 +504,9 @@ export function AbaTributos({
         <strong className="text-ink-secondary">{rotuloMes(apuracao.mes, apuracao.ano)}</strong> —
         para acompanhamento, não substituem a apuração oficial.
       </p>
+
+      {/* ── Enquadramento ─────────────────────────────────────────────────── */}
+      <SeletorRegime empresa={empresa} onRecarregar={onRecarregar} />
 
       {/* ── Receitas mensais ──────────────────────────────────────────────── */}
       <div>

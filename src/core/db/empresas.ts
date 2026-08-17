@@ -377,6 +377,41 @@ export async function definirRegimeIbsCbs(
   );
 }
 
+/**
+ * Troca o regime tributário direto da aba Tributos.
+ *
+ * Zera `anexo_simples` ao sair do Simples pela mesma razão que
+ * `criarEmpresa`/`editarEmpresa` fazem isso: anexo é conceito exclusivo do
+ * Simples, e deixá-lo para trás faria a empresa voltar ao Simples mais tarde
+ * já enquadrada num anexo que ninguém reviu.
+ */
+export async function definirRegimeTributario(
+  id: string,
+  regime: RegimeTributario
+): Promise<void> {
+  const sqlite = await getSqlite();
+  await sqlite.execute(
+    `UPDATE empresas
+        SET regime_tributario = ?,
+            anexo_simples = CASE WHEN ? = 'SIMPLES' THEN anexo_simples ELSE NULL END,
+            updated_at = ?
+      WHERE id = ?`,
+    [regime, regime, agora(), id]
+  );
+}
+
+/** Liga/desliga o teste do Fator R da atividade (LC 123 art. 18 §5º-D). */
+export async function definirSujeitoFatorR(
+  id: string,
+  sujeito: boolean
+): Promise<void> {
+  const sqlite = await getSqlite();
+  await sqlite.execute(
+    `UPDATE empresas SET sujeito_fator_r = ?, updated_at = ? WHERE id = ?`,
+    [sujeito ? 1 : 0, agora(), id]
+  );
+}
+
 /** Define a atividade usada nas presunções do Lucro Presumido (aba Tributos). */
 export async function definirAtividadePresumido(
   id: string,
