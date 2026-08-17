@@ -33,6 +33,8 @@ export type Empresa = {
   cnaePrincipal: string | null;
   /** Descrição do CNAE principal, como a Receita devolve. */
   cnaeDescricao: string | null;
+  /** CNAEs secundários na máscara 9999-9/99. Vazio quando não há. */
+  cnaesSecundarios: string[];
   uf: string | null;
   municipio: string | null;
   regimeTributario: RegimeTributario;
@@ -106,6 +108,7 @@ export type DadosEmpresa = {
   dataAbertura: string | null;
   cnaePrincipal: string | null;
   cnaeDescricao: string | null;
+  cnaesSecundarios: string[];
   uf: string | null;
   municipio: string | null;
   regimeTributario: RegimeTributario;
@@ -137,6 +140,7 @@ type EmpresaRow = {
   data_abertura: string | null;
   cnae_principal: string | null;
   cnae_descricao: string | null;
+  cnaes_secundarios: string | null;
   uf: string | null;
   municipio: string | null;
   regime_tributario: string;
@@ -170,6 +174,26 @@ type EmpresaComTotaisRow = EmpresaRow & {
   pro_labore_total_cents: number;
 };
 
+/**
+ * A coluna guarda um array JSON. Conteúdo inválido vira lista vazia em vez de
+ * derrubar a leitura da empresa inteira — é campo informativo, não pode
+ * quebrar a tela por causa de um caractere.
+ */
+function lerCnaesSecundarios(bruto: string | null): string[] {
+  if (!bruto) return [];
+  try {
+    const v: unknown = JSON.parse(bruto);
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Lista vazia grava NULL: array "[]" no banco só polui a leitura. */
+function gravarCnaesSecundarios(lista: string[] | null | undefined): string | null {
+  return lista && lista.length > 0 ? JSON.stringify(lista) : null;
+}
+
 function mapearLinha(r: EmpresaRow): Empresa {
   return {
     id: r.id,
@@ -181,6 +205,7 @@ function mapearLinha(r: EmpresaRow): Empresa {
     dataAbertura: r.data_abertura ?? null,
     cnaePrincipal: r.cnae_principal ?? null,
     cnaeDescricao: r.cnae_descricao ?? null,
+    cnaesSecundarios: lerCnaesSecundarios(r.cnaes_secundarios),
     uf: r.uf ?? null,
     municipio: r.municipio ?? null,
     regimeTributario: r.regime_tributario as RegimeTributario,
@@ -214,7 +239,7 @@ function mapearLinha(r: EmpresaRow): Empresa {
 }
 
 const COLUNAS = `id, razao_social, nome_fantasia, cnpj, inscricao_estadual,
-  inscricao_municipal, data_abertura, cnae_principal, cnae_descricao, uf, municipio,
+  inscricao_municipal, data_abertura, cnae_principal, cnae_descricao, cnaes_secundarios, uf, municipio,
   regime_tributario, anexo_simples, sujeito_fator_r, regime_ibs_cbs, atividade_presumido,
   status, data_baixa, tem_funcionarios, email, telefone, honorarios_cents,
   capital_social_cents, procuracao_responsavel, sem_movimento,
@@ -229,7 +254,7 @@ export async function listarEmpresas(): Promise<EmpresaComTotais[]> {
   const rows = await sqlite.select<EmpresaComTotaisRow[]>(
     `SELECT e.id, e.razao_social, e.nome_fantasia, e.cnpj, e.inscricao_estadual,
             e.inscricao_municipal, e.data_abertura, e.cnae_principal, e.cnae_descricao,
-            e.uf, e.municipio,
+            e.cnaes_secundarios, e.uf, e.municipio,
             e.regime_tributario, e.anexo_simples, e.sujeito_fator_r, e.regime_ibs_cbs,
             e.atividade_presumido,
             e.status, e.data_baixa, e.tem_funcionarios, e.email, e.telefone,
@@ -285,13 +310,13 @@ export async function criarEmpresa(dados: DadosEmpresa): Promise<string> {
   await sqlite.execute(
     `INSERT INTO empresas
        (id, razao_social, nome_fantasia, cnpj, inscricao_estadual, inscricao_municipal,
-        data_abertura, cnae_principal, cnae_descricao, uf, municipio, regime_tributario,
+        data_abertura, cnae_principal, cnae_descricao, cnaes_secundarios, uf, municipio, regime_tributario,
         anexo_simples, sujeito_fator_r,
         regime_ibs_cbs, status, tem_funcionarios, email, telefone, honorarios_cents,
         capital_social_cents, procuracao_responsavel, sem_movimento,
         iss_dia_vencimento, iss_aliquota_centesimos, profissao_regulamentada,
         honorario_dia_vencimento, notes, archived, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
     [
       id,
       dados.razaoSocial.trim(),
@@ -302,6 +327,7 @@ export async function criarEmpresa(dados: DadosEmpresa): Promise<string> {
       dados.dataAbertura,
       dados.cnaePrincipal?.trim() || null,
       dados.cnaeDescricao?.trim() || null,
+      gravarCnaesSecundarios(dados.cnaesSecundarios),
       dados.uf,
       dados.municipio?.trim() || null,
       dados.regimeTributario,
@@ -337,7 +363,7 @@ export async function editarEmpresa(
     `UPDATE empresas
         SET razao_social = ?, nome_fantasia = ?, cnpj = ?, inscricao_estadual = ?,
             inscricao_municipal = ?, data_abertura = ?, cnae_principal = ?,
-            cnae_descricao = ?, uf = ?,
+            cnae_descricao = ?, cnaes_secundarios = ?, uf = ?,
             municipio = ?, regime_tributario = ?, anexo_simples = ?,
             sujeito_fator_r = ?, regime_ibs_cbs = ?,
             status = ?, tem_funcionarios = ?, email = ?, telefone = ?,
@@ -355,6 +381,7 @@ export async function editarEmpresa(
       dados.dataAbertura,
       dados.cnaePrincipal?.trim() || null,
       dados.cnaeDescricao?.trim() || null,
+      gravarCnaesSecundarios(dados.cnaesSecundarios),
       dados.uf,
       dados.municipio?.trim() || null,
       dados.regimeTributario,

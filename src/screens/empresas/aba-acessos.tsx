@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { open } from "@tauri-apps/plugin-shell";
+import { abrirExterno } from "@/core/ipc/sistema";
 import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
@@ -487,7 +487,7 @@ export function AbaAcessos({
 
   async function abrirPortal(link: string) {
     try {
-      await open(link);
+      await abrirExterno(link);
     } catch (e) {
       tratarErro(e, {
         contexto: "abrir portal",
@@ -559,6 +559,30 @@ export function AbaAcessos({
                   <p className="text-[12.5px] text-ink-muted">
                     Sem credencial salva — só o link do portal.
                   </p>
+                )}
+                {/* O endereço fica à mostra, e não só atrás do ícone: dois
+                    municípios têm portal de NFS-e parecido, e saber para onde
+                    o botão leva é parte da informação. Também dá para copiar
+                    e mandar para o cliente. */}
+                {a.link && (
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[12px] font-semibold text-ink-muted w-[62px] shrink-0">
+                      Portal
+                    </span>
+                    <button
+                      onClick={() => abrirPortal(a.link!)}
+                      title={a.link}
+                      className="text-[12.5px] font-medium text-brand hover:underline truncate text-left min-w-0"
+                    >
+                      {a.link}
+                    </button>
+                    <BotaoIcone
+                      onClick={() => copiar(a.link!, "Link copiado")}
+                      titulo="Copiar link"
+                    >
+                      <IconeCopiar />
+                    </BotaoIcone>
+                  </div>
                 )}
               </div>
 

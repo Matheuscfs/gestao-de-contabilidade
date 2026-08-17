@@ -258,6 +258,11 @@ export function ModalEmpresa({
   const [cnaeDescricao, setCnaeDescricao] = useState(
     editando?.cnaeDescricao ?? ""
   );
+  // Não é campo editável: vem da Receita e serve para conferência. Guardar no
+  // estado é o que faz a busca não descartá-los ao salvar.
+  const [cnaesSecundarios, setCnaesSecundarios] = useState<string[]>(
+    editando?.cnaesSecundarios ?? []
+  );
   const [sujeitoFatorR, setSujeitoFatorR] = useState(
     editando?.sujeitoFatorR ?? true
   );
@@ -341,6 +346,9 @@ export function ModalEmpresa({
     setDataAbertura((v) => usar(v, d.dataAbertura));
     setCnae((v) => usar(v, d.cnaePrincipal));
     setCnaeDescricao((v) => usar(v, d.cnaeDescricao));
+    if (d.cnaesSecundarios.length > 0 && (substituir || cnaesSecundarios.length === 0)) {
+      setCnaesSecundarios(d.cnaesSecundarios);
+    }
     setUf((v) => usar(v, d.uf));
     setMunicipio((v) => usar(v, d.municipio));
     setTelefone((v) => usar(v, d.telefone));
@@ -394,6 +402,7 @@ export function ModalEmpresa({
         dataAbertura: dataAbertura || null,
         cnaePrincipal: cnae || null,
         cnaeDescricao: cnaeDescricao || null,
+        cnaesSecundarios,
         uf: uf || null,
         municipio: municipio || null,
         regimeTributario: regime,
@@ -618,6 +627,11 @@ export function ModalEmpresa({
               {cnaeDescricao && (
                 <span className="block text-[12px] text-ink-muted mt-1.5 leading-snug">
                   {cnaeDescricao}
+                </span>
+              )}
+              {cnaesSecundarios.length > 0 && (
+                <span className="block text-[11.5px] text-ink-muted mt-1 leading-snug">
+                  Secundários: {cnaesSecundarios.join(" · ")}
                 </span>
               )}
             </Campo>

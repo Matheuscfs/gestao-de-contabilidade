@@ -1021,7 +1021,24 @@ function AbaDados({
           rotulo="Data de abertura"
           valor={empresa.dataAbertura ? formatarData(empresa.dataAbertura, true) : null}
         />
-        <LinhaDado rotulo="CNAE principal" valor={empresa.cnaePrincipal} />
+        <LinhaDado
+          rotulo="CNAE principal"
+          valor={
+            empresa.cnaePrincipal
+              ? [empresa.cnaePrincipal, empresa.cnaeDescricao]
+                  .filter(Boolean)
+                  .join(" — ")
+              : null
+          }
+        />
+        <LinhaDado
+          rotulo="CNAEs secundários"
+          valor={
+            empresa.cnaesSecundarios.length > 0
+              ? empresa.cnaesSecundarios.join(" · ")
+              : null
+          }
+        />
         <LinhaDado
           rotulo="Município / UF"
           valor={

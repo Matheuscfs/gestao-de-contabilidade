@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { open } from "@tauri-apps/plugin-shell";
+import { abrirExterno } from "@/core/ipc/sistema";
 import {
   type ContaPluggyResumo,
   type ItemResumo,
@@ -384,7 +384,7 @@ function ModalAdicionarBanco({
           <>
             <p style={{ fontSize: "13.5px", fontWeight: 500, color: "#5B616E", lineHeight: 1.5, marginBottom: "16px" }}>
               Após conectar no MeuPluggy, copie o <strong>item ID</strong> em{" "}
-              <a href="#" onClick={(e) => { e.preventDefault(); open("https://dashboard.pluggy.ai"); }} style={{ color: "#4078E6", fontWeight: 600, textDecoration: "none" }}>
+              <a href="#" onClick={(e) => { e.preventDefault(); abrirExterno("https://dashboard.pluggy.ai"); }} style={{ color: "#4078E6", fontWeight: 600, textDecoration: "none" }}>
                 dashboard.pluggy.ai
               </a>{" "}
               → Itens, e cole abaixo.
@@ -499,8 +499,8 @@ function ModalConectar({
         {/* Passos */}
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
           {[
-            <span>Crie sua conta no{" "}<a href="#" onClick={(e) => { e.preventDefault(); open("https://meu.pluggy.ai"); }} style={{ color: "#4078E6", fontWeight: 600, textDecoration: "none" }}>meu.pluggy.ai</a>{" "}e conecte seus bancos por lá.</span>,
-            <span>No{" "}<a href="#" onClick={(e) => { e.preventDefault(); open("https://dashboard.pluggy.ai"); }} style={{ color: "#4078E6", fontWeight: 600, textDecoration: "none" }}>painel da Pluggy</a>, crie um app de desenvolvedor e copie suas chaves.</span>,
+            <span>Crie sua conta no{" "}<a href="#" onClick={(e) => { e.preventDefault(); abrirExterno("https://meu.pluggy.ai"); }} style={{ color: "#4078E6", fontWeight: 600, textDecoration: "none" }}>meu.pluggy.ai</a>{" "}e conecte seus bancos por lá.</span>,
+            <span>No{" "}<a href="#" onClick={(e) => { e.preventDefault(); abrirExterno("https://dashboard.pluggy.ai"); }} style={{ color: "#4078E6", fontWeight: 600, textDecoration: "none" }}>painel da Pluggy</a>, crie um app de desenvolvedor e copie suas chaves.</span>,
             <span>Cole as chaves aqui — elas ficam só neste computador.</span>,
           ].map((texto, i) => (
             <div key={i} style={{ display: "flex", gap: "12px" }}>
@@ -623,7 +623,7 @@ function ModalGerenciar({
 
         <p style={{ fontWeight: 500, fontSize: "14px", color: "#5B616E", lineHeight: 1.55, marginBottom: "22px" }}>
           Desconectar remove as chaves de API deste computador. Os lançamentos já importados permanecem no Gestão de Contabilidade.
-          Para revogar o acesso bancário, vá ao <a href="#" onClick={(e) => { e.preventDefault(); open("https://meu.pluggy.ai"); }} style={{ color: "#4078E6", fontWeight: 600, textDecoration: "none" }}>MeuPluggy</a>.
+          Para revogar o acesso bancário, vá ao <a href="#" onClick={(e) => { e.preventDefault(); abrirExterno("https://meu.pluggy.ai"); }} style={{ color: "#4078E6", fontWeight: 600, textDecoration: "none" }}>MeuPluggy</a>.
         </p>
 
         {erro && (
@@ -757,7 +757,7 @@ function CardBanco({
 
         {acao ? (
           <button
-            onClick={() => open("https://meu.pluggy.ai")}
+            onClick={() => abrirExterno("https://meu.pluggy.ai")}
             aria-label="Abrir MeuPluggy"
             title="Abrir MeuPluggy"
             style={{ width: "36px", height: "36px", borderRadius: "10px", border: "none", background: badge.bg, color: badge.cor, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
