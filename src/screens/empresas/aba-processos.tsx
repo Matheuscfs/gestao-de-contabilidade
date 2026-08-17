@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { open } from "@tauri-apps/plugin-shell";
 import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
@@ -36,6 +37,29 @@ const TIPOS: TipoProcesso[] = [
   "OUTRO",
 ];
 
+async function copiarProtocolo(protocolo: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(protocolo);
+    toast.sucesso("Protocolo copiado");
+  } catch (e) {
+    tratarErro(e, {
+      contexto: "copiar protocolo",
+      mensagemUsuario: "Não foi possível copiar o protocolo.",
+    });
+  }
+}
+
+async function abrirLink(link: string): Promise<void> {
+  try {
+    await open(link);
+  } catch (e) {
+    tratarErro(e, {
+      contexto: "abrir acompanhamento do processo",
+      mensagemUsuario: "Não foi possível abrir o link no navegador.",
+    });
+  }
+}
+
 const CHIP_STATUS: Record<string, { bg: string; cor: string }> = {
   EM_ANDAMENTO: { bg: "#EAF1FD", cor: "#2F63C9" },
   AGUARDANDO: { bg: "#FCF1DF", cor: "#B9791C" },
@@ -60,6 +84,8 @@ function ModalProcesso({
   const [tipo, setTipo] = useState<TipoProcesso>(editando?.tipo ?? "ABERTURA");
   const [prazo, setPrazo] = useState(editando?.prazo ?? "");
   const [descricao, setDescricao] = useState(editando?.descricao ?? "");
+  const [protocolo, setProtocolo] = useState(editando?.protocolo ?? "");
+  const [link, setLink] = useState(editando?.link ?? "");
   // Checklist inicial (só na criação; na edição as etapas são geridas no card).
   const [etapas, setEtapas] = useState<string[]>(
     editando ? [] : ETAPAS_SUGERIDAS.ABERTURA
@@ -90,6 +116,8 @@ function ModalProcesso({
         tipo,
         descricao: descricao || null,
         prazo: prazo || null,
+        protocolo: protocolo || null,
+        link: link || null,
       };
       if (editando) {
         await editarProcesso(editando.id, dados);
@@ -265,7 +293,42 @@ function ModalProcesso({
                     <input
                       value={descricao}
                       onChange={(e) => setDescricao(e.target.value)}
-                      placeholder="Ex: protocolo nº…"
+                      placeholder="Ex: NIRE, exigência pendente…"
+                      className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink placeholder:text-ink-placeholder font-sans"
+                    />
+                  </span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="block text-[13px] font-semibold text-ink-secondary mb-1.5">
+                    Protocolo <span className="font-normal text-ink-muted">(opcional)</span>
+                  </span>
+                  <span
+                    className="flex items-center h-[46px] px-4 bg-surface rounded-xl focus-within:border-brand transition-colors"
+                    style={ESTILO_BORDA}
+                  >
+                    <input
+                      value={protocolo}
+                      onChange={(e) => setProtocolo(e.target.value)}
+                      placeholder="Ex: PRB2501149221"
+                      className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink placeholder:text-ink-placeholder font-sans"
+                    />
+                  </span>
+                </label>
+                <label className="block">
+                  <span className="block text-[13px] font-semibold text-ink-secondary mb-1.5">
+                    Acompanhamento <span className="font-normal text-ink-muted">(opcional)</span>
+                  </span>
+                  <span
+                    className="flex items-center h-[46px] px-4 bg-surface rounded-xl focus-within:border-brand transition-colors"
+                    style={ESTILO_BORDA}
+                  >
+                    <input
+                      value={link}
+                      onChange={(e) => setLink(e.target.value)}
+                      placeholder="https://…"
                       className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink placeholder:text-ink-placeholder font-sans"
                     />
                   </span>
@@ -468,6 +531,30 @@ function CardProcesso({
         <div className="px-5 pb-4">
           {processo.descricao && (
             <p className="text-[13px] text-ink-secondary mb-3">{processo.descricao}</p>
+          )}
+
+          {/* Protocolo e acompanhamento no órgão */}
+          {(processo.protocolo || processo.link) && (
+            <div className="flex items-center gap-2 mb-3 min-w-0">
+              {processo.protocolo && (
+                <button
+                  onClick={() => copiarProtocolo(processo.protocolo!)}
+                  title="Copiar protocolo"
+                  className="inline-flex items-center gap-1.5 h-[26px] px-2.5 rounded-full text-[12px] font-semibold tabular-nums transition-opacity hover:opacity-75 min-w-0"
+                  style={{ background: "#F0F2F6", color: "#5B616E" }}
+                >
+                  <span className="truncate">{processo.protocolo}</span>
+                </button>
+              )}
+              {processo.link && (
+                <button
+                  onClick={() => abrirLink(processo.link!)}
+                  className="text-[12.5px] font-semibold text-brand hover:underline shrink-0"
+                >
+                  Acompanhar no órgão ↗
+                </button>
+              )}
+            </div>
           )}
 
           {/* Checklist */}

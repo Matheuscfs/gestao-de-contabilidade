@@ -42,9 +42,12 @@ import {
   type OcorrenciaObrigacao,
 } from "@/core/db/obrigacoes";
 import { listarProcessos, type Processo } from "@/core/db/processos";
+import { listarAcessos, type Acesso } from "@/core/db/acessos";
+import { listarContasDaEmpresa, type Conta } from "@/core/db/contas";
 import { apenasDigitos, formatarCNPJ, formatarCPF, validarCPF } from "@/utils/documento";
 import { formatarBRL } from "@/utils/money";
 import { formatarData } from "@/utils/dates";
+import { AbaAcessos } from "./aba-acessos";
 import { AbaObrigacoes } from "./aba-obrigacoes";
 import { AbaProcessos } from "./aba-processos";
 import { AbaReforma } from "./aba-reforma";
@@ -53,12 +56,19 @@ import { ModalEmpresa } from "./modal-empresa";
 
 type Aba =
   | "dados"
+  | "acessos"
   | "socios"
   | "funcionarios"
   | "obrigacoes"
   | "tributos"
   | "processos"
   | "reforma";
+
+/**
+ * Abas que registram o próprio "Adicionar" no header. Os efeitos dos filhos
+ * rodam antes do efeito do pai, então zerar o handler aqui apagaria o delas.
+ */
+const ABAS_COM_HANDLER_PROPRIO = new Set<Aba>(["processos", "acessos"]);
 
 const ESTILO_BORDA = { border: "1px solid #D4D8E0" };
 
@@ -730,12 +740,57 @@ function LinhaDado({ rotulo, valor }: { rotulo: string; valor: string | null }) 
   );
 }
 
+/**
+ * Contas bancárias que a empresa possui. Só aparece quando há vínculo — é a
+ * ponte com o Open Finance, e o vínculo em si se faz na tela de Contas.
+ */
+function ContasVinculadas({ contas }: { contas: Conta[] }) {
+  if (contas.length === 0) return null;
+
+  const total = contas.reduce((soma, c) => soma + c.balanceCents, 0);
+
+  return (
+    <div className="bg-surface border rounded-2xl px-5 py-4" style={{ borderColor: "#E3E6EC" }}>
+      <div className="flex items-baseline justify-between gap-4 mb-3">
+        <p className="text-[13px] font-semibold text-ink-secondary">
+          Contas bancárias
+        </p>
+        <p className="text-[15px] font-bold text-ink tabular-nums">
+          {formatarBRL(total)}
+        </p>
+      </div>
+      <div className="flex flex-col gap-2">
+        {contas.map((c) => (
+          <div key={c.id} className="flex items-center justify-between gap-3">
+            <span className="text-[14px] font-medium text-ink truncate">
+              {c.name}
+              {c.source === "PLUGGY" && (
+                <span
+                  className="ml-2 inline-flex items-center h-[18px] px-1.5 rounded-full text-[10.5px] font-bold align-middle"
+                  style={{ background: "#E2F4EC", color: "#0E885A" }}
+                >
+                  OPEN FINANCE
+                </span>
+              )}
+            </span>
+            <span className="text-[14px] font-medium text-ink tabular-nums shrink-0">
+              {formatarBRL(c.balanceCents)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AbaDados({
   empresa,
+  contas,
   onEditar,
   onExcluida,
 }: {
   empresa: Empresa;
+  contas: Conta[];
   onEditar: () => void;
   onExcluida: () => void;
 }) {
@@ -784,12 +839,31 @@ function AbaDados({
         />
         <LinhaDado rotulo="Inscrição estadual" valor={empresa.inscricaoEstadual} />
         <LinhaDado rotulo="Inscrição municipal" valor={empresa.inscricaoMunicipal} />
+        <LinhaDado rotulo="E-mail" valor={empresa.email} />
+        <LinhaDado rotulo="Telefone" valor={empresa.telefone} />
+        <LinhaDado
+          rotulo="Honorário mensal"
+          valor={empresa.honorariosCents > 0 ? formatarBRL(empresa.honorariosCents) : null}
+        />
+        <LinhaDado
+          rotulo="Capital social"
+          valor={
+            empresa.capitalSocialCents > 0 ? formatarBRL(empresa.capitalSocialCents) : null
+          }
+        />
+        <LinhaDado rotulo="Procuração (e-CAC)" valor={empresa.procuracaoResponsavel} />
         <LinhaDado
           rotulo="Possui funcionários"
           valor={empresa.temFuncionarios ? "Sim" : "Não"}
         />
+        <LinhaDado
+          rotulo="Movimento"
+          valor={empresa.semMovimento ? "Sem movimento (zerada)" : "Com movimento"}
+        />
         <LinhaDado rotulo="Observações" valor={empresa.notes} />
       </div>
+
+      <ContasVinculadas contas={contas} />
 
       <div className="flex gap-2.5">
         <button
@@ -871,6 +945,8 @@ export function EmpresaDetalheScreen() {
   const [ocorrencias, setOcorrencias] = useState<OcorrenciaObrigacao[]>([]);
   const [desativadas, setDesativadas] = useState<Set<string>>(new Set());
   const [processos, setProcessos] = useState<Processo[]>([]);
+  const [acessos, setAcessos] = useState<Acesso[]>([]);
+  const [contasVinculadas, setContasVinculadas] = useState<Conta[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [aba, setAba] = useState<Aba>("dados");
 
@@ -897,14 +973,18 @@ export function EmpresaDetalheScreen() {
       setFuncionarios(func);
       // Materializa a agenda de obrigações da janela atual e recarrega.
       await prepararObrigacoes(emp);
-      const [ocor, desat, proc] = await Promise.all([
+      const [ocor, desat, proc, aces, cont] = await Promise.all([
         listarOcorrencias(id),
         listarDesativadas(id),
         listarProcessos(id),
+        listarAcessos(id),
+        listarContasDaEmpresa(id),
       ]);
       setOcorrencias(ocor);
       setDesativadas(desat);
       setProcessos(proc);
+      setAcessos(aces);
+      setContasVinculadas(cont);
     } catch (e) {
       tratarErro(e, {
         contexto: "carregar empresa",
@@ -931,9 +1011,7 @@ export function EmpresaDetalheScreen() {
         setFuncionarioEditando(null);
         setModalFuncionario(true);
       });
-    } else if (aba !== "processos") {
-      // A aba Processos registra o próprio handler; como os efeitos dos filhos
-      // rodam antes deste, zerar aqui apagaria o handler dela.
+    } else if (!ABAS_COM_HANDLER_PROPRIO.has(aba)) {
       setOnAdicionar(null);
     }
     return () => setOnAdicionar(null);
@@ -961,6 +1039,7 @@ export function EmpresaDetalheScreen() {
 
   const ABAS: { valor: Aba; label: string; badge?: number }[] = [
     { valor: "dados", label: "Dados" },
+    { valor: "acessos", label: "Acessos", badge: acessos.length },
     { valor: "socios", label: "Sócios", badge: socios.length },
     { valor: "funcionarios", label: "Funcionários", badge: funcionarios.length },
     { valor: "obrigacoes", label: "Obrigações", badge: pendencias },
@@ -1049,9 +1128,14 @@ export function EmpresaDetalheScreen() {
       {aba === "dados" && (
         <AbaDados
           empresa={empresa}
+          contas={contasVinculadas}
           onEditar={() => setModalEmpresa(true)}
           onExcluida={() => navigate("/empresas", { replace: true })}
         />
+      )}
+
+      {aba === "acessos" && id && (
+        <AbaAcessos empresaId={id} acessos={acessos} onRecarregar={carregar} />
       )}
 
       {aba === "obrigacoes" && (

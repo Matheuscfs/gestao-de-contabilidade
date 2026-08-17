@@ -15,6 +15,7 @@ import {
   type TipoConta,
 } from "@/core/db/contas";
 import { listarPersonas, type PersonaComTotais } from "@/core/db/personas";
+import { listarEmpresas, type EmpresaComTotais } from "@/core/db/empresas";
 
 // ─── Tipos de conta ───────────────────────────────────────────────────────────
 
@@ -60,6 +61,7 @@ const CORES: { valor: string; tint: string; label: string }[] = [
 export function ContasScreen() {
   const [contas, setContas] = useState<Conta[]>([]);
   const [personas, setPersonas] = useState<PersonaComTotais[]>([]);
+  const [empresas, setEmpresas] = useState<EmpresaComTotais[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<Conta | null>(null);
@@ -77,6 +79,9 @@ export function ContasScreen() {
   // Usuário escolheu o banco manualmente → para de auto-reconhecer pelo nome.
   const [bancoTocado, setBancoTocado] = useState(false);
   const [personaId, setPersonaId] = useState<string | null>(null);
+  // Empresa dona da conta (PJ) — é o que liga o extrato do Open Finance ao
+  // módulo contábil. null = conta pessoal.
+  const [empresaId, setEmpresaId] = useState<string | null>(null);
   const [isPrimary, setIsPrimary] = useState(false);
   // Saldo é preservado na edição, mas não é mais editável aqui (contas novas começam em 0).
   const [saldoCentavos, setSaldoCentavos] = useState(0);
@@ -98,12 +103,14 @@ export function ContasScreen() {
 
   const carregarContas = useCallback(async () => {
     try {
-      const [lista, listaPersonas] = await Promise.all([
+      const [lista, listaPersonas, listaEmpresas] = await Promise.all([
         listarContas(),
         listarPersonas(),
+        listarEmpresas(),
       ]);
       setContas(lista);
       setPersonas(listaPersonas.filter((p) => !p.archived));
+      setEmpresas(listaEmpresas);
     } catch (e) {
       tratarErro(e, {
         contexto: "carregar contas",
@@ -128,6 +135,7 @@ export function ContasScreen() {
     setBanco(null);
     setBancoTocado(false);
     setPersonaId(null);
+    setEmpresaId(null);
     setIsPrimary(contas.length === 0); // sugere primária se for a primeira
     setSaldoCentavos(0);
     setConfirmandoExclusao(false);
@@ -143,6 +151,7 @@ export function ContasScreen() {
     setBanco(bancoPorNome(bancoDaConta(conta))?.name ?? null);
     setBancoTocado(true); // não auto-reconhece por cima de uma conta existente
     setPersonaId(conta.personaId);
+    setEmpresaId(conta.empresaId);
     setIsPrimary(conta.isPrimary);
     setSaldoCentavos(conta.balanceCents);
     setConfirmandoExclusao(false);
@@ -192,6 +201,7 @@ export function ContasScreen() {
         color: cor,
         icon: banco ?? "",
         personaId,
+        empresaId,
         isPrimary,
       };
       if (editando) {
@@ -566,6 +576,53 @@ export function ContasScreen() {
                         );
                       })}
                     </div>
+                  </>
+                )}
+
+                {/* Empresa (conta PJ) — liga o extrato do Open Finance ao contábil */}
+                {empresas.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between mt-1.5 mb-2.5">
+                      <p className="text-[13px] font-semibold text-[#5B616E]">
+                        É conta de alguma empresa?
+                      </p>
+                      <span className="text-[12px] font-medium text-ink-placeholder">opcional</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      <button
+                        onClick={() => setEmpresaId(null)}
+                        className="h-9 px-3.5 rounded-full font-semibold text-[13.5px] cursor-pointer transition-colors"
+                        style={{
+                          border: empresaId === null ? "1px solid #87BBF8" : "1px solid #E3E6EC",
+                          background: empresaId === null ? "#EAF1FD" : "#fff",
+                          color: empresaId === null ? "#2F63C9" : "#5B616E",
+                        }}
+                      >
+                        Pessoal
+                      </button>
+                      {empresas.map((e) => {
+                        const ativo = empresaId === e.id;
+                        return (
+                          <button
+                            key={e.id}
+                            onClick={() => setEmpresaId(e.id)}
+                            title={e.razaoSocial}
+                            className="h-9 px-3.5 rounded-full font-semibold text-[13.5px] cursor-pointer transition-colors max-w-[220px] truncate"
+                            style={{
+                              border: ativo ? "1px solid #87BBF8" : "1px solid #E3E6EC",
+                              background: ativo ? "#EAF1FD" : "#fff",
+                              color: ativo ? "#2F63C9" : "#5B616E",
+                            }}
+                          >
+                            {e.nomeFantasia || e.razaoSocial}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[12px] text-ink-muted mb-5">
+                      Vinculando a conta, o extrato que a Pluggy sincroniza passa a
+                      aparecer na empresa — em vez de digitar a receita do mês.
+                    </p>
                   </>
                 )}
 

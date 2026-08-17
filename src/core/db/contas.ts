@@ -19,6 +19,12 @@ export type Conta = {
   isActive: boolean;
   balanceCents: number;
   source: string;
+  /**
+   * Empresa dona da conta (PJ) ou null quando é conta pessoal. É a ponte entre
+   * o Open Finance e o módulo contábil: com ela, o extrato sincronizado pela
+   * Pluggy sabe a qual empresa pertence.
+   */
+  empresaId: string | null;
   createdAt: string;
 };
 
@@ -28,6 +34,7 @@ export type NovaConta = {
   color: string;
   icon: string;
   personaId: string | null;
+  empresaId: string | null;
   isPrimary: boolean;
   balanceCents: number;
 };
@@ -53,6 +60,7 @@ type ContaRow = {
   is_active: number;
   balance_cents: number;
   source: string;
+  empresa_id: string | null;
   created_at: string;
 };
 
@@ -69,6 +77,7 @@ function mapearLinha(r: ContaRow): Conta {
     isActive: r.is_active === 1,
     balanceCents: r.balance_cents,
     source: r.source,
+    empresaId: r.empresa_id ?? null,
     createdAt: r.created_at,
   };
 }
@@ -78,10 +87,27 @@ function mapearLinha(r: ContaRow): Conta {
 export async function listarContas(): Promise<Conta[]> {
   const sqlite = await getSqlite();
   const rows = await sqlite.select<ContaRow[]>(
-    `SELECT id, name, type, color, icon, bank, persona_id, is_primary, is_active, balance_cents, source, created_at
+    `SELECT id, name, type, color, icon, bank, persona_id, is_primary, is_active,
+            balance_cents, source, empresa_id, created_at
      FROM accounts
      WHERE archived = 0
      ORDER BY is_primary DESC, created_at ASC`
+  );
+  return rows.map(mapearLinha);
+}
+
+/** Contas bancárias vinculadas a uma empresa (PJ). */
+export async function listarContasDaEmpresa(
+  empresaId: string
+): Promise<Conta[]> {
+  const sqlite = await getSqlite();
+  const rows = await sqlite.select<ContaRow[]>(
+    `SELECT id, name, type, color, icon, bank, persona_id, is_primary, is_active,
+            balance_cents, source, empresa_id, created_at
+       FROM accounts
+      WHERE archived = 0 AND empresa_id = ?
+      ORDER BY name COLLATE NOCASE ASC`,
+    [empresaId]
   );
   return rows.map(mapearLinha);
 }
@@ -118,8 +144,8 @@ export async function criarConta(dados: NovaConta): Promise<void> {
   await sqlite.execute(
     `INSERT INTO accounts
        (id, name, type, balance_cents, initial_balance_cents, color, icon, persona_id,
-        is_active, is_primary, archived, source, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, 'MANUAL', ?, ?)`,
+        empresa_id, is_active, is_primary, archived, source, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, 'MANUAL', ?, ?)`,
     [
       id,
       dados.name.trim(),
@@ -129,6 +155,7 @@ export async function criarConta(dados: NovaConta): Promise<void> {
       dados.color,
       dados.icon,
       dados.personaId,
+      dados.empresaId,
       dados.isPrimary ? 1 : 0,
       ts,
       ts,
@@ -153,13 +180,15 @@ export async function editarConta(id: string, dados: EdicaoConta): Promise<void>
     dados.color,
     dados.icon,
     dados.personaId,
+    dados.empresaId,
     dados.isPrimary ? 1 : 0,
   ];
   if (gravaSaldo) params.push(dados.balanceCents);
   params.push(agora(), id);
   await sqlite.execute(
     `UPDATE accounts
-     SET name = ?, type = ?, color = ?, icon = ?, persona_id = ?, is_primary = ?,
+     SET name = ?, type = ?, color = ?, icon = ?, persona_id = ?, empresa_id = ?,
+         is_primary = ?,
          ${gravaSaldo ? "balance_cents = ?," : ""} updated_at = ?
      WHERE id = ?`,
     params

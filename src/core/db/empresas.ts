@@ -39,6 +39,19 @@ export type Empresa = {
   atividadePresumido: AtividadePresumido | null;
   status: StatusEmpresa;
   temFuncionarios: boolean;
+  email: string | null;
+  telefone: string | null;
+  /** Honorário mensal cobrado pelo escritório, em centavos. */
+  honorariosCents: number;
+  /** Capital social / quotas, em centavos. */
+  capitalSocialCents: number;
+  /** Quem detém a procuração eletrônica (e-CAC). */
+  procuracaoResponsavel: string | null;
+  /**
+   * Ativa porém sem movimento no período: continua entregando as obrigações,
+   * só que zeradas. Não é status de ciclo de vida — por isso é flag.
+   */
+  semMovimento: boolean;
   notes: string | null;
   createdAt: string;
 };
@@ -67,6 +80,12 @@ export type DadosEmpresa = {
   regimeIbsCbs: RegimeIbsCbs | null;
   status: StatusEmpresa;
   temFuncionarios: boolean;
+  email: string | null;
+  telefone: string | null;
+  honorariosCents: number;
+  capitalSocialCents: number;
+  procuracaoResponsavel: string | null;
+  semMovimento: boolean;
   notes: string | null;
 };
 
@@ -87,6 +106,12 @@ type EmpresaRow = {
   atividade_presumido: string | null;
   status: string;
   tem_funcionarios: number;
+  email: string | null;
+  telefone: string | null;
+  honorarios_cents: number;
+  capital_social_cents: number;
+  procuracao_responsavel: string | null;
+  sem_movimento: number;
   notes: string | null;
   created_at: string;
 };
@@ -116,6 +141,12 @@ function mapearLinha(r: EmpresaRow): Empresa {
       (r.atividade_presumido as AtividadePresumido | null) ?? null,
     status: r.status as StatusEmpresa,
     temFuncionarios: r.tem_funcionarios === 1,
+    email: r.email ?? null,
+    telefone: r.telefone ?? null,
+    honorariosCents: r.honorarios_cents ?? 0,
+    capitalSocialCents: r.capital_social_cents ?? 0,
+    procuracaoResponsavel: r.procuracao_responsavel ?? null,
+    semMovimento: r.sem_movimento === 1,
     notes: r.notes ?? null,
     createdAt: r.created_at,
   };
@@ -124,7 +155,9 @@ function mapearLinha(r: EmpresaRow): Empresa {
 const COLUNAS = `id, razao_social, nome_fantasia, cnpj, inscricao_estadual,
   inscricao_municipal, data_abertura, cnae_principal, uf, municipio,
   regime_tributario, anexo_simples, regime_ibs_cbs, atividade_presumido,
-  status, tem_funcionarios, notes, created_at`;
+  status, tem_funcionarios, email, telefone, honorarios_cents,
+  capital_social_cents, procuracao_responsavel, sem_movimento,
+  notes, created_at`;
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
@@ -134,7 +167,9 @@ export async function listarEmpresas(): Promise<EmpresaComTotais[]> {
     `SELECT e.id, e.razao_social, e.nome_fantasia, e.cnpj, e.inscricao_estadual,
             e.inscricao_municipal, e.data_abertura, e.cnae_principal, e.uf, e.municipio,
             e.regime_tributario, e.anexo_simples, e.regime_ibs_cbs, e.atividade_presumido,
-            e.status, e.tem_funcionarios, e.notes, e.created_at,
+            e.status, e.tem_funcionarios, e.email, e.telefone, e.honorarios_cents,
+            e.capital_social_cents, e.procuracao_responsavel, e.sem_movimento,
+            e.notes, e.created_at,
             (SELECT COUNT(*) FROM empresa_socios es
               WHERE es.empresa_id = e.id AND es.data_saida IS NULL) AS socios_count,
             (SELECT COUNT(*) FROM funcionarios f
@@ -183,8 +218,10 @@ export async function criarEmpresa(dados: DadosEmpresa): Promise<string> {
     `INSERT INTO empresas
        (id, razao_social, nome_fantasia, cnpj, inscricao_estadual, inscricao_municipal,
         data_abertura, cnae_principal, uf, municipio, regime_tributario, anexo_simples,
-        regime_ibs_cbs, status, tem_funcionarios, notes, archived, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+        regime_ibs_cbs, status, tem_funcionarios, email, telefone, honorarios_cents,
+        capital_social_cents, procuracao_responsavel, sem_movimento,
+        notes, archived, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
     [
       id,
       dados.razaoSocial.trim(),
@@ -201,6 +238,12 @@ export async function criarEmpresa(dados: DadosEmpresa): Promise<string> {
       dados.regimeIbsCbs,
       dados.status,
       dados.temFuncionarios ? 1 : 0,
+      dados.email?.trim() || null,
+      dados.telefone?.trim() || null,
+      dados.honorariosCents,
+      dados.capitalSocialCents,
+      dados.procuracaoResponsavel?.trim() || null,
+      dados.semMovimento ? 1 : 0,
       dados.notes?.trim() || null,
       ts,
       ts,
@@ -219,7 +262,9 @@ export async function editarEmpresa(
         SET razao_social = ?, nome_fantasia = ?, cnpj = ?, inscricao_estadual = ?,
             inscricao_municipal = ?, data_abertura = ?, cnae_principal = ?, uf = ?,
             municipio = ?, regime_tributario = ?, anexo_simples = ?, regime_ibs_cbs = ?,
-            status = ?, tem_funcionarios = ?, notes = ?, updated_at = ?
+            status = ?, tem_funcionarios = ?, email = ?, telefone = ?,
+            honorarios_cents = ?, capital_social_cents = ?, procuracao_responsavel = ?,
+            sem_movimento = ?, notes = ?, updated_at = ?
       WHERE id = ?`,
     [
       dados.razaoSocial.trim(),
@@ -236,6 +281,12 @@ export async function editarEmpresa(
       dados.regimeIbsCbs,
       dados.status,
       dados.temFuncionarios ? 1 : 0,
+      dados.email?.trim() || null,
+      dados.telefone?.trim() || null,
+      dados.honorariosCents,
+      dados.capitalSocialCents,
+      dados.procuracaoResponsavel?.trim() || null,
+      dados.semMovimento ? 1 : 0,
       dados.notes?.trim() || null,
       agora(),
       id,

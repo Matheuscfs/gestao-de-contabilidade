@@ -107,6 +107,10 @@ export type Processo = {
   prazo: string | null;
   status: StatusProcesso;
   concluidoEm: string | null;
+  /** Nº do protocolo no órgão (Empresa Fácil, JUCESP, Redesim…). */
+  protocolo: string | null;
+  /** URL de acompanhamento do processo no órgão. */
+  link: string | null;
   etapas: EtapaProcesso[];
   /** Derivado: prazo no passado e ainda não concluído/cancelado. */
   atrasado: boolean;
@@ -117,6 +121,8 @@ export type DadosProcesso = {
   tipo: TipoProcesso;
   descricao: string | null;
   prazo: string | null;
+  protocolo: string | null;
+  link: string | null;
 };
 
 type ProcessoRow = {
@@ -128,6 +134,8 @@ type ProcessoRow = {
   prazo: string | null;
   status: string;
   concluido_em: string | null;
+  protocolo: string | null;
+  link: string | null;
 };
 
 type EtapaRow = {
@@ -144,7 +152,8 @@ export async function listarProcessos(empresaId: string): Promise<Processo[]> {
   const sqlite = await getSqlite();
   const [processos, etapas] = await Promise.all([
     sqlite.select<ProcessoRow[]>(
-      `SELECT id, empresa_id, titulo, tipo, descricao, prazo, status, concluido_em
+      `SELECT id, empresa_id, titulo, tipo, descricao, prazo, status, concluido_em,
+              protocolo, link
          FROM processos
         WHERE empresa_id = ?
         ORDER BY (status IN ('CONCLUIDO','CANCELADO')) ASC,
@@ -185,6 +194,8 @@ export async function listarProcessos(empresaId: string): Promise<Processo[]> {
       prazo: p.prazo ?? null,
       status,
       concluidoEm: p.concluido_em ?? null,
+      protocolo: p.protocolo ?? null,
+      link: p.link ?? null,
       etapas: etapasPorProcesso.get(p.id) ?? [],
       atrasado:
         (status === "EM_ANDAMENTO" || status === "AGUARDANDO") &&
@@ -217,8 +228,9 @@ export async function criarProcesso(
   const processoId = crypto.randomUUID();
   await sqlite.execute(
     `INSERT INTO processos
-       (id, empresa_id, titulo, tipo, descricao, prazo, status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'EM_ANDAMENTO', ?, ?)`,
+       (id, empresa_id, titulo, tipo, descricao, prazo, protocolo, link,
+        status, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'EM_ANDAMENTO', ?, ?)`,
     [
       processoId,
       empresaId,
@@ -226,6 +238,8 @@ export async function criarProcesso(
       dados.tipo,
       dados.descricao?.trim() || null,
       dados.prazo,
+      dados.protocolo?.trim() || null,
+      dados.link?.trim() || null,
       ts,
       ts,
     ]
@@ -249,13 +263,16 @@ export async function editarProcesso(
   const sqlite = await getSqlite();
   await sqlite.execute(
     `UPDATE processos
-        SET titulo = ?, tipo = ?, descricao = ?, prazo = ?, updated_at = ?
+        SET titulo = ?, tipo = ?, descricao = ?, prazo = ?, protocolo = ?, link = ?,
+            updated_at = ?
       WHERE id = ?`,
     [
       dados.titulo.trim(),
       dados.tipo,
       dados.descricao?.trim() || null,
       dados.prazo,
+      dados.protocolo?.trim() || null,
+      dados.link?.trim() || null,
       agora(),
       id,
     ]

@@ -2,11 +2,12 @@
 # Comandos disponíveis:
 #   make dev      — inicia o app desktop com hot reload
 #   make migrate  — aplica migrações pendentes no banco (sem resetar dados)
+#   make importar — importa a planilha do escritório (PLANILHA=<arquivo.xlsx>)
 #   make refresh  — atualiza e reinstala todas as dependências (yarn + Cargo)
 #   make build    — builda o app para a plataforma atual (release)
 #   make clear    — remove dependências, artefatos de build e banco de dados local
 
-.PHONY: dev migrate refresh build clear
+.PHONY: dev migrate importar refresh build clear
 
 # ─── Cores para output legível ────────────────────────────────────────────────
 RESET  := \033[0m
@@ -51,6 +52,22 @@ migrate:
 	@echo "$(YELLOW)→ Banco: $(DB_FILE)$(RESET)"
 	@cd src-tauri && cargo run --quiet --bin migrate -- "$(DB_FILE)"
 	@echo "$(GREEN)$(BOLD)✓ Migrações aplicadas.$(RESET)"
+
+# ─── importar ─────────────────────────────────────────────────────────────────
+## Importa a planilha de controle do escritório para o banco local.
+## É reexecutável: registros com chave natural (CNPJ, competência, protocolo…)
+## são atualizados no lugar, e lançamentos já importados não são duplicados.
+##
+##   make importar PLANILHA="/caminho/PARALEGAL att.xlsx"
+##   make importar PLANILHA="..." EXTRA=--dry-run
+importar:
+ifndef PLANILHA
+	@echo "$(RED)Uso: make importar PLANILHA=\"/caminho/planilha.xlsx\"$(RESET)"
+	@exit 1
+endif
+	@echo "$(CYAN)$(BOLD)▶ Importando planilha para o banco local...$(RESET)"
+	@echo "$(YELLOW)→ Banco: $(DB_FILE)$(RESET)"
+	@yarn importar:planilha --arquivo="$(PLANILHA)" --banco="$(DB_FILE)" $(EXTRA)
 
 # ─── refresh ──────────────────────────────────────────────────────────────────
 ## Instala/sincroniza todas as dependências: yarn + Cargo
