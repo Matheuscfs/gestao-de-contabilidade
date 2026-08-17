@@ -5,6 +5,7 @@ import {
   calcularPresumidoMes,
   calcularPresumidoTrimestre,
   calcularProLabore,
+  estimarFolha12m,
   calcularSimples,
   MEI_INSS_CENTS,
 } from "./tributos";
@@ -51,6 +52,94 @@ describe("calcularFatorR", () => {
     const r = calcularFatorR(2_100_000, 21_000_000);
     expect(r.fatorR).toBeCloseTo(0.1, 6);
     expect(r.anexoIndicado).toBe("V");
+  });
+});
+
+describe("estimarFolha12m", () => {
+  it("pró-labore puro: 12 meses + 13º, sem FGTS nem terço de férias", () => {
+    // Sócio com R$ 3.000/mês numa empresa do Anexo III (CPP dentro do DAS).
+    const f = estimarFolha12m({
+      proLaboreMensalCents: 300_000,
+      salariosMensalCents: 0,
+      cppForaDoDas: false,
+    });
+    expect(f.remuneracoesCents).toBe(3_600_000);
+    expect(f.decimoTerceiroCents).toBe(300_000);
+    // Pró-labore não gera FGTS nem férias.
+    expect(f.tercoFeriasCents).toBe(0);
+    expect(f.fgtsCents).toBe(0);
+    expect(f.cppCents).toBe(0);
+    expect(f.totalCents).toBe(3_900_000);
+  });
+
+  it("salário celetista soma 13º, terço de férias e FGTS", () => {
+    const f = estimarFolha12m({
+      proLaboreMensalCents: 0,
+      salariosMensalCents: 300_000,
+      cppForaDoDas: false,
+    });
+    expect(f.remuneracoesCents).toBe(3_600_000);
+    expect(f.decimoTerceiroCents).toBe(300_000);
+    expect(f.tercoFeriasCents).toBe(100_000);
+    // 8% sobre 13 salários + terço = (3.900.000 + 100.000) × 0,08
+    expect(f.fgtsCents).toBe(320_000);
+    expect(f.totalCents).toBe(4_320_000);
+  });
+
+  it("CPP entra só quando é recolhida por fora do DAS", () => {
+    const base = { proLaboreMensalCents: 300_000, salariosMensalCents: 0 };
+    const dentro = estimarFolha12m({ ...base, cppForaDoDas: false });
+    const fora = estimarFolha12m({ ...base, cppForaDoDas: true });
+
+    expect(dentro.cppCents).toBe(0);
+    // 20% sobre 13 retiradas
+    expect(fora.cppCents).toBe(780_000);
+    expect(fora.totalCents).toBeGreaterThan(dentro.totalCents);
+  });
+
+  it("corrige a subestimação de ~16% da conta antiga", () => {
+    const antiga = (300_000 + 200_000) * 12; // remunerações × 12
+    const nova = estimarFolha12m({
+      proLaboreMensalCents: 300_000,
+      salariosMensalCents: 200_000,
+      cppForaDoDas: false,
+    }).totalCents;
+
+    expect(nova).toBeGreaterThan(antiga);
+    const ganho = nova / antiga - 1;
+    expect(ganho).toBeGreaterThan(0.1);
+    expect(ganho).toBeLessThan(0.2);
+  });
+
+  it("folha zerada não inventa valor", () => {
+    const f = estimarFolha12m({
+      proLaboreMensalCents: 0,
+      salariosMensalCents: 0,
+      cppForaDoDas: true,
+    });
+    expect(f.totalCents).toBe(0);
+  });
+
+  it("a diferença muda o anexo indicado numa empresa de fronteira", () => {
+    // RBT12 de R$ 200 mil com pró-labore de R$ 4.500/mês. A conta antiga dá
+    // 27,0% e joga no Anexo V; somando o 13º chega a 29,25% e cai no III.
+    // Só de alíquota efetiva isso é 15,75% contra 6,52% — a empresa pagava
+    // mais que o dobro por causa de um mês de remuneração esquecido.
+    const rbt12 = 20_000_000;
+    const proLabore = 450_000;
+
+    const antiga = calcularFatorR(proLabore * 12, rbt12);
+    const nova = calcularFatorR(
+      estimarFolha12m({
+        proLaboreMensalCents: proLabore,
+        salariosMensalCents: 0,
+        cppForaDoDas: false,
+      }).totalCents,
+      rbt12
+    );
+
+    expect(antiga.anexoIndicado).toBe("V");
+    expect(nova.anexoIndicado).toBe("III");
   });
 });
 
