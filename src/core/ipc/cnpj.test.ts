@@ -18,6 +18,7 @@ const RESPOSTA = JSON.stringify({
   ddd_telefone_1: "4532251234",
   capital_social: 50000.5,
   descricao_situacao_cadastral: "Ativa",
+  data_situacao_cadastral: "2019-04-15",
   opcao_pelo_simples: true,
   opcao_pelo_mei: null,
   qsa: [
@@ -63,6 +64,10 @@ describe("interpretarRespostaCnpj", () => {
 
   it("normaliza a situação cadastral para maiúsculas", () => {
     expect(d.situacaoCadastral).toBe("ATIVA");
+  });
+
+  it("traz a data da situação — é a data da baixa quando a empresa é baixada", () => {
+    expect(d.dataSituacaoCadastral).toBe("2019-04-15");
   });
 
   it("traz os sócios do QSA e descarta linha sem nome", () => {

@@ -21,6 +21,7 @@
  * Flags:
  *   --dry-run         consulta e relata, sem gravar nada
  *   --sobrescrever    substitui campos factuais já preenchidos (CNAE, município…)
+ *   --aplicar-baixa   dá baixa em quem a Receita já dá como BAIXADA
  *   --banco=<caminho> quibo.db alvo (padrão: pasta de dados do app)
  *   --intervalo=<ms>  espera entre consultas (padrão 2000)
  *   --cnpj=<digitos>  consulta só esta empresa (útil para testar)
@@ -42,6 +43,7 @@ for (const arg of process.argv.slice(2)) {
 
 const DRY_RUN = flags.has("dry-run");
 const SOBRESCREVER = flags.has("sobrescrever");
+const APLICAR_BAIXA = flags.has("aplicar-baixa");
 const INTERVALO_MS = Number(flags.get("intervalo") ?? 2000);
 
 function caminhoBancoPadrao(): string {
@@ -107,6 +109,8 @@ type EmpresaRow = {
   capital_social_cents: number;
   anexo_simples: string | null;
   regime_tributario: string;
+  status: string;
+  data_baixa: string | null;
 };
 
 const vazio = (v: string | null) => v === null || v.trim() === "";
@@ -162,6 +166,49 @@ function montarAtualizacao(
   return { sets, valores, tocados };
 }
 
+/**
+ * Dá baixa com a data que a Receita informa.
+ *
+ * Mesma regra de `darBaixaEmpresa` em `core/db/empresas.ts`, que é a fonte de
+ * verdade: corte por competência, obrigação pendente posterior vira
+ * DISPENSADA, cobrança em aberto posterior é apagada, e nada entregue ou pago
+ * é tocado. O SQL está repetido aqui porque a camada do app fala com o SQLite
+ * do Tauri, indisponível fora dele — mesma razão do importador da planilha.
+ */
+function aplicarBaixa(
+  db: DatabaseSync,
+  empresaId: string,
+  dataBaixa: string
+): { obrigacoes: number; cobrancas: number } {
+  const comp = dataBaixa.slice(0, 7);
+  const [ano, mes] = comp.split("-").map(Number);
+  const limite = ano * 12 + mes;
+  const ts = new Date().toISOString();
+
+  const obrig = db
+    .prepare(
+      `UPDATE obrigacoes_ocorrencias SET status = 'DISPENSADA', updated_at = ?
+        WHERE empresa_id = ? AND status = 'PENDENTE'
+          AND (competencia_ano * 12 + competencia_mes) > ?`
+    )
+    .run(ts, empresaId, limite);
+  const cobr = db
+    .prepare(
+      `DELETE FROM financeiro_lancamentos
+        WHERE empresa_id = ? AND direcao = 'RECEBER'
+          AND data_pagamento IS NULL AND competencia > ?`
+    )
+    .run(empresaId, comp);
+  db.prepare(
+    `UPDATE empresas SET status = 'BAIXADA', data_baixa = ?, updated_at = ? WHERE id = ?`
+  ).run(dataBaixa, ts, empresaId);
+
+  return {
+    obrigacoes: Number(obrig.changes),
+    cobrancas: Number(cobr.changes),
+  };
+}
+
 // ─── Execução ─────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -177,7 +224,7 @@ async function main() {
     .prepare(
       `SELECT id, razao_social, cnpj, data_abertura, cnae_principal, cnae_descricao,
               uf, municipio, telefone, email, capital_social_cents, anexo_simples,
-              regime_tributario
+              regime_tributario, status, data_baixa
          FROM empresas
         WHERE archived = 0 ${filtroCnpj ? "AND cnpj = ?" : ""}
         ORDER BY razao_social COLLATE NOCASE ASC`
@@ -211,9 +258,31 @@ async function main() {
       }
 
       // Situação cadastral diferente de ATIVA é a informação mais valiosa da
-      // consulta e não cabe num campo: vira aviso no fim.
+      // consulta. Com --aplicar-baixa vira ação; sem, vira aviso no fim.
       if (d.situacaoCadastral && d.situacaoCadastral !== "ATIVA") {
-        divergencias.push(`${e.razao_social}: Receita diz ${d.situacaoCadastral}`);
+        const jaBaixada = e.status === "BAIXADA" && e.data_baixa !== null;
+        const podeBaixar =
+          APLICAR_BAIXA &&
+          d.situacaoCadastral === "BAIXADA" &&
+          d.dataSituacaoCadastral !== null &&
+          !jaBaixada;
+
+        if (podeBaixar && !DRY_RUN) {
+          const r = aplicarBaixa(db, e.id, d.dataSituacaoCadastral!);
+          divergencias.push(
+            `${e.razao_social}: baixada em ${d.dataSituacaoCadastral} — ${r.obrigacoes} obrigação(ões) dispensada(s), ${r.cobrancas} cobrança(s) cancelada(s)`
+          );
+        } else if (podeBaixar) {
+          divergencias.push(
+            `${e.razao_social}: seria baixada em ${d.dataSituacaoCadastral}`
+          );
+        } else {
+          divergencias.push(
+            `${e.razao_social}: Receita diz ${d.situacaoCadastral}${
+              d.dataSituacaoCadastral ? ` desde ${d.dataSituacaoCadastral}` : ""
+            }${jaBaixada ? " (cadastro já baixado)" : ""}`
+          );
+        }
       }
 
       // Enquadramento nunca é gravado por script — muda imposto.

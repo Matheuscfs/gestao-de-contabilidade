@@ -41,6 +41,12 @@ export type DadosCnpj = {
   /** ATIVA | BAIXADA | SUSPENSA | INAPTA | NULA — como a Receita escreve. */
   situacaoCadastral: string | null;
   /**
+   * ISO YYYY-MM-DD em que a situação passou a valer. Numa empresa BAIXADA é a
+   * data da baixa — o dado que define até que competência ela ainda devia
+   * entregar alguma coisa.
+   */
+  dataSituacaoCadastral: string | null;
+  /**
    * Regime deduzido da opção pelo Simples/MEI. Null quando a Receita não
    * informa: aí é Presumido ou Real, e só o contador sabe qual.
    */
@@ -152,6 +158,7 @@ export function interpretarRespostaCnpj(bruto: string): DadosCnpj {
     email: texto(json.email),
     capitalSocialCents: reaisParaCentavos(json.capital_social),
     situacaoCadastral: texto(json.descricao_situacao_cadastral)?.toUpperCase() ?? null,
+    dataSituacaoCadastral: texto(json.data_situacao_cadastral),
     regimeSugerido: regimeDaOpcao(json),
     enquadramento: classificarCnae(cnaePrincipal),
     socios: mapearSocios(json.qsa),
