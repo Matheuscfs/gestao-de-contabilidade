@@ -87,6 +87,10 @@ const ICONS: Record<string, SvgPart[]> = {
     ["path", { d: "M13 12h8" }],
     ["path", { d: "M13 18h8" }],
   ],
+  wallet: [
+    ["path", { d: "M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5" }],
+    ["path", { d: "M18 12a1 1 0 0 0 0 2h1v-2z" }],
+  ],
   sparkles: [
     [
       "path",
@@ -153,6 +157,12 @@ const NAV_PESSOAL = [
 const NAV_CONTABIL = [
   { to: "/kanban", id: "kanban", label: "Kanban do mês", icon: "kanban" },
   { to: "/empresas", id: "empresas", label: "Empresas", icon: "building" },
+  {
+    to: "/financeiro",
+    id: "financeiro",
+    label: "Financeiro do escritório",
+    icon: "wallet",
+  },
   { to: "/fluxos", id: "fluxos", label: "Fluxos", icon: "list-checks" },
 ] as const;
 

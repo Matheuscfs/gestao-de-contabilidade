@@ -74,6 +74,8 @@ export type Empresa = {
   issAliquotaCentesimos: number;
   /** Sociedade de profissão regulamentada — bloqueia a presunção reduzida. */
   profissaoRegulamentada: boolean;
+  /** Dia em que o honorário deste cliente vence. Varia por contrato. */
+  honorarioDiaVencimento: number;
   notes: string | null;
   createdAt: string;
 };
@@ -147,6 +149,7 @@ type EmpresaRow = {
   iss_dia_vencimento: number;
   iss_aliquota_centesimos: number;
   profissao_regulamentada: number;
+  honorario_dia_vencimento: number;
   notes: string | null;
   created_at: string;
 };
@@ -193,6 +196,7 @@ function mapearLinha(r: EmpresaRow): Empresa {
     issDiaVencimento: r.iss_dia_vencimento ?? 10,
     issAliquotaCentesimos: r.iss_aliquota_centesimos ?? 0,
     profissaoRegulamentada: r.profissao_regulamentada === 1,
+    honorarioDiaVencimento: r.honorario_dia_vencimento ?? 10,
     notes: r.notes ?? null,
     createdAt: r.created_at,
   };
@@ -205,7 +209,7 @@ const COLUNAS = `id, razao_social, nome_fantasia, cnpj, inscricao_estadual,
   capital_social_cents, procuracao_responsavel, sem_movimento,
   rat_centesimos, fap_decimilesimos, terceiros_centesimos,
   iss_dia_vencimento, iss_aliquota_centesimos, profissao_regulamentada,
-  notes, created_at`;
+  honorario_dia_vencimento, notes, created_at`;
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
@@ -221,7 +225,7 @@ export async function listarEmpresas(): Promise<EmpresaComTotais[]> {
             e.capital_social_cents, e.procuracao_responsavel, e.sem_movimento,
             e.rat_centesimos, e.fap_decimilesimos, e.terceiros_centesimos,
             e.iss_dia_vencimento, e.iss_aliquota_centesimos, e.profissao_regulamentada,
-            e.notes, e.created_at,
+            e.honorario_dia_vencimento, e.notes, e.created_at,
             (SELECT COUNT(*) FROM empresa_socios es
               WHERE es.empresa_id = e.id AND es.data_saida IS NULL) AS socios_count,
             (SELECT COUNT(*) FROM funcionarios f
