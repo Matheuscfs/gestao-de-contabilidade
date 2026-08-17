@@ -145,7 +145,8 @@ export async function prepararObrigacoes(empresa: Empresa): Promise<void> {
     const competencias = competenciasNaJanela(
       def,
       dataHoje,
-      empresa.dataAbertura
+      empresa.dataAbertura,
+      empresa.dataBaixa
     );
     for (const comp of competencias) {
       // ISS é municipal: o dia vem da empresa, não do catálogo.

@@ -25,10 +25,15 @@ import { formatarBRL } from "@/utils/money";
 
 const REGIMES: RegimeTributario[] = ["MEI", "SIMPLES", "PRESUMIDO", "REAL"];
 const ANEXOS: AnexoSimples[] = ["I", "II", "III", "IV", "V"];
+/**
+ * "Baixada" não está aqui de propósito: a baixa encerra obrigações e cancela
+ * cobranças, e trocar um chip no formulário mudaria só o rótulo — a empresa
+ * continuaria gerando DAS e honorário. Quem baixa é o botão "Dar baixa" na aba
+ * Dados, que pede a data e mostra o que será encerrado.
+ */
 const STATUS: { valor: StatusEmpresa; label: string }[] = [
   { valor: "ATIVA", label: "Ativa" },
   { valor: "INATIVA", label: "Inativa" },
-  { valor: "BAIXADA", label: "Baixada" },
 ];
 
 const UFS = [
@@ -276,6 +281,9 @@ export function ModalEmpresa({
   const [semMovimento, setSemMovimento] = useState(
     editando?.semMovimento ?? false
   );
+  const [honorarioDia, setHonorarioDia] = useState(
+    editando?.honorarioDiaVencimento ?? 10
+  );
   const [issDia, setIssDia] = useState(editando?.issDiaVencimento ?? 10);
   const [issAliquota, setIssAliquota] = useState(
     editando?.issAliquotaCentesimos ?? 0
@@ -403,6 +411,7 @@ export function ModalEmpresa({
         issDiaVencimento: issDia,
         issAliquotaCentesimos: issAliquota,
         profissaoRegulamentada,
+        honorarioDiaVencimento: honorarioDia,
         notes: notes || null,
       };
       let id = editando?.id;
@@ -655,13 +664,31 @@ export function ModalEmpresa({
             </Campo>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-[1fr_110px_1fr] gap-3">
             <Campo label="Honorário mensal" opcional>
               <MoneyInput
                 centavos={honorarios}
                 onChange={setHonorarios}
                 aria-label="Honorário mensal"
               />
+            </Campo>
+            <Campo label="Vence dia">
+              <span
+                className="flex items-center h-[46px] px-4 bg-surface rounded-xl focus-within:border-brand transition-colors"
+                style={ESTILO_BORDA}
+              >
+                <input
+                  value={honorarioDia}
+                  onChange={(e) =>
+                    setHonorarioDia(
+                      Math.min(31, Math.max(1, Number(e.target.value.replace(/\D/g, "")) || 1))
+                    )
+                  }
+                  inputMode="numeric"
+                  aria-label="Dia de vencimento do honorário"
+                  className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium tabular-nums text-ink font-sans"
+                />
+              </span>
             </Campo>
             <Campo label="Capital social" opcional>
               <MoneyInput
@@ -722,8 +749,22 @@ export function ModalEmpresa({
             />
           </Campo>
 
+          {/* Empresa baixada não volta por um chip: reativar tem consequência
+              (a agenda passa a gerar obrigação de novo) e mora na aba Dados,
+              junto com a data da baixa que precisa ser limpa. */}
+          {editando && status === "BAIXADA" && (
+            <div
+              className="rounded-xl px-4 py-3 text-[12.5px]"
+              style={{ background: "#F7F9FC", border: "1px solid #E3E6EC", color: "#5B616E" }}
+            >
+              Empresa <strong className="text-ink-secondary">baixada</strong>
+              {editando.dataBaixa && ` em ${editando.dataBaixa}`}. Para reativar,
+              use o botão na aba Dados.
+            </div>
+          )}
+
           {/* Status (só na edição — empresa nova nasce ativa) */}
-          {editando && (
+          {editando && status !== "BAIXADA" && (
             <div>
               <p className="text-[13px] font-semibold text-ink-secondary mb-1.5">
                 Situação

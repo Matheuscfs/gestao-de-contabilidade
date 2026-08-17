@@ -274,10 +274,15 @@ export async function gerarMensalidades(
 ): Promise<ResultadoGeracao> {
   const sqlite = await getSqlite();
   const empresas = await sqlite.select<EmpresaCobravel[]>(
+    // Empresa baixada ainda é cobrada pelo mês em que foi baixada — o serviço
+    // daquele mês foi prestado. A partir do mês seguinte, some da geração.
     `SELECT id, razao_social, honorarios_cents, honorario_dia_vencimento
        FROM empresas
-      WHERE archived = 0 AND status = 'ATIVA'
-      ORDER BY razao_social COLLATE NOCASE ASC`
+      WHERE archived = 0
+        AND (status = 'ATIVA'
+             OR (data_baixa IS NOT NULL AND substr(data_baixa, 1, 7) >= ?))
+      ORDER BY razao_social COLLATE NOCASE ASC`,
+    [competencia]
   );
 
   const existentes = await sqlite.select<{ empresa_id: string }[]>(
@@ -326,18 +331,6 @@ export async function gerarMensalidades(
   }
 
   return { criadas, jaExistiam, semHonorario };
-}
-
-/** Dia de vencimento do honorário daquele cliente. */
-export async function definirDiaVencimentoHonorario(
-  empresaId: string,
-  dia: number
-): Promise<void> {
-  const sqlite = await getSqlite();
-  await sqlite.execute(
-    `UPDATE empresas SET honorario_dia_vencimento = ?, updated_at = ? WHERE id = ?`,
-    [Math.min(31, Math.max(1, Math.trunc(dia) || 1)), agora(), empresaId]
-  );
 }
 
 // ─── Agregação para a tela ────────────────────────────────────────────────────

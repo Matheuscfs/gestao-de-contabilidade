@@ -106,8 +106,14 @@ export async function prepararQuadro(mes: number, ano: number): Promise<void> {
               WHERE s.empresa_id = e.id AND s.data_saida IS NULL
                 AND s.pro_labore_cents > 0) AS tem_pro_labore
        FROM empresas e
-      WHERE e.archived = 0 AND e.status = 'ATIVA'
-      ORDER BY e.razao_social COLLATE NOCASE ASC`
+      WHERE e.archived = 0
+        AND (e.status = 'ATIVA'
+             OR (e.data_baixa IS NOT NULL AND substr(e.data_baixa, 1, 7) >= ?))
+      ORDER BY e.razao_social COLLATE NOCASE ASC`,
+    // Empresa baixada continua no quadro das competências em que ainda estava
+    // viva: quem baixou em março ainda entrega o DAS de março, e sumir do
+    // Kanban faria a entrega ser esquecida.
+    [`${ano}-${String(mes).padStart(2, "0")}`]
   );
 
   const desativadas = await sqlite.select<

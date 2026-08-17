@@ -48,6 +48,14 @@ export type Empresa = {
   regimeIbsCbs: RegimeIbsCbs | null;
   atividadePresumido: AtividadePresumido | null;
   status: StatusEmpresa;
+  /**
+   * ISO YYYY-MM-DD do encerramento. Null enquanto a empresa não foi baixada.
+   *
+   * É o que separa "não gerar mais nada" de "apagar o passado": empresa
+   * baixada em março ainda deve as obrigações até março, e elas continuam na
+   * agenda.
+   */
+  dataBaixa: string | null;
   temFuncionarios: boolean;
   email: string | null;
   telefone: string | null;
@@ -115,6 +123,7 @@ export type DadosEmpresa = {
   issDiaVencimento: number;
   issAliquotaCentesimos: number;
   profissaoRegulamentada: boolean;
+  honorarioDiaVencimento: number;
   notes: string | null;
 };
 
@@ -136,6 +145,7 @@ type EmpresaRow = {
   regime_ibs_cbs: string | null;
   atividade_presumido: string | null;
   status: string;
+  data_baixa: string | null;
   tem_funcionarios: number;
   email: string | null;
   telefone: string | null;
@@ -183,6 +193,7 @@ function mapearLinha(r: EmpresaRow): Empresa {
     atividadePresumido:
       (r.atividade_presumido as AtividadePresumido | null) ?? null,
     status: r.status as StatusEmpresa,
+    dataBaixa: r.data_baixa ?? null,
     temFuncionarios: r.tem_funcionarios === 1,
     email: r.email ?? null,
     telefone: r.telefone ?? null,
@@ -205,7 +216,7 @@ function mapearLinha(r: EmpresaRow): Empresa {
 const COLUNAS = `id, razao_social, nome_fantasia, cnpj, inscricao_estadual,
   inscricao_municipal, data_abertura, cnae_principal, cnae_descricao, uf, municipio,
   regime_tributario, anexo_simples, sujeito_fator_r, regime_ibs_cbs, atividade_presumido,
-  status, tem_funcionarios, email, telefone, honorarios_cents,
+  status, data_baixa, tem_funcionarios, email, telefone, honorarios_cents,
   capital_social_cents, procuracao_responsavel, sem_movimento,
   rat_centesimos, fap_decimilesimos, terceiros_centesimos,
   iss_dia_vencimento, iss_aliquota_centesimos, profissao_regulamentada,
@@ -221,7 +232,8 @@ export async function listarEmpresas(): Promise<EmpresaComTotais[]> {
             e.uf, e.municipio,
             e.regime_tributario, e.anexo_simples, e.sujeito_fator_r, e.regime_ibs_cbs,
             e.atividade_presumido,
-            e.status, e.tem_funcionarios, e.email, e.telefone, e.honorarios_cents,
+            e.status, e.data_baixa, e.tem_funcionarios, e.email, e.telefone,
+            e.honorarios_cents,
             e.capital_social_cents, e.procuracao_responsavel, e.sem_movimento,
             e.rat_centesimos, e.fap_decimilesimos, e.terceiros_centesimos,
             e.iss_dia_vencimento, e.iss_aliquota_centesimos, e.profissao_regulamentada,
@@ -278,8 +290,8 @@ export async function criarEmpresa(dados: DadosEmpresa): Promise<string> {
         regime_ibs_cbs, status, tem_funcionarios, email, telefone, honorarios_cents,
         capital_social_cents, procuracao_responsavel, sem_movimento,
         iss_dia_vencimento, iss_aliquota_centesimos, profissao_regulamentada,
-        notes, archived, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+        honorario_dia_vencimento, notes, archived, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
     [
       id,
       dados.razaoSocial.trim(),
@@ -307,6 +319,7 @@ export async function criarEmpresa(dados: DadosEmpresa): Promise<string> {
       dados.issDiaVencimento,
       dados.issAliquotaCentesimos,
       dados.profissaoRegulamentada ? 1 : 0,
+      dados.honorarioDiaVencimento,
       dados.notes?.trim() || null,
       ts,
       ts,
@@ -330,7 +343,8 @@ export async function editarEmpresa(
             status = ?, tem_funcionarios = ?, email = ?, telefone = ?,
             honorarios_cents = ?, capital_social_cents = ?, procuracao_responsavel = ?,
             sem_movimento = ?, iss_dia_vencimento = ?, iss_aliquota_centesimos = ?,
-            profissao_regulamentada = ?, notes = ?, updated_at = ?
+            profissao_regulamentada = ?, honorario_dia_vencimento = ?,
+            notes = ?, updated_at = ?
       WHERE id = ?`,
     [
       dados.razaoSocial.trim(),
@@ -358,6 +372,7 @@ export async function editarEmpresa(
       dados.issDiaVencimento,
       dados.issAliquotaCentesimos,
       dados.profissaoRegulamentada ? 1 : 0,
+      dados.honorarioDiaVencimento,
       dados.notes?.trim() || null,
       agora(),
       id,
@@ -421,6 +436,120 @@ export async function definirAtividadePresumido(
   await sqlite.execute(
     `UPDATE empresas SET atividade_presumido = ?, updated_at = ? WHERE id = ?`,
     [atividade, agora(), id]
+  );
+}
+
+// ─── Baixa ────────────────────────────────────────────────────────────────────
+
+export type EfeitosDaBaixa = {
+  /** Obrigações pendentes de competência posterior à baixa. */
+  obrigacoesPendentes: number;
+  /** Cobranças em aberto de competência posterior à baixa. */
+  cobrancasEmAberto: number;
+  cobrancasEmAbertoCents: number;
+};
+
+/** Competência AAAA-MM da data da baixa — a fronteira de todo o resto. */
+function competenciaDaBaixa(dataBaixa: string): string {
+  return dataBaixa.slice(0, 7);
+}
+
+/**
+ * O que a baixa vai encerrar, contado antes de encerrar.
+ *
+ * A tela mostra estes números na confirmação: fechar obrigação e apagar
+ * cobrança sem dizer quantas seriam uma ação destrutiva às cegas.
+ */
+export async function previaDaBaixa(
+  id: string,
+  dataBaixa: string
+): Promise<EfeitosDaBaixa> {
+  const sqlite = await getSqlite();
+  const comp = competenciaDaBaixa(dataBaixa);
+  const [ano, mes] = comp.split("-").map(Number);
+  const limite = ano * 12 + mes;
+
+  const [obrig] = await sqlite.select<{ n: number }[]>(
+    `SELECT COUNT(*) AS n FROM obrigacoes_ocorrencias
+      WHERE empresa_id = ? AND status = 'PENDENTE'
+        AND (competencia_ano * 12 + competencia_mes) > ?`,
+    [id, limite]
+  );
+  const [cobr] = await sqlite.select<{ n: number; total: number }[]>(
+    `SELECT COUNT(*) AS n, COALESCE(SUM(valor_cents), 0) AS total
+       FROM financeiro_lancamentos
+      WHERE empresa_id = ? AND direcao = 'RECEBER'
+        AND data_pagamento IS NULL AND competencia > ?`,
+    [id, comp]
+  );
+
+  return {
+    obrigacoesPendentes: obrig.n,
+    cobrancasEmAberto: cobr.n,
+    cobrancasEmAbertoCents: cobr.total,
+  };
+}
+
+/**
+ * Dá baixa na empresa: encerra o cadastro e limpa o que ficou agendado para
+ * depois do encerramento.
+ *
+ * O corte é por **competência**, não pela data exata. Empresa baixada em 20/03
+ * ainda deve as obrigações e o honorário de março — o que não pode sobreviver
+ * é abril em diante.
+ *
+ * Obrigação pendente vira DISPENSADA em vez de ser apagada: é um estado que já
+ * existe, aparece na agenda e o usuário reverte item a item se a baixa foi
+ * engano. Cobrança em aberto é apagada mesmo — cobrança que nunca será feita
+ * de empresa que não existe mais só distorce o total a receber, e "gerar
+ * mensalidades" recria se a empresa voltar.
+ *
+ * O que já foi entregue, pago ou fechado não é tocado: baixa encerra o futuro,
+ * não reescreve o histórico.
+ */
+export async function darBaixaEmpresa(
+  id: string,
+  dataBaixa: string
+): Promise<EfeitosDaBaixa> {
+  const sqlite = await getSqlite();
+  const efeitos = await previaDaBaixa(id, dataBaixa);
+  const comp = competenciaDaBaixa(dataBaixa);
+  const [ano, mes] = comp.split("-").map(Number);
+  const limite = ano * 12 + mes;
+  const ts = agora();
+
+  await sqlite.execute(
+    `UPDATE empresas SET status = 'BAIXADA', data_baixa = ?, updated_at = ? WHERE id = ?`,
+    [dataBaixa, ts, id]
+  );
+  await sqlite.execute(
+    `UPDATE obrigacoes_ocorrencias
+        SET status = 'DISPENSADA', updated_at = ?
+      WHERE empresa_id = ? AND status = 'PENDENTE'
+        AND (competencia_ano * 12 + competencia_mes) > ?`,
+    [ts, id, limite]
+  );
+  await sqlite.execute(
+    `DELETE FROM financeiro_lancamentos
+      WHERE empresa_id = ? AND direcao = 'RECEBER'
+        AND data_pagamento IS NULL AND competencia > ?`,
+    [id, comp]
+  );
+
+  return efeitos;
+}
+
+/**
+ * Reativa a empresa. Não desfaz as dispensas nem recria as cobranças: as
+ * obrigações voltam a ser geradas pelo motor na próxima abertura da empresa, e
+ * as mensalidades pelo botão do financeiro. Ressuscitar automaticamente o que
+ * foi encerrado traria de volta competência que talvez não deva existir.
+ */
+export async function reverterBaixaEmpresa(id: string): Promise<void> {
+  const sqlite = await getSqlite();
+  await sqlite.execute(
+    `UPDATE empresas SET status = 'ATIVA', data_baixa = NULL, updated_at = ? WHERE id = ?`,
+    [agora(), id]
   );
 }
 
