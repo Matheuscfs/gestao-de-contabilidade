@@ -6,6 +6,9 @@ import {
   calcularPresumidoTrimestre,
   calcularProLabore,
   estimarFolha12m,
+  calcularRbt12,
+  mesesDeAtividade,
+  presuncaoIrpj,
   calcularSimples,
   MEI_INSS_CENTS,
 } from "./tributos";
@@ -224,5 +227,105 @@ describe("Lucro Presumido", () => {
 describe("MEI", () => {
   it("INSS do DAS-MEI = 5% do salário mínimo 2026", () => {
     expect(MEI_INSS_CENTS).toBe(8_105);
+  });
+});
+
+describe("calcularRbt12 — início de atividade", () => {
+  it("mês de abertura projeta a receita do próprio mês", () => {
+    const r = calcularRbt12([], 1_000_000, 0);
+    expect(r.regra).toBe("PRIMEIRO_MES");
+    expect(r.rbt12Cents).toBe(12_000_000); // R$ 10.000 × 12
+    expect(r.mesesConsiderados).toBe(1);
+  });
+
+  it("do 2º ao 12º mês usa a média dos anteriores × 12", () => {
+    // 3 meses de atividade anteriores, média de R$ 10.000 → RBT12 R$ 120.000
+    const r = calcularRbt12([800_000, 1_000_000, 1_200_000], 900_000, 3);
+    expect(r.regra).toBe("PROPORCIONAL");
+    expect(r.rbt12Cents).toBe(12_000_000);
+    expect(r.mesesConsiderados).toBe(3);
+  });
+
+  it("a receita do mês apurado não entra na proporcional", () => {
+    // Um mês excepcional no próprio mês de apuração não infla o RBT12.
+    const normal = calcularRbt12([1_000_000, 1_000_000], 1_000_000, 2);
+    const comPico = calcularRbt12([1_000_000, 1_000_000], 90_000_000, 2);
+    expect(comPico.rbt12Cents).toBe(normal.rbt12Cents);
+  });
+
+  it("do 13º mês em diante volta à regra geral", () => {
+    const doze = Array.from({ length: 12 }, () => 1_000_000);
+    const r = calcularRbt12(doze, 500_000, 12);
+    expect(r.regra).toBe("GERAL");
+    expect(r.rbt12Cents).toBe(12_000_000); // soma, não média × 12
+  });
+
+  it("sem data de abertura assume regra geral em vez de chutar empresa nova", () => {
+    const r = calcularRbt12([1_000_000, 1_000_000], 500_000, null);
+    expect(r.regra).toBe("GERAL");
+    expect(r.rbt12Cents).toBe(2_000_000);
+  });
+
+  it("proporcional muda a faixa de quem abre faturando alto", () => {
+    // R$ 40.000/mês nos 2 primeiros meses. A regra geral somaria R$ 80.000
+    // (1ª faixa); a proporcional projeta R$ 480.000 e cai na 3ª.
+    const geral = calcularSimples("III", 8_000_000, 4_000_000);
+    const prop = calcularRbt12([4_000_000, 4_000_000], 4_000_000, 2);
+    const comProporcional = calcularSimples("III", prop.rbt12Cents, 4_000_000);
+
+    expect(prop.rbt12Cents).toBe(48_000_000);
+    expect(geral.faixa).toBe(1);
+    expect(comProporcional.faixa).toBe(3);
+    expect(comProporcional.dasEstimadoCents).toBeGreaterThan(geral.dasEstimadoCents);
+  });
+});
+
+describe("mesesDeAtividade", () => {
+  it("conta os meses completos até o mês anterior à apuração", () => {
+    // Aberta em set/2025, apurando ago/2026 → 11 meses, ainda proporcional.
+    expect(mesesDeAtividade("2025-09-18", 8, 2026)).toBe(11);
+    // Aberta em jun/2025, apurando ago/2026 → 14 meses, já na regra geral.
+    expect(mesesDeAtividade("2025-06-06", 8, 2026)).toBe(14);
+  });
+
+  it("abertura no próprio mês da apuração é zero", () => {
+    expect(mesesDeAtividade("2026-08-03", 8, 2026)).toBe(0);
+  });
+
+  it("sem data, ou com abertura no futuro, devolve null", () => {
+    expect(mesesDeAtividade(null, 8, 2026)).toBeNull();
+    expect(mesesDeAtividade("2027-01-01", 8, 2026)).toBeNull();
+  });
+});
+
+describe("presuncaoIrpj", () => {
+  it("serviços até R$ 120 mil no ano usam 16%", () => {
+    expect(presuncaoIrpj("SERVICOS", 8_000_000, false)).toBe(0.16);
+    expect(presuncaoIrpj("SERVICOS", 12_000_000, false)).toBe(0.16); // no limite
+  });
+
+  it("acima do teto voltam aos 32%", () => {
+    expect(presuncaoIrpj("SERVICOS", 12_000_100, false)).toBe(0.32);
+  });
+
+  it("profissão regulamentada fica nos 32% mesmo dentro do teto", () => {
+    // Sociedade de advogados faturando R$ 80 mil no ano.
+    expect(presuncaoIrpj("SERVICOS", 8_000_000, true)).toBe(0.32);
+  });
+
+  it("comércio e transporte não são afetados pela regra", () => {
+    expect(presuncaoIrpj("COMERCIO_INDUSTRIA", 1_000_000, false)).toBe(0.08);
+    expect(presuncaoIrpj("TRANSPORTE_PASSAGEIROS", 1_000_000, false)).toBe(0.16);
+  });
+
+  it("a redução vale só para o IRPJ — a CSLL segue em 32%", () => {
+    const r = calcularPresumidoTrimestre("SERVICOS", 3_000_000, 8_000_000, false);
+    expect(r.baseIrpjCents).toBe(480_000); // 16%
+    expect(r.baseCsllCents).toBe(960_000); // 32%
+  });
+
+  it("sem informar a receita anual, mantém os 32% cheios", () => {
+    const r = calcularPresumidoTrimestre("SERVICOS", 3_000_000);
+    expect(r.baseIrpjCents).toBe(960_000);
   });
 });

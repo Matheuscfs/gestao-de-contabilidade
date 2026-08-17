@@ -148,7 +148,13 @@ export async function prepararObrigacoes(empresa: Empresa): Promise<void> {
       empresa.dataAbertura
     );
     for (const comp of competencias) {
-      const vencimento = calcularVencimento(def, comp.mes, comp.ano);
+      // ISS é municipal: o dia vem da empresa, não do catálogo.
+      const vencimento = calcularVencimento(
+        def,
+        comp.mes,
+        comp.ano,
+        def.esfera === "MUNICIPAL" ? empresa.issDiaVencimento : null
+      );
       await sqlite.execute(
         `INSERT OR IGNORE INTO obrigacoes_ocorrencias
            (id, empresa_id, obrigacao_codigo, competencia_mes, competencia_ano,

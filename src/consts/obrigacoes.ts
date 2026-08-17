@@ -365,11 +365,15 @@ export function ajustarParaDiaUtil(
  * Vencimento de uma obrigação para a competência dada, já ajustado a dia útil.
  * Mensal/trimestral: competência + `mesesAposCompetencia` (padrão 1).
  * Anual: `mesVencimento` do ano seguinte ao de apuração.
+ *
+ * `diaOverride` substitui o dia do catálogo — usado pelo ISS, que é municipal
+ * e vence em data diferente em cada cidade.
  */
 export function calcularVencimento(
   def: ObrigacaoDef,
   competenciaMes: number,
-  competenciaAno: number
+  competenciaAno: number,
+  diaOverride?: number | null
 ): string {
   let mes: number;
   let ano: number;
@@ -384,7 +388,13 @@ export function calcularVencimento(
     mes = base.getMonth() + 1;
     ano = base.getFullYear();
   }
-  const dia = Math.min(def.diaVencimento, getDaysInMonth(new Date(ano, mes - 1)));
+  // O override existe para obrigação municipal: o ISS vence em dia diferente
+  // em cada cidade, e o catálogo não tem como saber de qual empresa se trata.
+  const diaBase =
+    diaOverride != null && diaOverride >= 1 && diaOverride <= 31
+      ? diaOverride
+      : def.diaVencimento;
+  const dia = Math.min(diaBase, getDaysInMonth(new Date(ano, mes - 1)));
   const iso = formatISO(new Date(ano, mes - 1, dia), { representation: "date" });
   return ajustarParaDiaUtil(iso, def.ajusteDiaUtil);
 }

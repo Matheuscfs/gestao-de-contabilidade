@@ -82,6 +82,7 @@ type EmpresaParaQuadro = {
   regime_ibs_cbs: string | null;
   tem_funcionarios: number;
   sem_movimento: number;
+  iss_dia_vencimento: number;
   tem_pro_labore: number;
 };
 
@@ -100,6 +101,7 @@ export async function prepararQuadro(mes: number, ano: number): Promise<void> {
   const empresas = await sqlite.select<EmpresaParaQuadro[]>(
     `SELECT e.id, e.razao_social, e.nome_fantasia, e.data_abertura,
             e.regime_tributario, e.regime_ibs_cbs, e.tem_funcionarios, e.sem_movimento,
+            e.iss_dia_vencimento,
             (SELECT COUNT(*) FROM empresa_socios s
               WHERE s.empresa_id = e.id AND s.data_saida IS NULL
                 AND s.pro_labore_cents > 0) AS tem_pro_labore
@@ -197,7 +199,12 @@ export async function prepararQuadro(mes: number, ano: number): Promise<void> {
             def.codigo,
             mes,
             ano,
-            calcularVencimento(def, mes, ano),
+            calcularVencimento(
+            def,
+            mes,
+            ano,
+            def.esfera === "MUNICIPAL" ? empresa.iss_dia_vencimento : null
+          ),
             ts,
             ts,
           ]
