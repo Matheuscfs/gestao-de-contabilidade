@@ -31,10 +31,20 @@ export type Empresa = {
   inscricaoMunicipal: string | null;
   dataAbertura: string | null;
   cnaePrincipal: string | null;
+  /** Descrição do CNAE principal, como a Receita devolve. */
+  cnaeDescricao: string | null;
   uf: string | null;
   municipio: string | null;
   regimeTributario: RegimeTributario;
   anexoSimples: AnexoSimples | null;
+  /**
+   * A atividade é sujeita ao teste do Fator R (LC 123 art. 18 §5º-D)?
+   *
+   * Só faz sentido nos Anexos III e V. Falso quando o Anexo III vem da
+   * atividade (§5º-B) ou da regra residual (§5º-F) — aí a folha não muda nada
+   * e comparar com os 28% só produziria alarme falso.
+   */
+  sujeitoFatorR: boolean;
   regimeIbsCbs: RegimeIbsCbs | null;
   atividadePresumido: AtividadePresumido | null;
   status: StatusEmpresa;
@@ -85,10 +95,12 @@ export type DadosEmpresa = {
   inscricaoMunicipal: string | null;
   dataAbertura: string | null;
   cnaePrincipal: string | null;
+  cnaeDescricao: string | null;
   uf: string | null;
   municipio: string | null;
   regimeTributario: RegimeTributario;
   anexoSimples: AnexoSimples | null;
+  sujeitoFatorR: boolean;
   regimeIbsCbs: RegimeIbsCbs | null;
   status: StatusEmpresa;
   temFuncionarios: boolean;
@@ -113,10 +125,12 @@ type EmpresaRow = {
   inscricao_municipal: string | null;
   data_abertura: string | null;
   cnae_principal: string | null;
+  cnae_descricao: string | null;
   uf: string | null;
   municipio: string | null;
   regime_tributario: string;
   anexo_simples: string | null;
+  sujeito_fator_r: number;
   regime_ibs_cbs: string | null;
   atividade_presumido: string | null;
   status: string;
@@ -153,10 +167,15 @@ function mapearLinha(r: EmpresaRow): Empresa {
     inscricaoMunicipal: r.inscricao_municipal ?? null,
     dataAbertura: r.data_abertura ?? null,
     cnaePrincipal: r.cnae_principal ?? null,
+    cnaeDescricao: r.cnae_descricao ?? null,
     uf: r.uf ?? null,
     municipio: r.municipio ?? null,
     regimeTributario: r.regime_tributario as RegimeTributario,
     anexoSimples: (r.anexo_simples as AnexoSimples | null) ?? null,
+    // Ausente vira `true` para casar com o DEFAULT 1 da migration: empresa já
+    // cadastrada continua sendo avaliada pelo Fator R até alguém dizer que a
+    // atividade não é do §5º-D.
+    sujeitoFatorR: (r.sujeito_fator_r ?? 1) === 1,
     regimeIbsCbs: (r.regime_ibs_cbs as RegimeIbsCbs | null) ?? null,
     atividadePresumido:
       (r.atividade_presumido as AtividadePresumido | null) ?? null,
@@ -180,8 +199,8 @@ function mapearLinha(r: EmpresaRow): Empresa {
 }
 
 const COLUNAS = `id, razao_social, nome_fantasia, cnpj, inscricao_estadual,
-  inscricao_municipal, data_abertura, cnae_principal, uf, municipio,
-  regime_tributario, anexo_simples, regime_ibs_cbs, atividade_presumido,
+  inscricao_municipal, data_abertura, cnae_principal, cnae_descricao, uf, municipio,
+  regime_tributario, anexo_simples, sujeito_fator_r, regime_ibs_cbs, atividade_presumido,
   status, tem_funcionarios, email, telefone, honorarios_cents,
   capital_social_cents, procuracao_responsavel, sem_movimento,
   rat_centesimos, fap_decimilesimos, terceiros_centesimos,
@@ -194,8 +213,10 @@ export async function listarEmpresas(): Promise<EmpresaComTotais[]> {
   const sqlite = await getSqlite();
   const rows = await sqlite.select<EmpresaComTotaisRow[]>(
     `SELECT e.id, e.razao_social, e.nome_fantasia, e.cnpj, e.inscricao_estadual,
-            e.inscricao_municipal, e.data_abertura, e.cnae_principal, e.uf, e.municipio,
-            e.regime_tributario, e.anexo_simples, e.regime_ibs_cbs, e.atividade_presumido,
+            e.inscricao_municipal, e.data_abertura, e.cnae_principal, e.cnae_descricao,
+            e.uf, e.municipio,
+            e.regime_tributario, e.anexo_simples, e.sujeito_fator_r, e.regime_ibs_cbs,
+            e.atividade_presumido,
             e.status, e.tem_funcionarios, e.email, e.telefone, e.honorarios_cents,
             e.capital_social_cents, e.procuracao_responsavel, e.sem_movimento,
             e.rat_centesimos, e.fap_decimilesimos, e.terceiros_centesimos,
@@ -248,12 +269,13 @@ export async function criarEmpresa(dados: DadosEmpresa): Promise<string> {
   await sqlite.execute(
     `INSERT INTO empresas
        (id, razao_social, nome_fantasia, cnpj, inscricao_estadual, inscricao_municipal,
-        data_abertura, cnae_principal, uf, municipio, regime_tributario, anexo_simples,
+        data_abertura, cnae_principal, cnae_descricao, uf, municipio, regime_tributario,
+        anexo_simples, sujeito_fator_r,
         regime_ibs_cbs, status, tem_funcionarios, email, telefone, honorarios_cents,
         capital_social_cents, procuracao_responsavel, sem_movimento,
         iss_dia_vencimento, iss_aliquota_centesimos, profissao_regulamentada,
         notes, archived, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
     [
       id,
       dados.razaoSocial.trim(),
@@ -263,10 +285,12 @@ export async function criarEmpresa(dados: DadosEmpresa): Promise<string> {
       dados.inscricaoMunicipal?.trim() || null,
       dados.dataAbertura,
       dados.cnaePrincipal?.trim() || null,
+      dados.cnaeDescricao?.trim() || null,
       dados.uf,
       dados.municipio?.trim() || null,
       dados.regimeTributario,
       dados.regimeTributario === "SIMPLES" ? dados.anexoSimples : null,
+      dados.sujeitoFatorR ? 1 : 0,
       dados.regimeIbsCbs,
       dados.status,
       dados.temFuncionarios ? 1 : 0,
@@ -295,8 +319,10 @@ export async function editarEmpresa(
   await sqlite.execute(
     `UPDATE empresas
         SET razao_social = ?, nome_fantasia = ?, cnpj = ?, inscricao_estadual = ?,
-            inscricao_municipal = ?, data_abertura = ?, cnae_principal = ?, uf = ?,
-            municipio = ?, regime_tributario = ?, anexo_simples = ?, regime_ibs_cbs = ?,
+            inscricao_municipal = ?, data_abertura = ?, cnae_principal = ?,
+            cnae_descricao = ?, uf = ?,
+            municipio = ?, regime_tributario = ?, anexo_simples = ?,
+            sujeito_fator_r = ?, regime_ibs_cbs = ?,
             status = ?, tem_funcionarios = ?, email = ?, telefone = ?,
             honorarios_cents = ?, capital_social_cents = ?, procuracao_responsavel = ?,
             sem_movimento = ?, iss_dia_vencimento = ?, iss_aliquota_centesimos = ?,
@@ -310,10 +336,12 @@ export async function editarEmpresa(
       dados.inscricaoMunicipal?.trim() || null,
       dados.dataAbertura,
       dados.cnaePrincipal?.trim() || null,
+      dados.cnaeDescricao?.trim() || null,
       dados.uf,
       dados.municipio?.trim() || null,
       dados.regimeTributario,
       dados.regimeTributario === "SIMPLES" ? dados.anexoSimples : null,
+      dados.sujeitoFatorR ? 1 : 0,
       dados.regimeIbsCbs,
       dados.status,
       dados.temFuncionarios ? 1 : 0,

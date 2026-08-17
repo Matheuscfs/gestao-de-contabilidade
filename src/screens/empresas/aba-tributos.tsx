@@ -342,10 +342,17 @@ export function AbaTributos({
               rbt12Cents,
               receitaMes.receitaCents
             );
+            // O Fator R só entra quando a atividade está no rol do §5º-D.
+            // Anexo III vindo de atividade (§5º-B) ou da regra residual
+            // (§5º-F) não passa por teste de folha: comparar com os 28%
+            // produziria um "mude para o Anexo V" que a lei não autoriza.
             const fatorR =
-              empresa.anexoSimples === "III" || empresa.anexoSimples === "V"
+              empresa.sujeitoFatorR &&
+              (empresa.anexoSimples === "III" || empresa.anexoSimples === "V")
                 ? calcularFatorR(folha12mCents, rbt12Cents)
                 : null;
+            const anexoIIIPorAtividade =
+              !empresa.sujeitoFatorR && empresa.anexoSimples === "III";
             return (
               <>
                 <div className="flex flex-wrap gap-2.5">
@@ -385,6 +392,19 @@ export function AbaTributos({
                           rbt12.mesesConsiderados === 1 ? "mês" : "meses"
                         } × 12, como manda a LC 123 art. 18 § 2º.`}{" "}
                     A partir do 13º mês passa a valer a soma dos 12 anteriores.
+                  </p>
+                )}
+
+                {anexoIIIPorAtividade && (
+                  <p
+                    className="text-[12.5px] mt-2.5 rounded-2xl px-4 py-3"
+                    style={{ background: "#F7F9FC", color: "#5B616E", border: "1px solid #E3E6EC" }}
+                  >
+                    Anexo III <strong className="text-ink-secondary">por atividade</strong> —
+                    o Fator R não se aplica. A folha pode variar à vontade que a
+                    empresa não migra para o Anexo V (LC 123 art. 18 §§5º-B e
+                    5º-F). Se a atividade for do rol do §5º-D, ligue o Fator R
+                    ao editar a empresa.
                   </p>
                 )}
 
