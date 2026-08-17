@@ -52,6 +52,12 @@ export type Empresa = {
    * só que zeradas. Não é status de ciclo de vida — por isso é flag.
    */
   semMovimento: boolean;
+  /** RAT em centésimos de % (100 = 1%), pelo grau de risco do CNAE. */
+  ratCentesimos: number;
+  /** FAP em decimilésimos (10000 = 1,0000); multiplica o RAT. */
+  fapDecimilesimos: number;
+  /** Terceiros / Sistema S em centésimos de % (580 = 5,8%). */
+  terceirosCentesimos: number;
   notes: string | null;
   createdAt: string;
 };
@@ -112,6 +118,9 @@ type EmpresaRow = {
   capital_social_cents: number;
   procuracao_responsavel: string | null;
   sem_movimento: number;
+  rat_centesimos: number;
+  fap_decimilesimos: number;
+  terceiros_centesimos: number;
   notes: string | null;
   created_at: string;
 };
@@ -147,6 +156,9 @@ function mapearLinha(r: EmpresaRow): Empresa {
     capitalSocialCents: r.capital_social_cents ?? 0,
     procuracaoResponsavel: r.procuracao_responsavel ?? null,
     semMovimento: r.sem_movimento === 1,
+    ratCentesimos: r.rat_centesimos ?? 100,
+    fapDecimilesimos: r.fap_decimilesimos ?? 10_000,
+    terceirosCentesimos: r.terceiros_centesimos ?? 0,
     notes: r.notes ?? null,
     createdAt: r.created_at,
   };
@@ -157,6 +169,7 @@ const COLUNAS = `id, razao_social, nome_fantasia, cnpj, inscricao_estadual,
   regime_tributario, anexo_simples, regime_ibs_cbs, atividade_presumido,
   status, tem_funcionarios, email, telefone, honorarios_cents,
   capital_social_cents, procuracao_responsavel, sem_movimento,
+  rat_centesimos, fap_decimilesimos, terceiros_centesimos,
   notes, created_at`;
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
@@ -169,6 +182,7 @@ export async function listarEmpresas(): Promise<EmpresaComTotais[]> {
             e.regime_tributario, e.anexo_simples, e.regime_ibs_cbs, e.atividade_presumido,
             e.status, e.tem_funcionarios, e.email, e.telefone, e.honorarios_cents,
             e.capital_social_cents, e.procuracao_responsavel, e.sem_movimento,
+            e.rat_centesimos, e.fap_decimilesimos, e.terceiros_centesimos,
             e.notes, e.created_at,
             (SELECT COUNT(*) FROM empresa_socios es
               WHERE es.empresa_id = e.id AND es.data_saida IS NULL) AS socios_count,

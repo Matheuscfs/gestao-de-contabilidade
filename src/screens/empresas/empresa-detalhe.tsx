@@ -48,6 +48,7 @@ import { apenasDigitos, formatarCNPJ, formatarCPF, validarCPF } from "@/utils/do
 import { formatarBRL } from "@/utils/money";
 import { formatarData } from "@/utils/dates";
 import { AbaAcessos } from "./aba-acessos";
+import { AbaFolha } from "./aba-folha";
 import { AbaObrigacoes } from "./aba-obrigacoes";
 import { AbaProcessos } from "./aba-processos";
 import { AbaReforma } from "./aba-reforma";
@@ -59,6 +60,7 @@ type Aba =
   | "acessos"
   | "socios"
   | "funcionarios"
+  | "folha"
   | "obrigacoes"
   | "tributos"
   | "processos"
@@ -1042,6 +1044,7 @@ export function EmpresaDetalheScreen() {
     { valor: "acessos", label: "Acessos", badge: acessos.length },
     { valor: "socios", label: "Sócios", badge: socios.length },
     { valor: "funcionarios", label: "Funcionários", badge: funcionarios.length },
+    { valor: "folha", label: "Folha" },
     { valor: "obrigacoes", label: "Obrigações", badge: pendencias },
     { valor: "tributos", label: "Tributos" },
     {
@@ -1136,6 +1139,10 @@ export function EmpresaDetalheScreen() {
 
       {aba === "acessos" && id && (
         <AbaAcessos empresaId={id} acessos={acessos} onRecarregar={carregar} />
+      )}
+
+      {aba === "folha" && (
+        <AbaFolha empresa={empresa} onRecarregar={carregar} />
       )}
 
       {aba === "obrigacoes" && (
