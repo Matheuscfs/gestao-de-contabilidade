@@ -101,3 +101,19 @@ export async function aiConversar(
 ): Promise<RespostaConversa> {
   return invoke<RespostaConversa>("ai_conversar", { mensagens, mes, ano });
 }
+
+/**
+ * Interpreta uma frase sobre o quadro de obrigações ("já fiz o Simples da X")
+ * e devolve o **JSON cru** da resposta do modelo.
+ *
+ * Não grava nada: quem valida os ids devolvidos contra o quadro real é
+ * `@/core/ia/comando-kanban`, e quem aplica é o usuário, confirmando na tela.
+ * Diferente de `aiConversar`, esta chamada não anexa nenhum dado financeiro —
+ * o único contexto enviado é `tarefasJson`, montado pelo frontend.
+ */
+export async function aiInterpretarKanban(
+  frase: string,
+  tarefasJson: string
+): Promise<string> {
+  return invoke<string>("ai_interpretar_kanban", { frase, tarefasJson });
+}

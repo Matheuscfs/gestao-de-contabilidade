@@ -1,7 +1,8 @@
 import { usePerfilStore } from "@/app/perfil-store";
+import { modoDaRota, useModoStore, type Modo } from "@/app/modo-store";
 import quiboMark from "@/assets/logo/quibo-mark.png";
-import React, { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 type SvgPart = [string, Record<string, string | number>];
 
@@ -73,6 +74,19 @@ const ICONS: Record<string, SvgPart[]> = {
     ["line", { x1: 3, x2: 3.01, y1: 12, y2: 12 }],
     ["line", { x1: 3, x2: 3.01, y1: 18, y2: 18 }],
   ],
+  kanban: [
+    ["rect", { width: 7, height: 9, x: 3, y: 3, rx: 1 }],
+    ["rect", { width: 7, height: 5, x: 14, y: 3, rx: 1 }],
+    ["rect", { width: 7, height: 9, x: 14, y: 12, rx: 1 }],
+    ["rect", { width: 7, height: 5, x: 3, y: 16, rx: 1 }],
+  ],
+  "list-checks": [
+    ["path", { d: "m3 17 2 2 4-4" }],
+    ["path", { d: "m3 7 2 2 4-4" }],
+    ["path", { d: "M13 6h8" }],
+    ["path", { d: "M13 12h8" }],
+    ["path", { d: "M13 18h8" }],
+  ],
   sparkles: [
     [
       "path",
@@ -107,7 +121,8 @@ function NavIcon({ name }: { name: string }) {
   );
 }
 
-const NAV = [
+/** Telas de finanças pessoais. */
+const NAV_PESSOAL = [
   { to: "/mes", id: "mes", label: "Mês", icon: "calendar" },
   {
     to: "/lancamentos",
@@ -132,25 +147,96 @@ const NAV = [
     icon: "piggy-bank",
   },
   { to: "/analise", id: "analise", label: "Análise", icon: "bar-chart" },
-  { to: "/empresas", id: "empresas", label: "Empresas", icon: "building" },
-  { to: "/ia", id: "ia", label: "IA", icon: "sparkles" },
 ] as const;
+
+/** Telas do escritório contábil. */
+const NAV_CONTABIL = [
+  { to: "/kanban", id: "kanban", label: "Kanban do mês", icon: "kanban" },
+  { to: "/empresas", id: "empresas", label: "Empresas", icon: "building" },
+  { to: "/fluxos", id: "fluxos", label: "Fluxos", icon: "list-checks" },
+] as const;
+
+/** A IA fala das duas coisas, então aparece nos dois modos. */
+const NAV_COMUM = [{ to: "/ia", id: "ia", label: "IA", icon: "sparkles" }] as const;
+
+function AlternadorModo({
+  modo,
+  onTrocar,
+}: {
+  modo: Modo;
+  onTrocar: (m: Modo) => void;
+}) {
+  const opcoes: { id: Modo; label: string; titulo: string }[] = [
+    { id: "pessoal", label: "P", titulo: "Finanças pessoais" },
+    { id: "contabil", label: "C", titulo: "Contabilidade" },
+  ];
+
+  return (
+    <div
+      className="no-drag flex items-center gap-0.5 p-0.5 rounded-full mb-3"
+      style={{ background: "#F0F2F6" }}
+    >
+      {opcoes.map((o) => {
+        const ativo = modo === o.id;
+        return (
+          <button
+            key={o.id}
+            onClick={() => onTrocar(o.id)}
+            title={o.titulo}
+            aria-label={o.titulo}
+            aria-pressed={ativo}
+            className="w-[26px] h-[26px] rounded-full text-[12px] font-bold transition-all"
+            style={
+              ativo
+                ? { background: "#fff", color: "#0E1116", boxShadow: "0 1px 2px rgba(14,17,22,.12)" }
+                : { background: "transparent", color: "#8A909B" }
+            }
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function Sidebar() {
   const [hovered, setHovered] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { nome, foto, iniciais } = usePerfilStore();
+  const { modo, definirModo } = useModoStore();
+
+  // Entrar numa rota contábil por link direto (ex.: voltar de /empresas/:id)
+  // acerta o modo sozinho, senão a sidebar mostraria o conjunto errado.
+  useEffect(() => {
+    const daRota = modoDaRota(location.pathname);
+    if (daRota && daRota !== modo) definirModo(daRota);
+  }, [location.pathname, modo, definirModo]);
+
+  const itens = [
+    ...(modo === "pessoal" ? NAV_PESSOAL : NAV_CONTABIL),
+    ...NAV_COMUM,
+  ];
+
+  function trocarModo(novo: Modo) {
+    if (novo === modo) return;
+    definirModo(novo);
+    navigate(novo === "pessoal" ? "/mes" : "/kanban");
+  }
 
   return (
     <aside className="drag-region shrink-0 w-[68px] flex flex-col items-center bg-surface border border-border rounded-[22px] py-3.5 shadow-xs">
       {/* Logo */}
-      <div className="no-drag mb-3.5">
+      <div className="no-drag mb-3">
         <img src={quiboMark} alt="Gestão de Contabilidade" className="w-9 h-9 object-contain" />
       </div>
 
+      <AlternadorModo modo={modo} onTrocar={trocarModo} />
+
       {/* Navegação */}
       <nav className="no-drag flex flex-col items-center gap-1.5">
-        {NAV.map(({ to, id, label, icon }) => (
+        {itens.map(({ to, id, label, icon }) => (
           <div
             key={id}
             className="relative"
