@@ -12,7 +12,9 @@
 
 use crate::errors::AppError;
 
-const BASE_URL: &str = "https://brasilapi.com.br/api/v1/cnpj";
+// A ordem dos segmentos é `<serviço>/<versão>`, não `v1/cnpj` — invertida, a
+// API responde 404 para qualquer CNPJ, o que se confunde com "não existe".
+const BASE_URL: &str = "https://brasilapi.com.br/api/cnpj/v1";
 
 /// Consulta o CNPJ e devolve o JSON cru da BrasilAPI.
 ///
@@ -27,9 +29,13 @@ pub async fn consultar_cnpj(cnpj: String) -> Result<String, AppError> {
         ));
     }
 
+    // O User-Agent não é enfeite: sem ele a borda da BrasilAPI responde 403, e
+    // o reqwest não manda nenhum por padrão. Erra silenciosamente para todo
+    // CNPJ, o que parece "API fora do ar".
     let resposta = reqwest::Client::new()
         .get(format!("{BASE_URL}/{digitos}"))
         .header("Accept", "application/json")
+        .header("User-Agent", concat!("gestao-contabilidade/", env!("CARGO_PKG_VERSION")))
         .send()
         .await
         .map_err(|e| {
