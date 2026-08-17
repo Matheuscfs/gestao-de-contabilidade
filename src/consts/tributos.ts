@@ -14,6 +14,7 @@
  * substituem a apuração oficial (PGDAS-D, DCTFWeb etc.).
  */
 
+import { ANO_FISCAL } from "./ano-fiscal";
 import {
   calcularIRRFCents,
   IRRF_FAIXAS,
@@ -21,7 +22,7 @@ import {
 } from "./clt";
 import type { AnexoSimples, AtividadePresumido } from "@/core/db/empresas";
 
-export const TRIBUTOS_ANO_REFERENCIA = "2026";
+export const TRIBUTOS_ANO_REFERENCIA = ANO_FISCAL;
 
 // ─── Parâmetros 2026 ──────────────────────────────────────────────────────────
 
@@ -154,6 +155,16 @@ export function calcularFatorR(
 
 // ─── Pró-labore (2026) ────────────────────────────────────────────────────────
 
+/**
+ * Piso do pró-labore: um salário mínimo.
+ *
+ * Sócio-administrador que trabalha na empresa deve retirar ao menos isso;
+ * valor abaixo do piso é infração sujeita a autuação. Retirada zero é caso
+ * diferente e legítimo — sócio que só investe, sem atuar na gestão, não retira
+ * pró-labore e recebe apenas distribuição de lucros.
+ */
+export const PRO_LABORE_MINIMO_CENTS = SALARIO_MINIMO_CENTS;
+
 export type ResultadoProLabore = {
   brutoCents: number;
   /** 11% até o teto — retido do sócio. */
@@ -163,6 +174,11 @@ export type ResultadoProLabore = {
   liquidoCents: number;
   /** CPP 20% da empresa (0 quando a CPP está dentro do DAS). */
   cppEmpresaCents: number;
+  /**
+   * Retirada positiva porém abaixo do salário mínimo. Zero não acusa: é a
+   * ausência de pró-labore, não um valor irregular.
+   */
+  abaixoDoMinimo: boolean;
 };
 
 /** Redutor do IRRF 2026: zera até R$ 5.000 e decresce até R$ 7.350. */
@@ -204,6 +220,7 @@ export function calcularProLabore(
     cppEmpresaCents: comCppPatronal
       ? Math.round(brutoCents * CPP_PATRONAL_ALIQUOTA)
       : 0,
+    abaixoDoMinimo: brutoCents > 0 && brutoCents < PRO_LABORE_MINIMO_CENTS,
   };
 }
 

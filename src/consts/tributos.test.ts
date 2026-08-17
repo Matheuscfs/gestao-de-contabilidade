@@ -67,10 +67,26 @@ describe("calcularProLabore (2026)", () => {
     const r = calcularProLabore(1_000_000, true);
     // 11% do teto R$ 8.475,55
     expect(r.inssCents).toBe(93_231);
-    // desconto simplificado é pior que as deduções legais aqui
-    expect(r.irrfCents).toBe(159_761);
+    // Base legal 9.067,69 × 27,5% − 908,73 = 1.584,88. O desconto simplificado
+    // sai pior aqui, então valem as deduções legais.
+    //
+    // Este número era 159.761 enquanto `clt.ts` usava a parcela a deduzir de
+    // 2025 (896,00 em vez de 908,73) — os R$ 12,73 de diferença iam direto
+    // para a guia do sócio.
+    expect(r.irrfCents).toBe(158_488);
     expect(r.cppEmpresaCents).toBe(200_000);
-    expect(r.liquidoCents).toBe(1_000_000 - 93_231 - 159_761);
+    expect(r.liquidoCents).toBe(1_000_000 - 93_231 - 158_488);
+  });
+
+  it("retirada abaixo do salário mínimo é sinalizada", () => {
+    expect(calcularProLabore(100_000, false).abaixoDoMinimo).toBe(true);
+    expect(calcularProLabore(162_100, false).abaixoDoMinimo).toBe(false);
+    expect(calcularProLabore(500_000, false).abaixoDoMinimo).toBe(false);
+  });
+
+  it("não retirar pró-labore não é irregularidade", () => {
+    // Sócio que só investe, sem atuar na gestão, recebe apenas lucros.
+    expect(calcularProLabore(0, false).abaixoDoMinimo).toBe(false);
   });
 });
 

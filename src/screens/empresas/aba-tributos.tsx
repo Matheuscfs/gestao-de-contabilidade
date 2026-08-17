@@ -30,6 +30,7 @@ import {
   calcularPresumidoMes,
   calcularPresumidoTrimestre,
   calcularProLabore,
+  PRO_LABORE_MINIMO_CENTS,
   calcularSimples,
   LABEL_ATIVIDADE_PRESUMIDO,
   MEI_ICMS_CENTS,
@@ -534,6 +535,17 @@ export function AbaTributos({
                       </span>
                     )}
                   </div>
+
+                  {calc.abaixoDoMinimo && (
+                    <p
+                      className="text-[12.5px] font-medium mt-2 pt-2 border-t"
+                      style={{ color: "#B9791C", borderColor: "#F0E3C6" }}
+                    >
+                      Abaixo do salário mínimo ({formatarBRL(PRO_LABORE_MINIMO_CENTS)}).
+                      Sócio que atua na empresa precisa retirar ao menos o piso —
+                      valor menor é passível de autuação.
+                    </p>
+                  )}
                 </div>
               );
             })}
