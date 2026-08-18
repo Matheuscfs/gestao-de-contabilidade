@@ -7,6 +7,8 @@ import { DividasScreen } from "@/screens/dividas";
 import { EmpresasScreen } from "@/screens/empresas";
 import { EmpresaDetalheScreen } from "@/screens/empresas/empresa-detalhe";
 import { ExtratoScreen } from "@/screens/extrato/extrato-screen";
+import { FluxosScreen } from "@/screens/fluxos/fluxos-screen";
+import { KanbanScreen } from "@/screens/kanban/kanban-screen";
 import { IaScreen } from "@/screens/ia/ia-screen";
 import { InvestimentosScreen } from "@/screens/investimentos/investimentos-screen";
 import { LancamentosScreen } from "@/screens/lancamentos/lancamentos-screen";
@@ -51,6 +53,8 @@ export const router = createBrowserRouter([
       { path: "categorias", element: <CategoriasScreen /> },
       { path: "personas", element: <PersonasScreen /> },
       { path: "analise", element: <AnaliseScreen /> },
+      { path: "kanban", element: <KanbanScreen /> },
+      { path: "fluxos", element: <FluxosScreen /> },
       { path: "empresas", element: <EmpresasScreen /> },
       { path: "empresas/:id", element: <EmpresaDetalheScreen /> },
       { path: "ia", element: <IaScreen /> },

@@ -358,3 +358,87 @@ pub async fn ai_conversar(
         contexto_incluido: preparo.contexto_incluido,
     })
 }
+
+// ─── Interpretação de comando do Kanban ───────────────────────────────────────
+
+/// Credenciais da IA ativa, sem montar contexto financeiro.
+///
+/// `preparar` acopla a busca da chave à montagem do resumo do mês; aqui só as
+/// credenciais interessam — o Kanban manda o próprio catálogo de tarefas e
+/// nenhum número financeiro deve vazar para esta chamada.
+fn credenciais_ia(app: &AppHandle) -> Result<(Provider, String, String), String> {
+    let conn = abrir_conexao(app)?;
+
+    let linha = conn
+        .query_row(
+            "SELECT ai_provider, ai_model, ai_key_ref
+               FROM integrations
+              WHERE type = 'AI' AND is_active = 1
+              ORDER BY updated_at DESC
+              LIMIT 1",
+            [],
+            |r| {
+                Ok((
+                    r.get::<_, Option<String>>(0)?,
+                    r.get::<_, Option<String>>(1)?,
+                    r.get::<_, Option<String>>(2)?,
+                ))
+            },
+        )
+        .ok();
+
+    let Some((Some(provider), Some(modelo), Some(api_key))) = linha else {
+        return Err("Nenhuma IA configurada. Vá em Perfil → Integrações → IA.".into());
+    };
+
+    let provider = Provider::from_str(&provider).map_err(|e| e.to_string())?;
+    Ok((provider, modelo, api_key))
+}
+
+const PROMPT_KANBAN: &str = "\
+Você interpreta frases de um contador sobre o quadro de obrigações fiscais do mês \
+e devolve QUAIS tarefas ele acabou de concluir. Você NÃO executa nada e NÃO \
+calcula nada: apenas identifica os itens que a frase menciona.
+
+Você recebe um JSON com as tarefas em aberto. Cada card é uma obrigação de uma \
+empresa na competência, e tem etapas (checklist).
+
+Responda SOMENTE com um objeto JSON válido, sem markdown, sem cercas de código e \
+sem texto fora dele, neste formato:
+
+{\"acoes\":[{\"cardId\":\"<id>\",\"etapaId\":\"<id ou null>\",\"motivo\":\"<por que casou, curto>\"}],\"duvida\":\"<pergunta ou null>\"}
+
+Regras:
+- `etapaId` null significa concluir o card inteiro (todas as etapas).
+- Use APENAS ids que aparecem no JSON recebido. Nunca invente id.
+- Case a empresa por nome aproximado (a fala é informal: \"latance\", \"ag tenis\").
+- Case a obrigação pelo nome ou pelo apelido comum: \"Simples\"/\"DAS\" = DAS, \
+\"declaração do Simples\" = PGDAS-D, \"pró-labore\" = INSS (DARF), \
+\"SPED Fiscal\" = EFD ICMS/IPI, \"SPED Contábil\" = ECD, \"folha\" = eSocial.
+- Se a frase citar várias empresas ou várias obrigações, devolva uma ação para cada.
+- Se ficar em dúvida real (duas empresas com nome parecido, obrigação ambígua), \
+devolva `acoes` vazio e escreva a pergunta em `duvida`.
+- Se nada casar, devolva `acoes` vazio e explique em `duvida`.";
+
+/// Manda a frase do usuário + o catálogo de tarefas abertas ao modelo e devolve
+/// o JSON cru da resposta. Quem valida os ids e grava é o frontend — o modelo
+/// nunca escreve no banco.
+#[tauri::command]
+pub async fn ai_interpretar_kanban(
+    app: AppHandle,
+    frase: String,
+    tarefas_json: String,
+) -> Result<String, String> {
+    let (provider, modelo, api_key) = credenciais_ia(&app)?;
+
+    let mensagens = vec![MensagemChat {
+        papel: "user".into(),
+        texto: format!(
+            "Tarefas em aberto (JSON):\n{tarefas_json}\n\nFrase do contador:\n{frase}"
+        ),
+    }];
+
+    chat::conversar(provider, &api_key, &modelo, PROMPT_KANBAN, &mensagens)
+        .await
+        .map_err(|e| e.to_string())
+}

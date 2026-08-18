@@ -61,6 +61,7 @@ pub fn run() {
             commands::ai::ai_remover_integracao,
             // IA — conversa
             commands::ai::ai_conversar,
+            commands::ai::ai_interpretar_kanban,
         ])
         .run(tauri::generate_context!())
         .expect("Erro ao iniciar o Gestão de Contabilidade");
