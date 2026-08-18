@@ -4,6 +4,7 @@
  */
 
 import { useState } from "react";
+import { MoneyInput } from "@/components/money-input";
 import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
 import {
@@ -117,6 +118,18 @@ export function ModalEmpresa({
   const [temFuncionarios, setTemFuncionarios] = useState(
     editando?.temFuncionarios ?? false
   );
+  const [email, setEmail] = useState(editando?.email ?? "");
+  const [telefone, setTelefone] = useState(editando?.telefone ?? "");
+  const [honorarios, setHonorarios] = useState(editando?.honorariosCents ?? 0);
+  const [capitalSocial, setCapitalSocial] = useState(
+    editando?.capitalSocialCents ?? 0
+  );
+  const [procuracao, setProcuracao] = useState(
+    editando?.procuracaoResponsavel ?? ""
+  );
+  const [semMovimento, setSemMovimento] = useState(
+    editando?.semMovimento ?? false
+  );
   const [notes, setNotes] = useState(editando?.notes ?? "");
 
   const [salvando, setSalvando] = useState(false);
@@ -158,6 +171,12 @@ export function ModalEmpresa({
         regimeIbsCbs: editando?.regimeIbsCbs ?? null,
         status,
         temFuncionarios,
+        email: email || null,
+        telefone: telefone || null,
+        honorariosCents: honorarios,
+        capitalSocialCents: capitalSocial,
+        procuracaoResponsavel: procuracao || null,
+        semMovimento,
         notes: notes || null,
       };
       let id = editando?.id;
@@ -338,6 +357,40 @@ export function ModalEmpresa({
             </Campo>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <Campo label="E-mail" opcional>
+              <InputTexto valor={email} onChange={setEmail} placeholder="contato@empresa.com" />
+            </Campo>
+            <Campo label="Telefone" opcional>
+              <InputTexto valor={telefone} onChange={setTelefone} placeholder="(00) 00000-0000" />
+            </Campo>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Campo label="Honorário mensal" opcional>
+              <MoneyInput
+                centavos={honorarios}
+                onChange={setHonorarios}
+                aria-label="Honorário mensal"
+              />
+            </Campo>
+            <Campo label="Capital social" opcional>
+              <MoneyInput
+                centavos={capitalSocial}
+                onChange={setCapitalSocial}
+                aria-label="Capital social"
+              />
+            </Campo>
+          </div>
+
+          <Campo label="Procuração eletrônica (e-CAC)" opcional>
+            <InputTexto
+              valor={procuracao}
+              onChange={setProcuracao}
+              placeholder="Quem responde pela empresa no e-CAC"
+            />
+          </Campo>
+
           {/* Status (só na edição — empresa nova nasce ativa) */}
           {editando && (
             <div>
@@ -388,6 +441,34 @@ export function ModalEmpresa({
                 className="block w-[18px] h-[18px] rounded-full bg-white transition-transform"
                 style={{
                   transform: temFuncionarios ? "translateX(18px)" : "translateX(0)",
+                }}
+              />
+            </span>
+          </button>
+
+          {/* Sem movimento no período ("zerada") */}
+          <button
+            onClick={() => setSemMovimento(!semMovimento)}
+            className="flex items-center justify-between rounded-xl px-4 py-3 transition-colors"
+            style={ESTILO_BORDA}
+          >
+            <span className="text-left">
+              <span className="block text-[14px] font-semibold text-ink">
+                Sem movimento
+              </span>
+              <span className="block text-[12px] text-ink-muted mt-0.5">
+                Empresa ativa que não fatura no período — segue entregando as
+                obrigações, só que zeradas.
+              </span>
+            </span>
+            <span
+              className="shrink-0 w-[42px] h-[24px] rounded-full p-[3px] transition-colors"
+              style={{ background: semMovimento ? "#4078E6" : "#D4D8E0" }}
+            >
+              <span
+                className="block w-[18px] h-[18px] rounded-full bg-white transition-transform"
+                style={{
+                  transform: semMovimento ? "translateX(18px)" : "translateX(0)",
                 }}
               />
             </span>

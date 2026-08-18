@@ -65,6 +65,10 @@ export const accounts = sqliteTable(
     pluggySyncedAt: text("pluggy_synced_at"),
     /** Payload JSON cru da Pluggy, exatamente como recebido. NULL = manual. */
     raw: text("raw"),
+    /** Empresa dona da conta (PJ). NULL = conta pessoal. */
+    empresaId: text("empresa_id").references(() => empresas.id, {
+      onDelete: "set null",
+    }),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -95,6 +99,10 @@ export const creditCards = sqliteTable(
     pluggySyncedAt: text("pluggy_synced_at"),
     /** Payload JSON cru da Pluggy, exatamente como recebido. NULL = manual. */
     raw: text("raw"),
+    /** Empresa dona do cartão (PJ). NULL = cartão pessoal. */
+    empresaId: text("empresa_id").references(() => empresas.id, {
+      onDelete: "set null",
+    }),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -342,6 +350,16 @@ export const empresas = sqliteTable(
     status: text("status").notNull().default("ATIVA"),
     /** Flag declarativa para o motor de obrigações (Fase 2). */
     temFuncionarios: integer("tem_funcionarios").notNull().default(0),
+    email: text("email"),
+    telefone: text("telefone"),
+    /** Honorário mensal cobrado pelo escritório, em centavos. */
+    honorariosCents: integer("honorarios_cents").notNull().default(0),
+    /** Capital social / quotas, em centavos. */
+    capitalSocialCents: integer("capital_social_cents").notNull().default(0),
+    /** Quem detém a procuração eletrônica (e-CAC). */
+    procuracaoResponsavel: text("procuracao_responsavel"),
+    /** Ativa porém sem movimento no período ("zerada"): entrega obrigação zerada. */
+    semMovimento: integer("sem_movimento").notNull().default(0),
     notes: text("notes"),
     archived: integer("archived").notNull().default(0),
     createdAt: text("created_at").notNull(),
@@ -509,11 +527,39 @@ export const processos = sqliteTable(
     /** EM_ANDAMENTO | AGUARDANDO | CONCLUIDO | CANCELADO — "atrasado" é derivado. */
     status: text("status").notNull().default("EM_ANDAMENTO"),
     concluidoEm: text("concluido_em"),
+    /** Nº do protocolo no órgão (Empresa Fácil, JUCESP, Redesim…). */
+    protocolo: text("protocolo"),
+    /** URL de acompanhamento do processo no órgão. */
+    link: text("link"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
   (t) => ({
     byEmpresa: index("ix_processos_empresa").on(t.empresaId, t.status),
+  })
+);
+
+// ─── Módulo contábil — Acessos a portais ──────────────────────────────────────
+export const empresaAcessos = sqliteTable(
+  "empresa_acessos",
+  {
+    id: text("id").primaryKey(),
+    empresaId: text("empresa_id")
+      .notNull()
+      .references(() => empresas.id, { onDelete: "cascade" }),
+    /** NFSE | GOV_BR | SIMPLES_NACIONAL | ECAC | JUNTA | PREFEITURA | ESTADUAL | BOMBEIROS | BANCO | OUTRO */
+    tipo: text("tipo").notNull(),
+    /** Distingue dois acessos do mesmo tipo (ex.: NFSe de municípios diferentes). */
+    rotulo: text("rotulo"),
+    usuario: text("usuario"),
+    senha: text("senha"),
+    link: text("link"),
+    notes: text("notes"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    byEmpresa: index("ix_acessos_empresa").on(t.empresaId, t.tipo),
   })
 );
 
@@ -579,3 +625,6 @@ export type NewEmpresaSocio = typeof empresaSocios.$inferInsert;
 
 export type FuncionarioRowDrizzle = typeof funcionarios.$inferSelect;
 export type NewFuncionario = typeof funcionarios.$inferInsert;
+
+export type EmpresaAcessoRowDrizzle = typeof empresaAcessos.$inferSelect;
+export type NewEmpresaAcesso = typeof empresaAcessos.$inferInsert;
