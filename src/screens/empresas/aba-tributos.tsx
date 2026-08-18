@@ -25,6 +25,7 @@ import {
   salvarReceita,
   type ReceitaMensal,
 } from "@/core/db/receitas-empresa";
+import { folha12mFechada, type FolhaHistorico } from "@/core/db/folha";
 import {
   calcularFatorR,
   calcularPresumidoMes,
@@ -195,13 +196,22 @@ export function AbaTributos({
   const apuracao = mesAnterior(atual.mes, atual.ano);
 
   const [receitas, setReceitas] = useState<ReceitaMensal[]>([]);
+  const [historicoFolha, setHistoricoFolha] = useState<FolhaHistorico>({
+    totalCents: 0,
+    competenciasFechadas: 0,
+  });
   const [carregando, setCarregando] = useState(true);
   const [editandoReceita, setEditandoReceita] = useState<ReceitaMensal | null>(null);
 
   const carregarReceitas = useCallback(async () => {
     try {
       // 13 competências: 12 anteriores (RBT12) + o mês de apuração.
-      setReceitas(await listarReceitas(empresa.id, apuracao.mes, apuracao.ano, 13));
+      const [rec, folha] = await Promise.all([
+        listarReceitas(empresa.id, apuracao.mes, apuracao.ano, 13),
+        folha12mFechada(empresa.id, apuracao.mes, apuracao.ano),
+      ]);
+      setReceitas(rec);
+      setHistoricoFolha(folha);
     } catch (e) {
       tratarErro(e, {
         contexto: "carregar receitas",
@@ -244,12 +254,19 @@ export function AbaTributos({
 
   // Folha do Fator R: remunerações + 13º + terço de férias + FGTS + CPP
   // recolhida por fora do DAS, como manda a LC 123 art. 18 §24.
-  const folha = estimarFolha12m({
+  //
+  // Havendo competência de folha fechada, ela manda: é o que foi efetivamente
+  // pago. A estimativa a partir dos valores vigentes só entra enquanto não
+  // existe histórico — e a tela diz de qual das duas o número veio.
+  const folhaEstimada = estimarFolha12m({
     proLaboreMensalCents,
     salariosMensalCents,
     cppForaDoDas: comCppPatronal,
   });
-  const folha12mCents = folha.totalCents;
+  const usandoFolhaReal = historicoFolha.competenciasFechadas > 0;
+  const folha12mCents = usandoFolhaReal
+    ? historicoFolha.totalCents
+    : folhaEstimada.totalCents;
   const sociosComProLabore = socios.filter(
     (s) => s.dataSaida == null && s.proLaboreCents > 0
   );
@@ -352,28 +369,52 @@ export function AbaTributos({
                       {fatorR.anexoIndicado !== empresa.anexoSimples &&
                         ` — o cadastro está como Anexo ${empresa.anexoSimples}`}
                     </p>
-                    <p className="text-[12px] text-ink-muted mt-1">
-                      Folha estimada de 12 meses ÷ RBT12. Composição:{" "}
-                      {formatarBRL(folha.remuneracoesCents)} de remunerações
-                      {" + "}
-                      {formatarBRL(folha.decimoTerceiroCents)} de 13º
-                      {folha.tercoFeriasCents > 0 &&
-                        ` + ${formatarBRL(folha.tercoFeriasCents)} de terço de férias`}
-                      {folha.fgtsCents > 0 &&
-                        ` + ${formatarBRL(folha.fgtsCents)} de FGTS`}
-                      {folha.cppCents > 0 &&
-                        ` + ${formatarBRL(folha.cppCents)} de CPP`}
-                      {" = "}
-                      <strong className="text-ink-secondary">
-                        {formatarBRL(folha12mCents)}
-                      </strong>
-                      .
-                    </p>
-                    <p className="text-[12px] text-ink-muted mt-1">
-                      Projeta os valores de hoje para trás — quem reajustou
-                      salário ou começou a retirar pró-labore no meio do período
-                      verá um número otimista.
-                    </p>
+                    {usandoFolhaReal ? (
+                      <p className="text-[12px] text-ink-muted mt-1">
+                        Folha de{" "}
+                        <strong className="text-ink-secondary">
+                          {formatarBRL(folha12mCents)}
+                        </strong>{" "}
+                        apurada de {historicoFolha.competenciasFechadas} de 12
+                        competências fechadas ÷ RBT12.
+                        {historicoFolha.competenciasFechadas < 12 && (
+                          <>
+                            {" "}
+                            Faltam{" "}
+                            {12 - historicoFolha.competenciasFechadas} competência
+                            {12 - historicoFolha.competenciasFechadas > 1 ? "s" : ""}
+                            {" "}— até fechar todas, o Fator R sai menor do que o
+                            real.
+                          </>
+                        )}
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-[12px] text-ink-muted mt-1">
+                          Folha estimada de 12 meses ÷ RBT12. Composição:{" "}
+                          {formatarBRL(folhaEstimada.remuneracoesCents)} de
+                          remunerações
+                          {" + "}
+                          {formatarBRL(folhaEstimada.decimoTerceiroCents)} de 13º
+                          {folhaEstimada.tercoFeriasCents > 0 &&
+                            ` + ${formatarBRL(folhaEstimada.tercoFeriasCents)} de terço de férias`}
+                          {folhaEstimada.fgtsCents > 0 &&
+                            ` + ${formatarBRL(folhaEstimada.fgtsCents)} de FGTS`}
+                          {folhaEstimada.cppCents > 0 &&
+                            ` + ${formatarBRL(folhaEstimada.cppCents)} de CPP`}
+                          {" = "}
+                          <strong className="text-ink-secondary">
+                            {formatarBRL(folha12mCents)}
+                          </strong>
+                          .
+                        </p>
+                        <p className="text-[12px] text-ink-muted mt-1">
+                          Projeta os valores de hoje para trás. Feche as
+                          competências na aba Folha para o Fator R passar a usar
+                          o que foi efetivamente pago.
+                        </p>
+                      </>
+                    )}
 
                     {fatorR.fatorR >= FATOR_R_FRONTEIRA.de &&
                       fatorR.fatorR <= FATOR_R_FRONTEIRA.ate && (
