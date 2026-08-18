@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { open } from "@tauri-apps/plugin-shell";
+import { abrirExterno } from "@/core/ipc/sistema";
 import { useHeaderActionsStore } from "@/app/header-actions-store";
 import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
@@ -51,7 +51,7 @@ async function copiarProtocolo(protocolo: string): Promise<void> {
 
 async function abrirLink(link: string): Promise<void> {
   try {
-    await open(link);
+    await abrirExterno(link);
   } catch (e) {
     tratarErro(e, {
       contexto: "abrir acompanhamento do processo",

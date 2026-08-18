@@ -84,6 +84,9 @@ fn aplicar_migracoes(conn: &Connection) -> Result<(), AppError> {
         (include_str!("../../migrations/0013_kanban_fluxos.sql"), 13),
         (include_str!("../../migrations/0014_folha.sql"), 14),
         (include_str!("../../migrations/0015_iss_municipal.sql"), 15),
+        (include_str!("../../migrations/0016_cnae_fator_r.sql"), 16),
+        (include_str!("../../migrations/0017_financeiro_escritorio.sql"), 17),
+        (include_str!("../../migrations/0018_baixa_empresa.sql"), 18),
     ];
 
     for (sql, versao) in migracoes {

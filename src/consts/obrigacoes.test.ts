@@ -86,6 +86,51 @@ describe("competenciasNaJanela", () => {
   });
 });
 
+describe("baixa da empresa", () => {
+  const das = obterObrigacao("DAS")!;
+  const hoje = new Date(2026, 7, 3); // 03/08/2026
+
+  it("para de gerar competência depois do mês da baixa", () => {
+    expect(competenciasNaJanela(das, hoje, null, "2026-06-30")).toEqual([
+      { mes: 6, ano: 2026 },
+      { mes: 5, ano: 2026 },
+    ]);
+  });
+
+  it("o mês da baixa ainda é devido, mesmo baixando no dia 1º", () => {
+    // O corte é por competência, não por dia: a empresa existiu em junho e a
+    // entrega de junho continua obrigatória.
+    const comps = competenciasNaJanela(das, hoje, null, "2026-06-01");
+    expect(comps).toContainEqual({ mes: 6, ano: 2026 });
+    expect(comps).not.toContainEqual({ mes: 7, ano: 2026 });
+  });
+
+  it("combina com a data de abertura — janela fechada nas duas pontas", () => {
+    expect(competenciasNaJanela(das, hoje, "2026-06-10", "2026-07-20")).toEqual([
+      { mes: 7, ano: 2026 },
+      { mes: 6, ano: 2026 },
+    ]);
+  });
+
+  it("baixa anterior a toda a janela não gera nada", () => {
+    expect(competenciasNaJanela(das, hoje, null, "2025-12-31")).toEqual([]);
+  });
+
+  it("anual: baixa antes do ano de apuração cancela a entrega", () => {
+    const defis = obterObrigacao("DEFIS")!;
+    expect(competenciasNaJanela(defis, hoje, null, "2025-06-30")).toEqual([
+      { mes: 12, ano: 2025 },
+    ]);
+    expect(competenciasNaJanela(defis, hoje, null, "2024-11-30")).toEqual([]);
+  });
+
+  it("sem data de baixa, nada muda", () => {
+    expect(competenciasNaJanela(das, hoje, null, null)).toEqual(
+      competenciasNaJanela(das, hoje, null)
+    );
+  });
+});
+
 describe("vigência (reforma tributária)", () => {
   it("PIS/Cofins não gera competências a partir de 2027", () => {
     const pis = obterObrigacao("PIS_COFINS")!;

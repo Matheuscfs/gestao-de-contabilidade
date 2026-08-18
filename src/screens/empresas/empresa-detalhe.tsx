@@ -12,10 +12,14 @@ import { MoneyInput } from "@/components/money-input";
 import { toast } from "@/components/toast";
 import { tratarErro } from "@/core/errors";
 import {
+  darBaixaEmpresa,
   excluirEmpresa,
   obterEmpresa,
+  previaDaBaixa,
+  reverterBaixaEmpresa,
   LABEL_REGIME,
   type Empresa,
+  type EfeitosDaBaixa,
 } from "@/core/db/empresas";
 import {
   adicionarSocio,
@@ -46,8 +50,9 @@ import { listarAcessos, type Acesso } from "@/core/db/acessos";
 import { listarContasDaEmpresa, type Conta } from "@/core/db/contas";
 import { apenasDigitos, formatarCNPJ, formatarCPF, validarCPF } from "@/utils/documento";
 import { formatarBRL } from "@/utils/money";
-import { formatarData } from "@/utils/dates";
+import { formatarData, hoje } from "@/utils/dates";
 import { AbaAcessos } from "./aba-acessos";
+import { AbaFinanceiro } from "./aba-financeiro";
 import { AbaFolha } from "./aba-folha";
 import { AbaObrigacoes } from "./aba-obrigacoes";
 import { AbaProcessos } from "./aba-processos";
@@ -63,6 +68,7 @@ type Aba =
   | "folha"
   | "obrigacoes"
   | "tributos"
+  | "financeiro"
   | "processos"
   | "reforma";
 
@@ -785,19 +791,192 @@ function ContasVinculadas({ contas }: { contas: Conta[] }) {
   );
 }
 
+/**
+ * Baixa da empresa.
+ *
+ * Pede a data porque é ela que decide a fronteira: obrigação e honorário do
+ * mês da baixa continuam devidos, o que vem depois não. E mostra a contagem do
+ * que será encerrado antes de encerrar — fechar obrigação e apagar cobrança
+ * sem dizer quantas seria uma ação destrutiva às cegas.
+ */
+function ModalBaixa({
+  empresa,
+  onBaixada,
+  onFechar,
+}: {
+  empresa: Empresa;
+  onBaixada: () => void;
+  onFechar: () => void;
+}) {
+  const [data, setData] = useState(hoje());
+  const [previa, setPrevia] = useState<EfeitosDaBaixa | null>(null);
+  const [salvando, setSalvando] = useState(false);
+
+  // A prévia refaz a cada mudança de data: mudar março para abril muda o que
+  // sobrevive, e um número velho na tela induziria a confirmar a coisa errada.
+  useEffect(() => {
+    let ativo = true;
+    previaDaBaixa(empresa.id, data)
+      .then((p) => ativo && setPrevia(p))
+      .catch(() => ativo && setPrevia(null));
+    return () => {
+      ativo = false;
+    };
+  }, [empresa.id, data]);
+
+  async function confirmar() {
+    setSalvando(true);
+    try {
+      const efeitos = await darBaixaEmpresa(empresa.id, data);
+      const partes = [
+        efeitos.obrigacoesPendentes > 0 &&
+          `${efeitos.obrigacoesPendentes} obrigação(ões) dispensada(s)`,
+        efeitos.cobrancasEmAberto > 0 &&
+          `${efeitos.cobrancasEmAberto} cobrança(s) cancelada(s)`,
+      ].filter(Boolean);
+      toast.sucesso(
+        partes.length > 0 ? `Baixa registrada — ${partes.join(", ")}` : "Baixa registrada"
+      );
+      onBaixada();
+    } catch (e) {
+      tratarErro(e, {
+        contexto: "dar baixa na empresa",
+        mensagemUsuario: "Não foi possível dar baixa na empresa.",
+      });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  const competencia = data.slice(0, 7);
+
+  return (
+    <div
+      className="fixed inset-0 flex items-center justify-center z-[80]"
+      style={{ background: "rgba(14,17,22,.42)" }}
+      onClick={() => !salvando && onFechar()}
+    >
+      <div
+        className="w-[500px] bg-surface rounded-3xl shadow-2xl animate-slide-up"
+        style={{ padding: "24px 30px 22px", boxShadow: "0 24px 60px -20px rgba(14,17,22,.4)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-[21px] font-bold text-ink tracking-tight">Dar baixa</p>
+        <p className="text-[13px] text-ink-muted mt-1">{empresa.razaoSocial}</p>
+
+        <label className="block mt-5">
+          <span className="block text-[13px] font-semibold text-ink-secondary mb-1.5">
+            Data da baixa
+          </span>
+          <span
+            className="flex items-center h-[46px] px-4 bg-surface rounded-xl"
+            style={{ border: "1px solid #D4D8E0" }}
+          >
+            <input
+              type="date"
+              value={data}
+              onChange={(e) => setData(e.target.value)}
+              className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium text-ink font-sans"
+            />
+          </span>
+        </label>
+
+        <div
+          className="rounded-2xl px-4 py-3.5 mt-4"
+          style={{ background: "#F7F9FC", border: "1px solid #E3E6EC" }}
+        >
+          <p className="text-[13px] font-semibold text-ink">
+            O que acontece ao confirmar
+          </p>
+          <ul className="text-[12.5px] text-ink-secondary mt-2 flex flex-col gap-1.5 leading-snug">
+            <li>
+              · A agenda para de gerar obrigações a partir de{" "}
+              <strong>{competencia}</strong>. O que é até essa competência
+              continua na agenda — a empresa ainda deve entregar.
+            </li>
+            <li>
+              ·{" "}
+              {previa === null
+                ? "Conferindo o que está agendado…"
+                : previa.obrigacoesPendentes === 0
+                ? "Nenhuma obrigação pendente depois dessa competência."
+                : `${previa.obrigacoesPendentes} obrigação(ões) pendente(s) de competência posterior serão marcadas como dispensadas.`}
+            </li>
+            <li>
+              ·{" "}
+              {previa === null
+                ? "Conferindo as cobranças em aberto…"
+                : previa.cobrancasEmAberto === 0
+                ? "Nenhuma cobrança em aberto depois dessa competência."
+                : `${previa.cobrancasEmAberto} cobrança(s) em aberto (${formatarBRL(
+                    previa.cobrancasEmAbertoCents
+                  )}) de competência posterior serão canceladas.`}
+            </li>
+            <li>· O que já foi entregue, pago ou fechado não é alterado.</li>
+          </ul>
+        </div>
+
+        <p className="text-[11.5px] text-ink-muted mt-2.5 leading-snug">
+          Dá para reativar depois, mas as obrigações dispensadas e as cobranças
+          canceladas não voltam sozinhas.
+        </p>
+
+        <div className="flex gap-2.5 mt-5">
+          <button
+            onClick={onFechar}
+            disabled={salvando}
+            className="flex-1 h-12 rounded-full font-semibold text-[15px] hover:opacity-80 transition-opacity"
+            style={{ border: "1px solid #D4D8E0", background: "#fff", color: "#0E1116" }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={confirmar}
+            disabled={salvando || !data}
+            className="flex-1 h-12 rounded-full text-white font-semibold text-[15px] disabled:opacity-50"
+            style={{ background: "#B9791C" }}
+          >
+            {salvando ? "Registrando…" : "Confirmar baixa"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AbaDados({
   empresa,
   contas,
   onEditar,
   onExcluida,
+  onRecarregar,
 }: {
   empresa: Empresa;
   contas: Conta[];
   onEditar: () => void;
   onExcluida: () => void;
+  onRecarregar: () => void;
 }) {
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [dandoBaixa, setDandoBaixa] = useState(false);
+  const [reativando, setReativando] = useState(false);
+
+  async function reativar() {
+    setReativando(true);
+    try {
+      await reverterBaixaEmpresa(empresa.id);
+      toast.sucesso("Empresa reativada");
+      onRecarregar();
+    } catch (e) {
+      tratarErro(e, {
+        contexto: "reativar empresa",
+        mensagemUsuario: "Não foi possível reativar a empresa.",
+      });
+    } finally {
+      setReativando(false);
+    }
+  }
 
   async function excluir() {
     setExcluindo(true);
@@ -825,12 +1004,41 @@ function AbaDados({
         <LinhaDado rotulo="Razão social" valor={empresa.razaoSocial} />
         <LinhaDado rotulo="Nome fantasia" valor={empresa.nomeFantasia} />
         <LinhaDado rotulo="CNPJ" valor={formatarCNPJ(empresa.cnpj)} />
+        <LinhaDado
+          rotulo="Situação"
+          valor={
+            empresa.status === "BAIXADA"
+              ? `Baixada${
+                  empresa.dataBaixa ? ` em ${formatarData(empresa.dataBaixa, true)}` : ""
+                }`
+              : empresa.status === "INATIVA"
+              ? "Inativa"
+              : "Ativa"
+          }
+        />
         <LinhaDado rotulo="Regime tributário" valor={regimeLabel} />
         <LinhaDado
           rotulo="Data de abertura"
           valor={empresa.dataAbertura ? formatarData(empresa.dataAbertura, true) : null}
         />
-        <LinhaDado rotulo="CNAE principal" valor={empresa.cnaePrincipal} />
+        <LinhaDado
+          rotulo="CNAE principal"
+          valor={
+            empresa.cnaePrincipal
+              ? [empresa.cnaePrincipal, empresa.cnaeDescricao]
+                  .filter(Boolean)
+                  .join(" — ")
+              : null
+          }
+        />
+        <LinhaDado
+          rotulo="CNAEs secundários"
+          valor={
+            empresa.cnaesSecundarios.length > 0
+              ? empresa.cnaesSecundarios.join(" · ")
+              : null
+          }
+        />
         <LinhaDado
           rotulo="Município / UF"
           valor={
@@ -875,6 +1083,24 @@ function AbaDados({
         >
           Editar dados
         </button>
+        {empresa.status === "BAIXADA" ? (
+          <button
+            onClick={reativar}
+            disabled={reativando}
+            className="h-11 px-5 rounded-full font-semibold text-[14px] hover:opacity-80 transition-opacity disabled:opacity-50"
+            style={{ border: "1px solid #B7E3CD", background: "#E2F4EC", color: "#0E885A" }}
+          >
+            {reativando ? "Reativando…" : "Reativar empresa"}
+          </button>
+        ) : (
+          <button
+            onClick={() => setDandoBaixa(true)}
+            className="h-11 px-5 rounded-full font-semibold text-[14px] hover:opacity-80 transition-opacity"
+            style={{ border: "1px solid #F5DFB8", background: "#FCF1DF", color: "#8A5A08" }}
+          >
+            Dar baixa
+          </button>
+        )}
         <button
           onClick={() => setConfirmandoExclusao(true)}
           className="h-11 px-5 rounded-full font-semibold text-[14px] hover:opacity-80 transition-opacity"
@@ -883,6 +1109,17 @@ function AbaDados({
           Excluir empresa
         </button>
       </div>
+
+      {dandoBaixa && (
+        <ModalBaixa
+          empresa={empresa}
+          onBaixada={() => {
+            setDandoBaixa(false);
+            onRecarregar();
+          }}
+          onFechar={() => setDandoBaixa(false)}
+        />
+      )}
 
       {confirmandoExclusao && (
         <div
@@ -1047,6 +1284,7 @@ export function EmpresaDetalheScreen() {
     { valor: "folha", label: "Folha" },
     { valor: "obrigacoes", label: "Obrigações", badge: pendencias },
     { valor: "tributos", label: "Tributos" },
+    { valor: "financeiro", label: "Financeiro" },
     {
       valor: "processos",
       label: "Processos",
@@ -1134,6 +1372,7 @@ export function EmpresaDetalheScreen() {
           contas={contasVinculadas}
           onEditar={() => setModalEmpresa(true)}
           onExcluida={() => navigate("/empresas", { replace: true })}
+          onRecarregar={carregar}
         />
       )}
 
@@ -1171,6 +1410,8 @@ export function EmpresaDetalheScreen() {
           onRecarregar={carregar}
         />
       )}
+
+      {aba === "financeiro" && <AbaFinanceiro empresa={empresa} />}
 
       {aba === "reforma" && (
         <AbaReforma empresa={empresa} onRecarregar={carregar} />

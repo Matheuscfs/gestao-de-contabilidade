@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { open } from "@tauri-apps/plugin-shell";
+import { abrirExterno } from "@/core/ipc/sistema";
 import claudeLogo from "@/assets/ai/claude.svg";
 import geminiLogo from "@/assets/ai/gemini.svg";
 import openaiLogo from "@/assets/ai/openai.svg";
@@ -310,7 +310,7 @@ function ModalAdicionar({
                     Pegue sua chave em{" "}
                     <a
                       href="#"
-                      onClick={(e) => { e.preventDefault(); open(meta.keyUrl); }}
+                      onClick={(e) => { e.preventDefault(); abrirExterno(meta.keyUrl); }}
                       className="text-brand font-semibold hover:underline"
                     >
                       {meta.keyUrlLabel}

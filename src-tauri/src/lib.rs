@@ -62,6 +62,8 @@ pub fn run() {
             // IA — conversa
             commands::ai::ai_conversar,
             commands::ai::ai_interpretar_kanban,
+            // Receita Federal — consulta pública de CNPJ
+            commands::cnpj::consultar_cnpj,
         ])
         .run(tauri::generate_context!())
         .expect("Erro ao iniciar o Gestão de Contabilidade");

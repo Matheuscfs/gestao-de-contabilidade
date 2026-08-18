@@ -25,9 +25,9 @@ import { formatarBRL } from "@/utils/money";
 const ANEXOS: { valor: AnexoSimples; dica: string }[] = [
   { valor: "I", dica: "Comércio" },
   { valor: "II", dica: "Indústria" },
-  { valor: "III", dica: "Serviços com Fator R ≥ 28%" },
+  { valor: "III", dica: "Serviços em geral" },
   { valor: "IV", dica: "Construção, advocacia, limpeza, vigilância" },
-  { valor: "V", dica: "Serviços com Fator R < 28%" },
+  { valor: "V", dica: "Serviços do §5º-D com folha < 28%" },
 ];
 
 const ROTULO_PENDENCIA: Record<TipoPendencia, string> = {
@@ -130,8 +130,10 @@ function LinhaEmpresa({
                 ))}
               </div>
               <p className="text-[11.5px] text-ink-muted mt-1.5">
-                Serviços: escolha III ou V pela atividade — o app recalcula o
-                Fator R depois e avisa se o outro anexo for o indicado.
+                Serviço só vai ao Anexo V se estiver no rol da LC 123 art. 18
+                §5º-D e a folha ficar abaixo de 28% da receita — o resto é Anexo
+                III direto. Escolhendo III ou V, confira o interruptor
+                “atividade sujeita ao Fator R” ao editar a empresa.
               </p>
             </div>
           )}

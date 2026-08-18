@@ -400,20 +400,32 @@ export function calcularVencimento(
 }
 
 /**
- * Competências que devem existir hoje para uma obrigação, respeitando a data
- * de abertura da empresa. Janela: mensal = últimos 4 meses; trimestral =
- * trimestres fechados no último ano; anual = apuração do ano anterior.
+ * Competências que devem existir hoje para uma obrigação, dentro da vida da
+ * empresa. Janela: mensal = últimos 4 meses; trimestral = trimestres fechados
+ * no último ano; anual = apuração do ano anterior.
+ *
+ * A vida da empresa é limitada nas duas pontas: nada antes da abertura, nada
+ * depois da baixa. O corte é pelo **mês**, não pelo dia — empresa baixada em
+ * 20/03 ainda deve a competência de março inteira, e cortar no dia exato
+ * apagaria uma entrega que continua obrigatória.
  */
 export function competenciasNaJanela(
   def: ObrigacaoDef,
   hoje: Date,
-  aberturaISO: string | null
+  aberturaISO: string | null,
+  baixaISO: string | null = null
 ): { mes: number; ano: number }[] {
   const abertura = aberturaISO ? parseISO(aberturaISO) : null;
   const depoisDaAbertura = (mes: number, ano: number) =>
     !abertura ||
     ano > abertura.getFullYear() ||
     (ano === abertura.getFullYear() && mes >= abertura.getMonth() + 1);
+
+  const baixa = baixaISO ? parseISO(baixaISO) : null;
+  const antesDaBaixa = (mes: number, ano: number) =>
+    !baixa ||
+    ano < baixa.getFullYear() ||
+    (ano === baixa.getFullYear() && mes <= baixa.getMonth() + 1);
   // Vigência da obrigação (reforma tributária): competências fora do intervalo
   // de anos não são geradas.
   const naVigencia = (ano: number) =>
@@ -426,7 +438,8 @@ export function competenciasNaJanela(
     const anoApuracao = hoje.getFullYear() - 1;
     if (
       naVigencia(anoApuracao) &&
-      (!abertura || abertura.getFullYear() <= anoApuracao)
+      (!abertura || abertura.getFullYear() <= anoApuracao) &&
+      (!baixa || baixa.getFullYear() >= anoApuracao)
     ) {
       competencias.push({ mes: 12, ano: anoApuracao });
     }
@@ -442,6 +455,7 @@ export function competenciasNaJanela(
     if (def.periodicidade === "TRIMESTRAL" && mes % passoMeses !== 0) continue;
     if (!naVigencia(ano)) continue;
     if (!depoisDaAbertura(mes, ano)) continue;
+    if (!antesDaBaixa(mes, ano)) continue;
     competencias.push({ mes, ano });
   }
   return competencias;

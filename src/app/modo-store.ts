@@ -13,7 +13,7 @@ import { persist } from "zustand/middleware";
 export type Modo = "pessoal" | "contabil";
 
 /** Prefixo de rota → modo a que ela pertence. Usado para sincronizar ao navegar. */
-const ROTAS_CONTABEIS = ["/empresas", "/kanban", "/fluxos"];
+const ROTAS_CONTABEIS = ["/empresas", "/kanban", "/fluxos", "/financeiro"];
 
 export function modoDaRota(pathname: string): Modo | null {
   if (ROTAS_CONTABEIS.some((r) => pathname.startsWith(r))) return "contabil";
