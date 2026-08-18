@@ -15,6 +15,11 @@ import {
   type EmpresaComTotais,
 } from "@/core/db/empresas";
 import { contarPendencias } from "@/core/db/obrigacoes";
+import {
+  listarPendenciasCadastro,
+  type PendenciaEmpresa,
+} from "@/core/db/pendencias-cadastro";
+import { PainelPendencias } from "./painel-pendencias";
 import { contarProcessosAtivos } from "@/core/db/processos";
 import { formatarCNPJ } from "@/utils/documento";
 import { formatarBRL } from "@/utils/money";
@@ -152,6 +157,7 @@ export function EmpresasScreen() {
     Record<string, { pendentes: number; atrasadas: number }>
   >({});
   const [processosAtivos, setProcessosAtivos] = useState<Record<string, number>>({});
+  const [pendenciasCadastro, setPendenciasCadastro] = useState<PendenciaEmpresa[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [modalAberto, setModalAberto] = useState(false);
 
@@ -161,14 +167,16 @@ export function EmpresasScreen() {
   const carregar = useCallback(async () => {
     setCarregando(true);
     try {
-      const [lista, pend, proc] = await Promise.all([
+      const [lista, pend, proc, cadastro] = await Promise.all([
         listarEmpresas(),
         contarPendencias(),
         contarProcessosAtivos(),
+        listarPendenciasCadastro(),
       ]);
       setEmpresas(lista);
       setPendencias(pend);
       setProcessosAtivos(proc);
+      setPendenciasCadastro(cadastro);
     } catch (e) {
       tratarErro(e, {
         contexto: "carregar empresas",
@@ -237,16 +245,22 @@ export function EmpresasScreen() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3.5 mt-5">
-          {empresas.map((e) => (
-            <CardEmpresa
-              key={e.id}
-              empresa={e}
-              pendencias={pendencias[e.id] ?? null}
-              processosAtivos={processosAtivos[e.id] ?? 0}
-              onAbrir={() => navigate(`/empresas/${e.id}`)}
-            />
-          ))}
+        <div className="mt-5">
+          <PainelPendencias
+            pendencias={pendenciasCadastro}
+            onCorrigido={carregar}
+          />
+          <div className="grid grid-cols-2 gap-3.5">
+            {empresas.map((e) => (
+              <CardEmpresa
+                key={e.id}
+                empresa={e}
+                pendencias={pendencias[e.id] ?? null}
+                processosAtivos={processosAtivos[e.id] ?? 0}
+                onAbrir={() => navigate(`/empresas/${e.id}`)}
+              />
+            ))}
+          </div>
         </div>
       )}
 
