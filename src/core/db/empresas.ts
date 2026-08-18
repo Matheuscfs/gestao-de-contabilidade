@@ -58,6 +58,12 @@ export type Empresa = {
   fapDecimilesimos: number;
   /** Terceiros / Sistema S em centésimos de % (580 = 5,8%). */
   terceirosCentesimos: number;
+  /** Dia do vencimento do ISS no município da empresa. */
+  issDiaVencimento: number;
+  /** Alíquota do ISS em centésimos de % (500 = 5%). Zero = não informada. */
+  issAliquotaCentesimos: number;
+  /** Sociedade de profissão regulamentada — bloqueia a presunção reduzida. */
+  profissaoRegulamentada: boolean;
   notes: string | null;
   createdAt: string;
 };
@@ -92,6 +98,9 @@ export type DadosEmpresa = {
   capitalSocialCents: number;
   procuracaoResponsavel: string | null;
   semMovimento: boolean;
+  issDiaVencimento: number;
+  issAliquotaCentesimos: number;
+  profissaoRegulamentada: boolean;
   notes: string | null;
 };
 
@@ -121,6 +130,9 @@ type EmpresaRow = {
   rat_centesimos: number;
   fap_decimilesimos: number;
   terceiros_centesimos: number;
+  iss_dia_vencimento: number;
+  iss_aliquota_centesimos: number;
+  profissao_regulamentada: number;
   notes: string | null;
   created_at: string;
 };
@@ -159,6 +171,9 @@ function mapearLinha(r: EmpresaRow): Empresa {
     ratCentesimos: r.rat_centesimos ?? 100,
     fapDecimilesimos: r.fap_decimilesimos ?? 10_000,
     terceirosCentesimos: r.terceiros_centesimos ?? 0,
+    issDiaVencimento: r.iss_dia_vencimento ?? 10,
+    issAliquotaCentesimos: r.iss_aliquota_centesimos ?? 0,
+    profissaoRegulamentada: r.profissao_regulamentada === 1,
     notes: r.notes ?? null,
     createdAt: r.created_at,
   };
@@ -170,6 +185,7 @@ const COLUNAS = `id, razao_social, nome_fantasia, cnpj, inscricao_estadual,
   status, tem_funcionarios, email, telefone, honorarios_cents,
   capital_social_cents, procuracao_responsavel, sem_movimento,
   rat_centesimos, fap_decimilesimos, terceiros_centesimos,
+  iss_dia_vencimento, iss_aliquota_centesimos, profissao_regulamentada,
   notes, created_at`;
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
@@ -183,6 +199,7 @@ export async function listarEmpresas(): Promise<EmpresaComTotais[]> {
             e.status, e.tem_funcionarios, e.email, e.telefone, e.honorarios_cents,
             e.capital_social_cents, e.procuracao_responsavel, e.sem_movimento,
             e.rat_centesimos, e.fap_decimilesimos, e.terceiros_centesimos,
+            e.iss_dia_vencimento, e.iss_aliquota_centesimos, e.profissao_regulamentada,
             e.notes, e.created_at,
             (SELECT COUNT(*) FROM empresa_socios es
               WHERE es.empresa_id = e.id AND es.data_saida IS NULL) AS socios_count,
@@ -234,8 +251,9 @@ export async function criarEmpresa(dados: DadosEmpresa): Promise<string> {
         data_abertura, cnae_principal, uf, municipio, regime_tributario, anexo_simples,
         regime_ibs_cbs, status, tem_funcionarios, email, telefone, honorarios_cents,
         capital_social_cents, procuracao_responsavel, sem_movimento,
+        iss_dia_vencimento, iss_aliquota_centesimos, profissao_regulamentada,
         notes, archived, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
     [
       id,
       dados.razaoSocial.trim(),
@@ -258,6 +276,9 @@ export async function criarEmpresa(dados: DadosEmpresa): Promise<string> {
       dados.capitalSocialCents,
       dados.procuracaoResponsavel?.trim() || null,
       dados.semMovimento ? 1 : 0,
+      dados.issDiaVencimento,
+      dados.issAliquotaCentesimos,
+      dados.profissaoRegulamentada ? 1 : 0,
       dados.notes?.trim() || null,
       ts,
       ts,
@@ -278,7 +299,8 @@ export async function editarEmpresa(
             municipio = ?, regime_tributario = ?, anexo_simples = ?, regime_ibs_cbs = ?,
             status = ?, tem_funcionarios = ?, email = ?, telefone = ?,
             honorarios_cents = ?, capital_social_cents = ?, procuracao_responsavel = ?,
-            sem_movimento = ?, notes = ?, updated_at = ?
+            sem_movimento = ?, iss_dia_vencimento = ?, iss_aliquota_centesimos = ?,
+            profissao_regulamentada = ?, notes = ?, updated_at = ?
       WHERE id = ?`,
     [
       dados.razaoSocial.trim(),
@@ -301,6 +323,9 @@ export async function editarEmpresa(
       dados.capitalSocialCents,
       dados.procuracaoResponsavel?.trim() || null,
       dados.semMovimento ? 1 : 0,
+      dados.issDiaVencimento,
+      dados.issAliquotaCentesimos,
+      dados.profissaoRegulamentada ? 1 : 0,
       dados.notes?.trim() || null,
       agora(),
       id,

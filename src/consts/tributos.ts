@@ -152,6 +152,94 @@ export function calcularSimples(
   };
 }
 
+// ─── RBT12 de empresa em início de atividade ─────────────────────────────────
+
+export type RegraRbt12 = "GERAL" | "PRIMEIRO_MES" | "PROPORCIONAL";
+
+export type ResultadoRbt12 = {
+  rbt12Cents: number;
+  regra: RegraRbt12;
+  /** Meses de receita que entraram na conta. */
+  mesesConsiderados: number;
+};
+
+/**
+ * Meses completos de atividade antes do mês de apuração.
+ *
+ * Zero significa que a empresa abriu no próprio mês apurado. Null quando não
+ * há data de abertura: sem ela não dá para saber se a empresa é nova, e
+ * assumir "nova" mudaria o imposto de quem só não preencheu o cadastro.
+ */
+export function mesesDeAtividade(
+  aberturaISO: string | null,
+  mesApuracao: number,
+  anoApuracao: number
+): number | null {
+  if (!aberturaISO) return null;
+  const ano = Number(aberturaISO.slice(0, 4));
+  const mes = Number(aberturaISO.slice(5, 7));
+  if (!Number.isFinite(ano) || !Number.isFinite(mes) || mes < 1) return null;
+
+  const diff = anoApuracao * 12 + mesApuracao - (ano * 12 + mes);
+  return diff >= 0 ? diff : null;
+}
+
+/**
+ * RBT12 do período de apuração, respeitando o início de atividade.
+ *
+ * A LC 123 art. 18 §§ 1º e 2º manda proporcionalizar enquanto a empresa não
+ * completa 12 meses, e são três momentos distintos:
+ *
+ *   1. Mês de abertura — RBT12 = receita do próprio mês × 12.
+ *   2. Do 2º ao 12º mês — média aritmética da receita dos meses anteriores × 12.
+ *   3. Do 13º em diante — regra geral: soma dos 12 meses anteriores.
+ *
+ * O app usava sempre a regra geral e, com RBT12 zerado, caía na alíquota
+ * nominal da 1ª faixa. Isso acerta por acaso em quem fatura pouco e erra em
+ * quem abre faturando: a projeção pode cair em faixa superior.
+ *
+ * `receitasAnteriores` vem em ordem cronológica, do mais antigo ao mais
+ * recente, com no máximo 12 competências.
+ */
+export function calcularRbt12(
+  receitasAnteriores: number[],
+  receitaMesApuracaoCents: number,
+  mesesDeAtividadeAnteriores: number | null
+): ResultadoRbt12 {
+  const soma = (lista: number[]) => lista.reduce((a, r) => a + r, 0);
+
+  // Sem data de abertura ou já passou o 12º mês: regra geral.
+  if (mesesDeAtividadeAnteriores == null || mesesDeAtividadeAnteriores >= 12) {
+    const ultimos = receitasAnteriores.slice(-12);
+    return {
+      rbt12Cents: soma(ultimos),
+      regra: "GERAL",
+      mesesConsiderados: ultimos.length,
+    };
+  }
+
+  // Mês de abertura: só existe a receita do próprio mês para projetar.
+  if (mesesDeAtividadeAnteriores <= 0) {
+    return {
+      rbt12Cents: receitaMesApuracaoCents * 12,
+      regra: "PRIMEIRO_MES",
+      mesesConsiderados: 1,
+    };
+  }
+
+  // Do 2º ao 12º mês: média dos meses anteriores, projetada para 12.
+  const considerados = receitasAnteriores.slice(-mesesDeAtividadeAnteriores);
+  const n = considerados.length;
+  if (n === 0) {
+    return { rbt12Cents: 0, regra: "PROPORCIONAL", mesesConsiderados: 0 };
+  }
+  return {
+    rbt12Cents: Math.round((soma(considerados) / n) * 12),
+    regra: "PROPORCIONAL",
+    mesesConsiderados: n,
+  };
+}
+
 /** Fator R = folha dos últimos 12 meses ÷ RBT12. ≥ 28% → Anexo III; senão V. */
 export function calcularFatorR(
   folha12mCents: number,
@@ -333,6 +421,38 @@ export const PRESUNCOES: Record<
   SERVICOS: { irpj: 0.32, csll: 0.32 },
 };
 
+/** Teto da receita anual para a presunção reduzida de serviços (Lei 9.249 art. 15 §4º). */
+export const LIMITE_PRESUNCAO_REDUZIDA_CENTS = 12_000_000; // R$ 120.000
+/** Presunção de IRPJ para serviços dentro do teto. */
+export const PRESUNCAO_SERVICOS_REDUZIDA = 0.16;
+
+/**
+ * Presunção de IRPJ da atividade, considerando a redução de serviços.
+ *
+ * Prestadora de serviços com receita bruta anual até R$ 120.000 usa 16% em vez
+ * de 32% — mas **só no IRPJ**. A CSLL segue o art. 20 da Lei 9.249, que não tem
+ * essa exceção e permanece em 32%.
+ *
+ * Ficam de fora as profissões regulamentadas (advocacia, medicina, engenharia,
+ * contabilidade…), além de serviços hospitalares e de transporte. Uma sociedade
+ * de advogados fatura R$ 80 mil e continua nos 32%.
+ *
+ * Estourar o teto no meio do ano faz os 32% retroagirem ao início do
+ * ano-calendário — por isso o parâmetro é a receita **anual**, e não a do
+ * trimestre: apurar trimestre a trimestre esconderia o estouro.
+ */
+export function presuncaoIrpj(
+  atividade: AtividadePresumido,
+  receitaAnualCents: number,
+  profissaoRegulamentada: boolean
+): number {
+  if (atividade !== "SERVICOS") return PRESUNCOES[atividade].irpj;
+  if (profissaoRegulamentada) return PRESUNCOES.SERVICOS.irpj;
+  return receitaAnualCents <= LIMITE_PRESUNCAO_REDUZIDA_CENTS
+    ? PRESUNCAO_SERVICOS_REDUZIDA
+    : PRESUNCOES.SERVICOS.irpj;
+}
+
 export const PIS_ALIQUOTA = 0.0065;
 export const COFINS_ALIQUOTA = 0.03;
 const IRPJ_ALIQUOTA = 0.15;
@@ -366,13 +486,25 @@ export function calcularPresumidoMes(
   };
 }
 
-/** IRPJ (15% + adicional de 10%) e CSLL (9%) sobre as bases presumidas do trimestre. */
+/**
+ * IRPJ (15% + adicional de 10%) e CSLL (9%) sobre as bases presumidas do trimestre.
+ *
+ * `receitaAnualCents` e `profissaoRegulamentada` só entram para decidir a
+ * presunção reduzida de serviços; omitidos, valem os 32% cheios.
+ */
 export function calcularPresumidoTrimestre(
   atividade: AtividadePresumido,
-  receitaTrimestreCents: number
+  receitaTrimestreCents: number,
+  receitaAnualCents = Number.POSITIVE_INFINITY,
+  profissaoRegulamentada = false
 ): ResultadoPresumidoTrimestre {
   const presuncao = PRESUNCOES[atividade];
-  const baseIrpjCents = Math.round(receitaTrimestreCents * presuncao.irpj);
+  const aliquotaIrpj = presuncaoIrpj(
+    atividade,
+    receitaAnualCents,
+    profissaoRegulamentada
+  );
+  const baseIrpjCents = Math.round(receitaTrimestreCents * aliquotaIrpj);
   const baseCsllCents = Math.round(receitaTrimestreCents * presuncao.csll);
   const excedente = Math.max(
     0,

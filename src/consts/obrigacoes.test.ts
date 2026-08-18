@@ -205,3 +205,34 @@ describe("documentos", () => {
     expect(validarCPF("123")).toBe(false);
   });
 });
+
+describe("calcularVencimento com dia municipal", () => {
+  const iss = obterObrigacao("ISS_MENSAL")!;
+
+  it("sem override usa o dia do catálogo", () => {
+    // ISS de jul/2026 vence em ago/2026, dia 10 (sexta-feira).
+    expect(calcularVencimento(iss, 7, 2026)).toBe("2026-08-10");
+  });
+
+  it("o município manda quando o dia é informado", () => {
+    expect(calcularVencimento(iss, 7, 2026, 15)).toBe("2026-08-17");
+    expect(calcularVencimento(iss, 7, 2026, 5)).toBe("2026-08-05");
+  });
+
+  it("dia inválido cai de volta no catálogo em vez de gerar data quebrada", () => {
+    expect(calcularVencimento(iss, 7, 2026, 0)).toBe(calcularVencimento(iss, 7, 2026));
+    expect(calcularVencimento(iss, 7, 2026, 45)).toBe(calcularVencimento(iss, 7, 2026));
+    expect(calcularVencimento(iss, 7, 2026, null)).toBe(calcularVencimento(iss, 7, 2026));
+  });
+
+  it("dia 31 em mês curto encolhe para o último dia, e daí posterga", () => {
+    // Competência jan/2026 vence em fev/2026, que tem 28 dias: o dia 31 vira
+    // 28/02, um sábado, e o ISS posterga para a segunda seguinte.
+    expect(calcularVencimento(iss, 1, 2026, 31)).toBe("2026-03-02");
+  });
+
+  it("o ajuste para dia útil continua valendo sobre o dia do município", () => {
+    // 2026-08-15 é sábado; ISS posterga para o dia útil seguinte.
+    expect(calcularVencimento(iss, 7, 2026, 15)).toBe("2026-08-17");
+  });
+});

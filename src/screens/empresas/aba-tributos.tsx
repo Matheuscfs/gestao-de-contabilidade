@@ -33,6 +33,10 @@ import {
   calcularProLabore,
   PRO_LABORE_MINIMO_CENTS,
   calcularSimples,
+  calcularRbt12,
+  mesesDeAtividade,
+  presuncaoIrpj,
+  PRESUNCAO_SERVICOS_REDUZIDA,
   estimarFolha12m,
   FATOR_R_CORTE,
   FATOR_R_FRONTEIRA,
@@ -235,9 +239,20 @@ export function AbaTributos({
   }
 
   const receitaMes = receitas[receitas.length - 1];
-  const rbt12Cents = receitas
-    .slice(0, 12)
-    .reduce((acc, r) => acc + r.receitaCents, 0);
+
+  // Empresa com menos de 12 meses tem RBT12 proporcional (LC 123 art. 18 §§ 1º
+  // e 2º) — somar o pouco que já faturou daria uma faixa artificialmente baixa.
+  const mesesAtivos = mesesDeAtividade(
+    empresa.dataAbertura,
+    apuracao.mes,
+    apuracao.ano
+  );
+  const rbt12 = calcularRbt12(
+    receitas.slice(0, 12).map((r) => r.receitaCents),
+    receitaMes?.receitaCents ?? 0,
+    mesesAtivos
+  );
+  const rbt12Cents = rbt12.rbt12Cents;
 
   const proLaboreMensalCents = socios
     .filter((s) => s.dataSaida == null)
@@ -337,7 +352,11 @@ export function AbaTributos({
                   <CardValor
                     rotulo="RBT12"
                     valor={formatarBRL(simples.rbt12Cents)}
-                    detalhe={`faixa ${simples.faixa} do anexo`}
+                    detalhe={
+                      rbt12.regra === "GERAL"
+                        ? `faixa ${simples.faixa} do anexo`
+                        : `faixa ${simples.faixa} · proporcional`
+                    }
                   />
                   <CardValor
                     rotulo="Alíquota efetiva"
@@ -354,6 +373,21 @@ export function AbaTributos({
                     destaque
                   />
                 </div>
+                {rbt12.regra !== "GERAL" && (
+                  <p
+                    className="text-[12.5px] mt-2 rounded-xl px-4 py-2.5"
+                    style={{ background: "#F7F9FC", color: "#5B616E", border: "1px solid #E3E6EC" }}
+                  >
+                    Empresa em início de atividade —{" "}
+                    {rbt12.regra === "PRIMEIRO_MES"
+                      ? "no mês de abertura o RBT12 é a receita do próprio mês projetada para 12."
+                      : `RBT12 proporcional: média de ${rbt12.mesesConsiderados} ${
+                          rbt12.mesesConsiderados === 1 ? "mês" : "meses"
+                        } × 12, como manda a LC 123 art. 18 § 2º.`}{" "}
+                    A partir do 13º mês passa a valer a soma dos 12 anteriores.
+                  </p>
+                )}
+
                 {fatorR && rbt12Cents > 0 && (
                   <div
                     className="mt-2.5 rounded-2xl px-4 py-3 border"
@@ -482,10 +516,46 @@ export function AbaTributos({
               const mes = calcularPresumidoMes(receitaMes.receitaCents);
               const tri = calcularPresumidoTrimestre(
                 empresa.atividadePresumido,
-                receitaTrimestreCents
+                receitaTrimestreCents,
+                receitaAnoCents,
+                empresa.profissaoRegulamentada
               );
+              const aliquotaIrpj = presuncaoIrpj(
+                empresa.atividadePresumido,
+                receitaAnoCents,
+                empresa.profissaoRegulamentada
+              );
+              const comPresuncaoReduzida =
+                aliquotaIrpj === PRESUNCAO_SERVICOS_REDUZIDA;
               return (
                 <>
+                  {empresa.atividadePresumido === "SERVICOS" && (
+                    <p
+                      className="text-[12.5px] mb-2.5 rounded-xl px-4 py-2.5"
+                      style={{
+                        background: comPresuncaoReduzida ? "#E2F4EC" : "#F7F9FC",
+                        color: comPresuncaoReduzida ? "#0E885A" : "#5B616E",
+                        border: `1px solid ${comPresuncaoReduzida ? "#B7E3CE" : "#E3E6EC"}`,
+                      }}
+                    >
+                      {comPresuncaoReduzida ? (
+                        <>
+                          Presunção de IRPJ reduzida a{" "}
+                          {formatarPercent(aliquotaIrpj)}: receita anual dentro do
+                          teto de R$ 120.000. A CSLL segue em 32% — a redução vale
+                          só para o IRPJ, e estourar o teto faz os 32%
+                          retroagirem ao início do ano.
+                        </>
+                      ) : (
+                        <>
+                          Presunção de IRPJ em {formatarPercent(aliquotaIrpj)}
+                          {empresa.profissaoRegulamentada
+                            ? " — profissão regulamentada não usa a redução de 16%, mesmo dentro do teto."
+                            : " — receita anual acima do teto de R$ 120.000 para a presunção reduzida."}
+                        </>
+                      )}
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-2.5">
                     <CardValor
                       rotulo={`PIS (${rotuloMes(apuracao.mes, apuracao.ano)})`}

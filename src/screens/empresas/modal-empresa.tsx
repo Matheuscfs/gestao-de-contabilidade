@@ -130,6 +130,13 @@ export function ModalEmpresa({
   const [semMovimento, setSemMovimento] = useState(
     editando?.semMovimento ?? false
   );
+  const [issDia, setIssDia] = useState(editando?.issDiaVencimento ?? 10);
+  const [issAliquota, setIssAliquota] = useState(
+    editando?.issAliquotaCentesimos ?? 0
+  );
+  const [profissaoRegulamentada, setProfissaoRegulamentada] = useState(
+    editando?.profissaoRegulamentada ?? false
+  );
   const [notes, setNotes] = useState(editando?.notes ?? "");
 
   const [salvando, setSalvando] = useState(false);
@@ -177,6 +184,9 @@ export function ModalEmpresa({
         capitalSocialCents: capitalSocial,
         procuracaoResponsavel: procuracao || null,
         semMovimento,
+        issDiaVencimento: issDia,
+        issAliquotaCentesimos: issAliquota,
+        profissaoRegulamentada,
         notes: notes || null,
       };
       let id = editando?.id;
@@ -383,6 +393,48 @@ export function ModalEmpresa({
             </Campo>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <Campo label="ISS — dia do vencimento" opcional>
+              <span
+                className="flex items-center h-[46px] px-4 bg-surface rounded-xl focus-within:border-brand transition-colors"
+                style={ESTILO_BORDA}
+              >
+                <input
+                  value={issDia}
+                  onChange={(e) =>
+                    setIssDia(
+                      Math.min(31, Math.max(1, Number(e.target.value.replace(/\D/g, "")) || 1))
+                    )
+                  }
+                  inputMode="numeric"
+                  className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium tabular-nums text-ink font-sans"
+                />
+              </span>
+              <span className="block text-[12px] text-ink-muted mt-1.5">
+                Varia por município — o padrão é dia 10.
+              </span>
+            </Campo>
+            <Campo label="ISS — alíquota (%)" opcional>
+              <span
+                className="flex items-center h-[46px] px-4 bg-surface rounded-xl focus-within:border-brand transition-colors"
+                style={ESTILO_BORDA}
+              >
+                <input
+                  value={issAliquota === 0 ? "" : (issAliquota / 100).toFixed(2)}
+                  onChange={(e) => {
+                    const n = Number(e.target.value.replace(",", "."));
+                    setIssAliquota(
+                      Number.isFinite(n) ? Math.min(500, Math.max(0, Math.round(n * 100))) : 0
+                    );
+                  }}
+                  placeholder="2,00 a 5,00"
+                  inputMode="decimal"
+                  className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] font-medium tabular-nums text-ink placeholder:text-ink-placeholder font-sans"
+                />
+              </span>
+            </Campo>
+          </div>
+
           <Campo label="Procuração eletrônica (e-CAC)" opcional>
             <InputTexto
               valor={procuracao}
@@ -441,6 +493,34 @@ export function ModalEmpresa({
                 className="block w-[18px] h-[18px] rounded-full bg-white transition-transform"
                 style={{
                   transform: temFuncionarios ? "translateX(18px)" : "translateX(0)",
+                }}
+              />
+            </span>
+          </button>
+
+          {/* Profissão regulamentada */}
+          <button
+            onClick={() => setProfissaoRegulamentada(!profissaoRegulamentada)}
+            className="flex items-center justify-between rounded-xl px-4 py-3 transition-colors"
+            style={ESTILO_BORDA}
+          >
+            <span className="text-left">
+              <span className="block text-[14px] font-semibold text-ink">
+                Profissão regulamentada
+              </span>
+              <span className="block text-[12px] text-ink-muted mt-0.5">
+                Advocacia, medicina, engenharia, contabilidade… No Lucro
+                Presumido impede a presunção reduzida de 16% do IRPJ.
+              </span>
+            </span>
+            <span
+              className="shrink-0 w-[42px] h-[24px] rounded-full p-[3px] transition-colors"
+              style={{ background: profissaoRegulamentada ? "#4078E6" : "#D4D8E0" }}
+            >
+              <span
+                className="block w-[18px] h-[18px] rounded-full bg-white transition-transform"
+                style={{
+                  transform: profissaoRegulamentada ? "translateX(18px)" : "translateX(0)",
                 }}
               />
             </span>
